@@ -1,0 +1,17 @@
+node_modules
+dist
+*.log
+.env.local
+.env.development
+.DS_Store
+
+# PowerShell scripts (development only)
+*.ps1
+
+# Temporary files
+*.txt
+*.md
+
+# Build outputs
+build
+coverage
