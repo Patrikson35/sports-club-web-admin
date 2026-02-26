@@ -30,9 +30,6 @@ function Login({ onLogin }) {
       <div className="login-header-bar">
         <div className="header-icon">🏠</div>
         <h1 className="header-title">Prihlásenie</h1>
-        <Link to="/register" className="header-register">
-          Registrovať
-        </Link>
       </div>
 
       <div className="login-card">
@@ -65,6 +62,15 @@ function Login({ onLogin }) {
             />
           </div>
 
+          <div className="form-links">
+            <Link to="/forgot-password" className="form-link">
+              Zabudnuté heslo
+            </Link>
+            <Link to="/register" className="form-link">
+              Registrovať
+            </Link>
+          </div>
+
           <div className="form-options">
             <label className="checkbox-label">
               <input
@@ -72,7 +78,7 @@ function Login({ onLogin }) {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              <span>Zabudnuté domelo</span>
+              <span>Zapamätať prihlásenie</span>
             </label>
           </div>
 
