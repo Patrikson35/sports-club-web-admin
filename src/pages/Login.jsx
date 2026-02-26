@@ -85,9 +85,10 @@ function Login({ onLogin }) {
             type="submit" 
             disabled={loading}
             style={{ 
-              background: '#ff6b00',
-              color: '#fff',
-              border: 'none',
+              backgroundColor: '#ff6b00 !important',
+              background: '#ff6b00 !important',
+              color: '#fff !important',
+              border: 'none !important',
               padding: '16px',
               borderRadius: '8px',
               fontSize: '16px',
@@ -101,12 +102,14 @@ function Login({ onLogin }) {
             onMouseEnter={(e) => {
               if (!loading) {
                 e.target.style.background = '#ff7f1f';
+                e.target.style.backgroundColor = '#ff7f1f';
                 e.target.style.transform = 'translateY(-2px)';
                 e.target.style.boxShadow = '0 6px 20px rgba(255, 107, 0, 0.4)';
               }
             }}
             onMouseLeave={(e) => {
               e.target.style.background = '#ff6b00';
+              e.target.style.backgroundColor = '#ff6b00';
               e.target.style.transform = 'translateY(0)';
               e.target.style.boxShadow = '0 4px 15px rgba(255, 107, 0, 0.3)';
             }}
