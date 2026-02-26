@@ -47,6 +47,10 @@
   position: relative;
   z-index: 5;
   backdrop-filter: blur(20px);
+  min-height: 700px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .register-card h2 {
@@ -67,15 +71,11 @@
 
 /* Form styles */
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 6px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
+  display: none;
 }
 
 .form-input,
@@ -85,10 +85,10 @@
 .register-card input[type="tel"],
 .register-card input[type="date"] {
   width: 100%;
-  padding: 14px 16px;
-  background: #2a2a2a;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 12px;
   color: #fff;
   font-size: 15px;
   outline: none;
@@ -98,30 +98,40 @@
 
 .form-input::placeholder,
 .register-card input::placeholder {
-  color: #888;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .form-input:focus,
 .register-card input:focus {
   border-color: #ff6b00;
-  background: #333;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .form-select {
   width: 100%;
-  padding: 12px 14px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   font-size: 15px;
-  background: #1a1a1a;
-  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
   transition: border-color 0.2s;
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+}
+
+.form-select option {
+  background: #1a1a1a;
+  color: #fff;
 }
 
 .form-select:focus {
   outline: none;
   border-color: #ff6b00;
+  color: #fff;
 }
 
 .checkbox-label {
