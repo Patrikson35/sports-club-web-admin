@@ -27,14 +27,13 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
-      <div className="login-header-bar">
-        <div className="header-icon">🏠</div>
-        <h1 className="header-title">Prihlásenie</h1>
-      </div>
-
       <div className="login-card">
         <div className="login-image">
           {/* Background image will be set via CSS */}
+        </div>
+
+        <div className="login-card-header">
+          <h2>Prihlasenie</h2>
         </div>
 
         {error && <div className="error-message">{error}</div>}

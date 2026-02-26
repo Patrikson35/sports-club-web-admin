@@ -10,6 +10,7 @@
   justify-content: center;
   padding: 20px;
   position: relative;
+  filter: grayscale(100%);
 }
 
 /* Dark overlay */
@@ -24,42 +25,11 @@
   z-index: 1;
 }
 
-/* Header bar */
-.login-header-bar {
-  position: absolute;
-  top: 30px;
-  left: 40px;
-  right: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 10;
-}
-
-.header-icon {
-  font-size: 28px;
-  color: #fff;
-  cursor: pointer;
-  transition: transform 0.3s;
-}
-
-.header-icon:hover {
-  transform: scale(1.1);
-}
-
-.header-title {
-  color: #fff;
-  font-size: 24px;
-  font-weight: 500;
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-
 /* Login card */
 .login-card {
   width: 100%;
   max-width: 380px;
-  background: rgba(0, 0, 0, 0.85);
+  background: #000;
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   overflow: hidden;
@@ -87,7 +57,22 @@
   left: 0;
   right: 0;
   height: 100px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  background: linear-gradient(to top, #000, transparent);
+}
+
+/* Card header */
+.login-card-header {
+  padding: 24px 24px 16px;
+  text-align: center;
+  background: #000;
+}
+
+.login-card-header h2 {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
 }
 
 /* Form */
