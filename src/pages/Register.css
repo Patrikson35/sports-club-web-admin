@@ -3,48 +3,125 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  position: relative;
+  background: #000;
+}
+
+/* Grayscale background image */
+.register-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=1920&q=80');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: grayscale(100%);
+  z-index: 0;
+}
+
+/* Dark overlay */
+.register-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1;
 }
 
 .register-card {
-  background: white;
-  border-radius: 16px;
+  background: #000;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
   padding: 40px;
   max-width: 500px;
   width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 5;
+  backdrop-filter: blur(20px);
 }
 
 .register-card h2 {
   margin: 0 0 24px 0;
-  color: #2c3e50;
+  color: #fff;
   font-size: 28px;
   text-align: center;
+  font-weight: 600;
 }
 
 .register-card h3 {
   margin: 0 0 20px 0;
-  color: #667eea;
+  color: #fff;
   font-size: 20px;
   text-align: center;
+  font-weight: 500;
+}
+
+/* Form styles */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-input,
+.register-card input[type="text"],
+.register-card input[type="email"],
+.register-card input[type="password"],
+.register-card input[type="tel"],
+.register-card input[type="date"] {
+  width: 100%;
+  padding: 14px 16px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s;
+  box-sizing: border-box;
+}
+
+.form-input::placeholder,
+.register-card input::placeholder {
+  color: #888;
+}
+
+.form-input:focus,
+.register-card input:focus {
+  border-color: #ff6b00;
+  background: #333;
 }
 
 .form-select {
   width: 100%;
   padding: 12px 14px;
-  border: 2px solid #e1e8ed;
+  border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   font-size: 15px;
-  background: white;
-  color: #2c3e50;
+  background: #1a1a1a;
+  color: #fff;
   transition: border-color 0.2s;
   cursor: pointer;
 }
 
 .form-select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #ff6b00;
 }
 
 .checkbox-label {
@@ -63,7 +140,7 @@
 
 .checkbox-label span {
   font-size: 15px;
-  color: #2c3e50;
+  color: #fff;
 }
 
 .btn-block {
@@ -72,7 +149,7 @@
 }
 
 .btn-primary {
-  background: #667eea;
+  background: #ff6b00;
   color: white;
   border: none;
   padding: 14px 24px;
@@ -81,23 +158,24 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #5568d3;
+  background: #ff7f1f;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
 }
 
 .btn-primary:disabled {
-  background: #95a5a6;
+  background: #666;
   cursor: not-allowed;
 }
 
 .btn-secondary {
   background: transparent;
-  color: #667eea;
-  border: 2px solid #667eea;
+  color: #ff6b00;
+  border: 2px solid #ff6b00;
   padding: 12px 24px;
   font-size: 16px;
   font-weight: 600;
@@ -107,7 +185,7 @@
 }
 
 .btn-secondary:hover {
-  background: #667eea;
+  background: #ff6b00;
   color: white;
 }
 
@@ -115,10 +193,11 @@ input[type="file"] {
   padding: 8px 0;
   border: none;
   font-size: 14px;
+  color: #fff;
 }
 
 input[type="file"]::-webkit-file-upload-button {
-  background: #667eea;
+  background: #ff6b00;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -129,5 +208,34 @@ input[type="file"]::-webkit-file-upload-button {
 }
 
 input[type="file"]::-webkit-file-upload-button:hover {
-  background: #5568d3;
+  background: #ff7f1f;
+}
+
+/* Error and success messages */
+.error-message {
+  margin: 0 0 16px 0;
+  padding: 12px;
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 14px;
+  text-align: center;
+}
+
+.success-message {
+  margin: 0 0 16px 0;
+  padding: 12px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+  color: #86efac;
+  font-size: 14px;
+  text-align: center;
+}
+
+.loading-spinner {
+  color: #fff;
+  text-align: center;
+  padding: 20px;
 }
