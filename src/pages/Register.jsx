@@ -9,8 +9,8 @@ function Register() {
   const [error, setError] = useState('')
   
   const [formData, setFormData] = useState({
-    registrationType: 'player',
-    sport: 'basketball',
+    registrationType: '',
+    sport: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -63,7 +63,7 @@ function Register() {
     <div className="register-container">
       <div className="register-card">
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
+          <div className="form-group select-group">
             <select
               name="registrationType"
               value={formData.registrationType}
@@ -78,7 +78,7 @@ function Register() {
             </select>
           </div>
 
-          <div className="form-group">
+          <div className="form-group select-group">
             <select
               name="sport"
               value={formData.sport}
