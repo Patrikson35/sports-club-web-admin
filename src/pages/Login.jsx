@@ -1,10 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
-import Register from './Register'
 import './Login.css'
 
 function Login({ onLogin }) {
-  const [showRegister, setShowRegister] = useState(false)
   const [email, setEmail] = useState('admin@sportsclub.sk')
   const [password, setPassword] = useState('admin123')
   const [loading, setLoading] = useState(false)
@@ -23,10 +22,6 @@ function Login({ onLogin }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (showRegister) {
-    return <Register onBackToLogin={() => setShowRegister(false)} />
   }
 
   return (
@@ -63,13 +58,9 @@ function Login({ onLogin }) {
           </div>
 
           <div className="register-link">
-            <button 
-              type="button" 
-              className="btn-link"
-              onClick={() => setShowRegister(true)}
-            >
+            <Link to="/register" className="btn-link">
               Nemáte účet? Registrujte sa
-            </button>
+            </Link>
           </div>
 
           <button type="submit" className="btn" disabled={loading}>

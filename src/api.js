@@ -90,6 +90,123 @@ class APIClient {
     });
   }
 
+  // Registration endpoints (new system)
+  async registerClub(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Club registration successful (mock)', userId: Date.now(), clubId: Date.now() };
+    }
+    return this.request('/registration/register-club', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async registerCoach(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Coach registration successful (mock)', userId: Date.now() };
+    }
+    return this.request('/registration/register-coach', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async registerPrivateCoach(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Private coach registration successful (mock)', userId: Date.now() };
+    }
+    return this.request('/registration/register-private-coach', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async registerAssistant(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Assistant registration successful (mock)', userId: Date.now() };
+    }
+    return this.request('/registration/register-assistant', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async registerPlayer(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player registration successful (mock)', userId: Date.now() };
+    }
+    return this.request('/registration/register-player', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async registerParent(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Parent registration successful (mock)', userId: Date.now() };
+    }
+    return this.request('/registration/register-parent', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Invites
+  async getInviteDetails(inviteCode) {
+    if (USE_MOCK_DATA) {
+      return { 
+        invite: {
+          inviteType: 'coach',
+          email: 'test@example.com',
+          clubName: 'FC Test',
+          inviterName: 'Admin Test'
+        }
+      };
+    }
+    return this.request(`/invites/${inviteCode}`);
+  }
+
+  async sendInvite(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Invite sent (mock)', inviteCode: 'MOCK_' + Date.now() };
+    }
+    return this.request('/invites/send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Verification
+  async verifyEmail(token) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Email verified (mock)' };
+    }
+    return this.request('/verification/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async verifyParentConsent(token, consentGiven) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Consent verified (mock)' };
+    }
+    return this.request('/verification/verify-parent-consent', {
+      method: 'POST',
+      body: JSON.stringify({ token, consentGiven }),
+    });
+  }
+
+  async resendVerification(email) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Verification resent (mock)' };
+    }
+    return this.request('/verification/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
   async getPendingRegistrations() {
     if (USE_MOCK_DATA) {
       return { total: 0, users: [] };

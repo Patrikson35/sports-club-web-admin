@@ -10,6 +10,9 @@ import Matches from './pages/Matches'
 import Tests from './pages/Tests'
 import RegistrationApprovals from './pages/RegistrationApprovals'
 import Login from './pages/Login'
+import Register from './pages/Register'
+import VerifyEmail from './pages/VerifyEmail'
+import ParentConsent from './pages/ParentConsent'
 import './App.css'
 
 function App() {
@@ -57,90 +60,98 @@ function App() {
     return <div className="loading">Načítání...</div>
   }
 
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />
-  }
-
   return (
     <Router>
-      <div className="app">
-        <nav className="sidebar">
-          <div className="sidebar-header">
-            <h1>⬢ Sports Club</h1>
-            <p className="user-info">{currentUser?.firstName} {currentUser?.lastName}</p>
-          </div>
-          
-          <div className="nav-links">
-            <Link to="/" className="nav-link">
-              <span className="icon">▣</span>
-              Dashboard
-            </Link>
-            <Link to="/clubs" className="nav-link">
-              <span className="icon">⬢</span>
-              Kluby
-            </Link>
-            <Link to="/players" className="nav-link">
-              <span className="icon">◉</span>
-              Hráči
-            </Link>
-            <Link to="/teams" className="nav-link">
-              <span className="icon">★</span>
-              Týmy
-            </Link>
-            <Link to="/trainings" className="nav-link">
-              <span className="icon">●</span>
-              Tréninky
-            </Link>
-            <Link to="/matches" className="nav-link">
-              <span className="icon">⬢</span>
-              Zápasy
-            </Link>
-            <Link to="/tests" className="nav-link">
-              <span className="icon">▲</span>
-              Testy
-            </Link>
-            <Link to="/registrations" className="nav-link">
-              <span className="icon">✓</span>
-              Registrácie
-            </Link>
-          </div>
-
-          <div className="sidebar-footer">
-            <div className="api-mode-toggle">
-              <label className="toggle-label">
-                <span className="toggle-text">
-                  {useMockData ? '🧪 Mock Data' : '🌐 Real API'}
-                </span>
-                <div className="toggle-switch">
-                  <input 
-                    type="checkbox" 
-                    checked={!useMockData}
-                    onChange={toggleMockData}
-                  />
-                  <span className="slider"></span>
-                </div>
-              </label>
+      {!isAuthenticated ? (
+        // Public routes - no authentication required
+        <Routes>
+          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/parent-consent" element={<ParentConsent />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      ) : (
+        // Private routes - authentication required
+        <div className="app">
+          <nav className="sidebar">
+            <div className="sidebar-header">
+              <h1>⬢ Sports Club</h1>
+              <p className="user-info">{currentUser?.firstName} {currentUser?.lastName}</p>
             </div>
-            <button onClick={handleLogout} className="btn btn-secondary">
-              Odhlásit se
-            </button>
-          </div>
-        </nav>
+            
+            <div className="nav-links">
+              <Link to="/" className="nav-link">
+                <span className="icon">▣</span>
+                Dashboard
+              </Link>
+              <Link to="/clubs" className="nav-link">
+                <span className="icon">⬢</span>
+                Kluby
+              </Link>
+              <Link to="/players" className="nav-link">
+                <span className="icon">◉</span>
+                Hráči
+              </Link>
+              <Link to="/teams" className="nav-link">
+                <span className="icon">★</span>
+                Týmy
+              </Link>
+              <Link to="/trainings" className="nav-link">
+                <span className="icon">●</span>
+                Tréninky
+              </Link>
+              <Link to="/matches" className="nav-link">
+                <span className="icon">⬢</span>
+                Zápasy
+              </Link>
+              <Link to="/tests" className="nav-link">
+                <span className="icon">▲</span>
+                Testy
+              </Link>
+              <Link to="/registrations" className="nav-link">
+                <span className="icon">✓</span>
+                Registrácie
+              </Link>
+            </div>
 
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/clubs" element={<Clubs />} />
-            <Route path="/players" element={<Players />} />
-            <Route path="/registrations" element={<RegistrationApprovals />} />
-            <Route path="/teams" element={<Teams />} />
-            <Route path="/trainings" element={<Trainings />} />
-            <Route path="/matches" element={<Matches />} />
-            <Route path="/tests" element={<Tests />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
-      </div>
+            <div className="sidebar-footer">
+              <div className="api-mode-toggle">
+                <label className="toggle-label">
+                  <span className="toggle-text">
+                    {useMockData ? '🧪 Mock Data' : '🌐 Real API'}
+                  </span>
+                  <div className="toggle-switch">
+                    <input 
+                      type="checkbox" 
+                      checked={!useMockData}
+                      onChange={toggleMockData}
+                    />
+                    <span className="slider"></span>
+                  </div>
+                </label>
+              </div>
+              <button onClick={handleLogout} className="btn btn-secondary">
+                Odhlásit se
+              </button>
+            </div>
+          </nav>
+
+          <main className="main-content">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/clubs" element={<Clubs />} />
+              <Route path="/players" element={<Players />} />
+              <Route path="/registrations" element={<RegistrationApprovals />} />
+              <Route path="/teams" element={<Teams />} />
+              <Route path="/trainings" element={<Trainings />} />
+              <Route path="/matches" element={<Matches />} />
+              <Route path="/tests" element={<Tests />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </main>
+        </div>
+      )}
     </Router>
   )
 }
