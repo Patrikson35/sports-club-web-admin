@@ -62,7 +62,13 @@ function Register() {
   return (
     <div className="register-container">
       <div className="register-card">
-        <form onSubmit={handleSubmit}>
+        <div className="register-card-header">
+          <h2>Registrácia</h2>
+        </div>
+
+        {error && <div className="error-message">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="register-form">
           <div className="form-group select-group">
             <select
               name="registrationType"
@@ -142,8 +148,6 @@ function Register() {
               required
             />
           </div>
-
-          {error && <div className="error-message">{error}</div>}
 
           <button
             type="submit"

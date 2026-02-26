@@ -1,6 +1,7 @@
 .register-container {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -37,52 +38,41 @@
 }
 
 .register-card {
+  width: 100%;
+  max-width: 380px;
+  min-height: 600px;
   background: #000;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
-  padding: 40px;
-  max-width: 380px;
-  width: 100%;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 5;
-  backdrop-filter: blur(20px);
-  min-height: 700px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 
-.register-card h2 {
-  margin: 0 0 24px 0;
-  color: #fff;
-  font-size: 28px;
+/* Card header */
+.register-card-header {
+  padding: 32px 24px 40px;
   text-align: center;
+  background: #000;
+}
+
+.register-card-header h2 {
+  color: #fff;
+  font-size: 22px;
   font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
 }
 
-.register-card h3 {
-  margin: 0 0 20px 0;
-  color: #fff;
-  font-size: 20px;
-  text-align: center;
-  font-weight: 500;
-}
-
-/* Form styles */
-.register-card form {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+/* Form */
+.register-form {
+  padding: 0 24px 40px;
 }
 
 .form-group {
   margin-bottom: 16px;
-}
-
-.form-group:nth-of-type(3) {
-  margin-top: auto;
-  padding-top: 50px;
 }
 
 .form-group label {
@@ -240,7 +230,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 /* Error and success messages */
 .error-message {
-  margin: 0 0 16px 0;
+  margin: 16px 24px 0;
   padding: 12px;
   background: rgba(220, 38, 38, 0.2);
   border: 1px solid rgba(220, 38, 38, 0.4);
