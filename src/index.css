@@ -73,19 +73,26 @@ body {
 }
 
 input, select, textarea {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  padding: 10px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 14px 16px;
   border-radius: 8px;
   font-size: 15px;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 0;
+  outline: none;
+  transition: all 0.3s;
+}
+
+input::placeholder, select::placeholder, textarea::placeholder {
+  color: #888;
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: #ff6b00;
+  background: #333;
 }
 
 table {
