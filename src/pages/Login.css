@@ -129,11 +129,12 @@
 }
 
 /* Submit button */
-.btn-submit {
+.login-form .btn-submit,
+button.btn-submit {
   width: 100%;
   padding: 16px;
   background: #ff6b00 !important;
-  color: #fff;
+  color: #fff !important;
   border: none;
   border-radius: 8px;
   font-size: 16px;
@@ -143,19 +144,21 @@
   box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
 }
 
-.btn-submit:hover {
+.login-form .btn-submit:hover,
+button.btn-submit:hover {
   background: #ff7f1f !important;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
 }
 
-.btn-submit:active {
+button.btn-submit:active {
   transform: translateY(0);
 }
 
-.btn-submit:disabled {
+button.btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  background: #ff6b00 !important;
 }
 
 /* Error message */
