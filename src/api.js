@@ -169,6 +169,27 @@ class APIClient {
     return this.request(`/tests/results?${query}`);
   }
 
+  // Clubs
+  async getClubs() {
+    if (USE_MOCK_DATA) {
+      return {
+        total: 0,
+        clubs: []
+      };
+    }
+    return this.request('/clubs');
+  }
+
+  async createClub(data) {
+    if (USE_MOCK_DATA) {
+      return { id: Date.now(), message: 'Club created (mock)', club: { ...data, id: Date.now() } };
+    }
+    return this.request('/clubs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Dashboard Stats
   async getDashboardStats() {
     if (USE_MOCK_DATA) {

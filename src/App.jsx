@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom'
 import { api, getApiMode, setUseMockData } from './api'
 import Dashboard from './pages/Dashboard'
+import Clubs from './pages/Clubs'
 import Players from './pages/Players'
 import Teams from './pages/Teams'
 import Trainings from './pages/Trainings'
@@ -73,6 +74,10 @@ function App() {
               <span className="icon">▣</span>
               Dashboard
             </Link>
+            <Link to="/clubs" className="nav-link">
+              <span className="icon">⬢</span>
+              Kluby
+            </Link>
             <Link to="/players" className="nav-link">
               <span className="icon">◉</span>
               Hráči
@@ -120,6 +125,7 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/clubs" element={<Clubs />} />
             <Route path="/players" element={<Players />} />
             <Route path="/teams" element={<Teams />} />
             <Route path="/trainings" element={<Trainings />} />
