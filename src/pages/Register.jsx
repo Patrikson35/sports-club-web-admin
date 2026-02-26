@@ -80,10 +80,10 @@ function Register() {
               required
             >
               <option value="">Registrovať sa ako</option>
-              <option value="player">Hráč</option>
-              <option value="coach">Tréner</option>
               <option value="club">Klub</option>
-              <option value="parent">Rodič</option>
+              <option value="club_coach">Klubový tréner</option>
+              <option value="private_coach">Privátny tréner</option>
+              <option value="player">Hráč</option>
             </select>
           </div>
 
