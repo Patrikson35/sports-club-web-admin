@@ -96,11 +96,11 @@ function Register() {
               required
             >
               <option value="">Výber šport</option>
-              <option value="basketball">Basketbal</option>
               <option value="football">Futbal</option>
-              <option value="volleyball">Volejbal</option>
-              <option value="handball">Hádzaná</option>
               <option value="hockey">Hokej</option>
+              <option value="basketball">Basketbal</option>
+              <option value="handball">Hádzaná</option>
+              <option value="volleyball">Volejbal</option>
               <option value="tennis">Tenis</option>
             </select>
           </div>
