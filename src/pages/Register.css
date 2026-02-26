@@ -70,8 +70,19 @@
 }
 
 /* Form styles */
+.register-card form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .form-group {
   margin-bottom: 20px;
+}
+
+.form-group:nth-of-type(3) {
+  margin-top: auto;
+  padding-top: 50px;
 }
 
 .form-group label {
@@ -125,10 +136,6 @@
 
 .form-group.select-group {
   margin-bottom: 16px;
-}
-
-.form-group.select-group:last-of-type {
-  margin-bottom: 50px;
 }
 
 .form-select option {
