@@ -32,7 +32,9 @@ function Register() {
     setError('')
 
     try {
-      if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+      // Validate all fields are filled
+      if (!formData.registrationType || !formData.sport || !formData.firstName || 
+          !formData.lastName || !formData.email || !formData.password) {
         throw new Error('Všetky polia sú povinné')
       }
 
@@ -75,6 +77,7 @@ function Register() {
               value={formData.registrationType}
               onChange={handleInputChange}
               className="form-select"
+              required
             >
               <option value="">Registrovať sa ako</option>
               <option value="player">Hráč</option>
@@ -90,6 +93,7 @@ function Register() {
               value={formData.sport}
               onChange={handleInputChange}
               className="form-select"
+              required
             >
               <option value="">Výber šport</option>
               <option value="basketball">Basketbal</option>
