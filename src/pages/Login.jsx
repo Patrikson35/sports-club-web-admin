@@ -85,10 +85,10 @@ function Login({ onLogin }) {
             type="submit" 
             disabled={loading}
             style={{ 
-              backgroundColor: '#ff6b00 !important',
-              background: '#ff6b00 !important',
-              color: '#fff !important',
-              border: 'none !important',
+              backgroundColor: '#ff6b00',
+              background: '#ff6b00',
+              color: '#fff',
+              border: 'none',
               padding: '16px',
               borderRadius: '8px',
               fontSize: '16px',
