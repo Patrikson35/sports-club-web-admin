@@ -97,9 +97,9 @@
 .register-card input[type="date"] {
   width: 100%;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #2a2a2a;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 8px;
   color: #fff;
   font-size: 15px;
   outline: none;
@@ -122,9 +122,9 @@
   width: 100%;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 15px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #2a2a2a;
   color: rgba(255, 255, 255, 0.5);
   transition: border-color 0.2s;
   cursor: pointer;
