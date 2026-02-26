@@ -81,7 +81,23 @@ function Login({ onLogin }) {
             </label>
           </div>
 
-          <button type="submit" className="btn-submit" disabled={loading}>
+          <button 
+            type="submit" 
+            className="btn-submit" 
+            disabled={loading}
+            style={{ 
+              background: '#ff6b00',
+              color: '#fff',
+              border: 'none',
+              padding: '16px',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              width: '100%',
+              opacity: loading ? 0.6 : 1
+            }}
+          >
             {loading ? 'Prihlasujem...' : 'Prihlásiť sa'}
           </button>
         </form>
