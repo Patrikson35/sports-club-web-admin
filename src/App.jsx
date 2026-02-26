@@ -8,6 +8,7 @@ import Teams from './pages/Teams'
 import Trainings from './pages/Trainings'
 import Matches from './pages/Matches'
 import Tests from './pages/Tests'
+import RegistrationApprovals from './pages/RegistrationApprovals'
 import Login from './pages/Login'
 import './App.css'
 
@@ -98,6 +99,10 @@ function App() {
               <span className="icon">▲</span>
               Testy
             </Link>
+            <Link to="/registrations" className="nav-link">
+              <span className="icon">✓</span>
+              Registrácie
+            </Link>
           </div>
 
           <div className="sidebar-footer">
@@ -127,6 +132,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/clubs" element={<Clubs />} />
             <Route path="/players" element={<Players />} />
+            <Route path="/registrations" element={<RegistrationApprovals />} />
             <Route path="/teams" element={<Teams />} />
             <Route path="/trainings" element={<Trainings />} />
             <Route path="/matches" element={<Matches />} />

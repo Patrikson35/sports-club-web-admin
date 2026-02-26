@@ -1,0 +1,128 @@
+.approvals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.approval-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  transition: all 0.2s;
+}
+
+.approval-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.approval-info {
+  flex: 1;
+}
+
+.approval-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.approval-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.role-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-club {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.role-coach {
+  background: rgba(155, 89, 182, 0.2);
+  color: #9b59b6;
+}
+
+.role-player {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.approval-detail {
+  margin: 6px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.approval-detail strong {
+  color: var(--text-primary);
+  margin-right: 8px;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-approve {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-approve:hover {
+  background: #27ae60;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+}
+
+.btn-reject {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reject:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+@media (max-width: 768px) {
+  .approval-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .approval-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .approval-actions button {
+    flex: 1;
+  }
+}

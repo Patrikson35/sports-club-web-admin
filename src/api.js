@@ -77,6 +77,44 @@ class APIClient {
     });
   }
 
+  async register(userData) {
+    if (USE_MOCK_DATA) {
+      return { 
+        message: 'Registration successful (mock)',
+        user: { id: Date.now(), ...userData }
+      };
+    }
+    return this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async getPendingRegistrations() {
+    if (USE_MOCK_DATA) {
+      return { total: 0, users: [] };
+    }
+    return this.request('/auth/pending');
+  }
+
+  async approveRegistration(userId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Approved (mock)' };
+    }
+    return this.request(`/auth/approve/${userId}`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectRegistration(userId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Rejected (mock)' };
+    }
+    return this.request(`/auth/reject/${userId}`, {
+      method: 'POST',
+    });
+  }
+
   // Players
   async getPlayers(params = {}) {
     if (USE_MOCK_DATA) {

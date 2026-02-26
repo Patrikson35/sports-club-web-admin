@@ -49,6 +49,25 @@
   margin-top: 24px;
 }
 
+.register-link {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: underline;
+  padding: 8px;
+}
+
+.btn-link:hover {
+  color: #5568d3;
+}
+
 .login-footer {
   margin-top: 32px;
   padding-top: 24px;

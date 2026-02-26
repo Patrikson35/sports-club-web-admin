@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { api } from '../api'
+import Register from './Register'
 import './Login.css'
 
 function Login({ onLogin }) {
+  const [showRegister, setShowRegister] = useState(false)
   const [email, setEmail] = useState('admin@sportsclub.sk')
   const [password, setPassword] = useState('admin123')
   const [loading, setLoading] = useState(false)
@@ -21,6 +23,10 @@ function Login({ onLogin }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (showRegister) {
+    return <Register onBackToLogin={() => setShowRegister(false)} />
   }
 
   return (
@@ -54,6 +60,16 @@ function Login({ onLogin }) {
               placeholder="••••••••"
               required
             />
+          </div>
+
+          <div className="register-link">
+            <button 
+              type="button" 
+              className="btn-link"
+              onClick={() => setShowRegister(true)}
+            >
+              Nemáte účet? Registrujte sa
+            </button>
           </div>
 
           <button type="submit" className="btn" disabled={loading}>
