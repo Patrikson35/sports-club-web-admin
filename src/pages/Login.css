@@ -128,38 +128,7 @@
   accent-color: #ff6b00;
 }
 
-/* Submit button */
-.login-form .btn-submit,
-button.btn-submit {
-  width: 100%;
-  padding: 16px;
-  background: #ff6b00 !important;
-  color: #fff !important;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
-}
-
-.login-form .btn-submit:hover,
-button.btn-submit:hover {
-  background: #ff7f1f !important;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
-}
-
-button.btn-submit:active {
-  transform: translateY(0);
-}
-
-button.btn-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background: #ff6b00 !important;
-}
+/* Submit button - styles moved to inline JSX for guaranteed priority */
 
 /* Error message */
 .error-message {

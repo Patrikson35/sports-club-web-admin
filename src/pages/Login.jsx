@@ -83,7 +83,6 @@ function Login({ onLogin }) {
 
           <button 
             type="submit" 
-            className="btn-submit" 
             disabled={loading}
             style={{ 
               background: '#ff6b00',
@@ -95,7 +94,21 @@ function Login({ onLogin }) {
               fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
               width: '100%',
-              opacity: loading ? 0.6 : 1
+              opacity: loading ? 0.6 : 1,
+              boxShadow: '0 4px 15px rgba(255, 107, 0, 0.3)',
+              transition: 'all 0.3s'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.target.style.background = '#ff7f1f';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(255, 107, 0, 0.4)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = '#ff6b00';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 15px rgba(255, 107, 0, 0.3)';
             }}
           >
             {loading ? 'Prihlasujem...' : 'Prihlásiť sa'}
