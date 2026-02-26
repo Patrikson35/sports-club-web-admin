@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import './Register.css'
@@ -32,52 +32,6 @@ function Register() {
     setError('')
 
     try {
-      // Validate common fields
-      if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
-        throw new Error('Všetky povinné polia musia byť vyplnené')
-      }
-
-      if (formData.password.length < 6) {
-        throw new Error('Heslo musí mať aspoň 6 znakov')
-      }
-
-      let response
-
-      switch (registrationType) {
-        case 'club':
-          if (!formData.clubName || !formData.clubCity || !formData.clubCountry) {
-            throw new Error('Vyplňte všetky údaje o klube')
-          }
-          response = await api.registerClub({
-            email: formData.email,
-            password: formData.password,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phoneNumber: formData.phoneNumber,
-            clubName: formData.clubName,
-            clubCity: formData.clubCity,
-            clubAddress: formData.clubAddress,
-            clubCountry: formData.clubCountry
-          })
-          break
-
-        case 'coach':
-          if (!formData.inviteCode) {
-            throw new Error('Kód pozvánky je povinný pre registráciu trénera')
-          }
-          response = await api.registerCoach({
-            email: formData.email,
-            password: formData.password,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phoneNumber: formData.phoneNumber,
-            inviteCode: formData.inviteCode
-          })
-          break
-
-        case 'private_coach':
-          response = await api.registerPrivateCoach({
-            email: formData.email,
       if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
         throw new Error('Všetky polia sú povinné')
       }
@@ -86,7 +40,6 @@ function Register() {
         throw new Error('Heslo musí mať aspoň 6 znakov')
       }
 
-      // Send registration request
       const response = await api.register({
         registrationType: formData.registrationType,
         sport: formData.sport,
@@ -96,7 +49,6 @@ function Register() {
         password: formData.password
       })
 
-      // Success - show message to check email
       alert('Registrácia úspešná! Skontrolujte svoj email pre overenie účtu.')
       navigate('/login')
       
@@ -104,74 +56,13 @@ function Register() {
       setError(err.response?.data?.message || err.message || 'Chyba pri registrácii')
     } finally {
       setLoading(false)
-    }           disabled={!!inviteData}
-              />
-            </div>
+    }
+  }
 
-            <div className="form-group">
-              <label>Heslo *</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                minLength={6}
-                placeholder="Min. 6 znakov"
-              />
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Meno *</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Priezvisko *</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Telefón</label>
-              <input
-                type="tel"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleInputChange}
-                placeholder="+421..."
-              />
-            </div>
-          </div>
-
-          {/* Club-specific fields */}
-          {registrationType === 'club' && (
-            <div className="form-section">
-              <h3>Údaje o klube</h3>
-              
-              <div className="form-group">
-                <label>Názov klubu *</label>
-                <input
-                  type="text"
-                  name="clubName"
-                  value={formData.clubName}
-                  onChange={handleInputChange}
-                  required
-         form onSubmit={handleSubmit}>
-          {/* Registrovať sa ako */}
+  return (
+    <div className="register-container">
+      <div className="register-card">
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <select
               name="registrationType"
@@ -187,7 +78,6 @@ function Register() {
             </select>
           </div>
 
-          {/* Výber šport */}
           <div className="form-group">
             <select
               name="sport"
@@ -205,7 +95,6 @@ function Register() {
             </select>
           </div>
 
-          {/* Meno */}
           <div className="form-group">
             <input
               type="text"
@@ -218,7 +107,6 @@ function Register() {
             />
           </div>
 
-          {/* Priezvisko */}
           <div className="form-group">
             <input
               type="text"
@@ -231,7 +119,6 @@ function Register() {
             />
           </div>
 
-          {/* Email */}
           <div className="form-group">
             <input
               type="email"
@@ -244,7 +131,6 @@ function Register() {
             />
           </div>
 
-          {/* Heslo */}
           <div className="form-group">
             <input
               type="password"
@@ -259,7 +145,6 @@ function Register() {
 
           {error && <div className="error-message">{error}</div>}
 
-          {/* Submit button */}
           <button
             type="submit"
             disabled={loading}
@@ -280,4 +165,11 @@ function Register() {
             }}
           >
             {loading ? 'Registrujem...' : 'Registrovať'}
-          </button
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default Register
