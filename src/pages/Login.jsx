@@ -4,8 +4,9 @@ import { api } from '../api'
 import './Login.css'
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@sportsclub.sk')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -18,7 +19,7 @@ function Login({ onLogin }) {
       const { token, user } = await api.login(email, password)
       onLogin(token, user)
     } catch (err) {
-      setError(err.message || 'Přihlášení se nezdařilo')
+      setError(err.message || 'Prihlásenie zlyhalo')
     } finally {
       setLoading(false)
     }
@@ -26,53 +27,59 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
+      <div className="login-header-bar">
+        <div className="header-icon">🏠</div>
+        <h1 className="header-title">Prihlásenie</h1>
+        <Link to="/register" className="header-register">
+          Registrovať
+        </Link>
+      </div>
+
       <div className="login-card">
-        <div className="login-header">
-          <h1>⚽ Sports Club</h1>
-          <p>Admin Panel</p>
+        <div className="login-image">
+          {/* Background image will be set via CSS */}
         </div>
 
-        {error && <div className="error">{error}</div>}
+        {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label>Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@sportsclub.sk"
+              placeholder="ID"
+              className="form-input"
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Heslo</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Heslo"
+              className="form-input"
               required
             />
           </div>
 
-          <div className="register-link">
-            <Link to="/register" className="btn-link">
-              Nemáte účet? Registrujte sa
-            </Link>
+          <div className="form-options">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span>Zabudnuté domelo</span>
+            </label>
           </div>
 
-          <button type="submit" className="btn" disabled={loading}>
-            {loading ? 'Přihlašuji...' : 'Přihlásit se'}
+          <button type="submit" className="btn-submit" disabled={loading}>
+            {loading ? 'Prihlasujem...' : 'Prihlásiť sa'}
           </button>
         </form>
-
-        <div className="login-footer">
-          <p>Test účty:</p>
-          <p>Admin: admin@sportsclub.sk / admin123</p>
-          <p>Trenér: trener1@hvezdna.sk / coach123</p>
-        </div>
       </div>
     </div>
   )
