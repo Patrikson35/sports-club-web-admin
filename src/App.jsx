@@ -64,33 +64,33 @@ function App() {
       <div className="app">
         <nav className="sidebar">
           <div className="sidebar-header">
-            <h1>⚽ Sports Club</h1>
+            <h1>⬢ Sports Club</h1>
             <p className="user-info">{currentUser?.firstName} {currentUser?.lastName}</p>
           </div>
           
           <div className="nav-links">
             <Link to="/" className="nav-link">
-              <span className="icon">📊</span>
+              <span className="icon">▣</span>
               Dashboard
             </Link>
             <Link to="/players" className="nav-link">
-              <span className="icon">👥</span>
+              <span className="icon">◉</span>
               Hráči
             </Link>
             <Link to="/teams" className="nav-link">
-              <span className="icon">🏆</span>
+              <span className="icon">★</span>
               Týmy
             </Link>
             <Link to="/trainings" className="nav-link">
-              <span className="icon">💪</span>
+              <span className="icon">●</span>
               Tréninky
             </Link>
             <Link to="/matches" className="nav-link">
-              <span className="icon">⚽</span>
+              <span className="icon">⬢</span>
               Zápasy
             </Link>
             <Link to="/tests" className="nav-link">
-              <span className="icon">📈</span>
+              <span className="icon">▲</span>
               Testy
             </Link>
           </div>

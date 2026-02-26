@@ -57,7 +57,19 @@
 
 .nav-link .icon {
   margin-right: 12px;
-  font-size: 18px;
+  font-size: 20px;
+  color: #ffffff;
+  font-weight: 400;
+  opacity: 0.9;
+  display: inline-block;
+  width: 24px;
+  text-align: center;
+}
+
+.nav-link:hover .icon,
+.nav-link.active .icon {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .sidebar-footer {
