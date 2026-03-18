@@ -1,13 +1,163 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const stripWrappingQuotes = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+
+  const first = normalized[0];
+  const last = normalized[normalized.length - 1];
+  const isWrapped = (first === '"' && last === '"') || (first === "'" && last === "'");
+
+  return isWrapped ? normalized.slice(1, -1).trim() : normalized;
+};
+
+const normalizeApiBaseUrl = (rawUrl) => {
+  const runtimeOrigin = typeof window !== 'undefined' && window.location?.origin
+    ? window.location.origin
+    : 'https://ppsport.pro';
+  const fallback = `${runtimeOrigin}/api`;
+  const value = stripWrappingQuotes(rawUrl);
+
+  if (!value) {
+    return fallback;
+  }
+
+  // Prefer unversioned /api because current backend exposes routes under /api/*.
+  if (value.endsWith('/api/v1')) {
+    return value.slice(0, -3);
+  }
+
+  if (value.endsWith('/api')) {
+    return value;
+  }
+
+  return value;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+
+const toLegacyApiBase = (baseUrl) => {
+  const value = stripWrappingQuotes(baseUrl);
+  if (!value) return value;
+
+  // Keep compatibility fallback in both directions when environments differ.
+  if (value.endsWith('/api')) {
+    return `${value}/v1`;
+  }
+
+  if (value.endsWith('/api/v1')) {
+    return value.slice(0, -3);
+  }
+  return value;
+};
 
 // Načtení nastavení z localStorage
 const getUseMockData = () => {
   const saved = localStorage.getItem('useMockData');
-  return saved === null ? true : saved === 'true';
+  return saved === null ? false : saved === 'true';
 };
 
-let USE_MOCK_DATA = getUseMockData();
+let USE_MOCK_DATA = false; // getUseMockData() — vypnuté, vždy reálne API
+const MOCK_METRICS_STORAGE_KEY = 'mockMetrics';
+const MOCK_VISIBLE_SECTIONS_STORAGE_KEY = 'mockVisibleSectionsByRole';
+
+const DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE = {
+  club: ['categories', 'coaches', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'membershipFees', 'communication'],
+  coach: ['categories', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'communication'],
+  parent: ['attendance', 'matches', 'trainings', 'tests', 'membershipFees', 'communication'],
+  player: ['attendance', 'matches', 'trainings', 'tests']
+};
+
+const normalizeVisibleRole = (role) => {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (normalized === 'club_admin') return 'club';
+  return normalized;
+};
+
+const readMockVisibleSectionsByRole = () => {
+  try {
+    const raw = localStorage.getItem(MOCK_VISIBLE_SECTIONS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') {
+      return { ...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE };
+    }
+
+    return {
+      club: Array.isArray(parsed.club) ? parsed.club : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.club],
+      coach: Array.isArray(parsed.coach) ? parsed.coach : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.coach],
+      parent: Array.isArray(parsed.parent) ? parsed.parent : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.parent],
+      player: Array.isArray(parsed.player) ? parsed.player : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.player]
+    };
+  } catch {
+    return { ...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE };
+  }
+};
+
+const writeMockVisibleSectionsByRole = (roles) => {
+  const payload = {
+    club: Array.isArray(roles?.club) ? roles.club : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.club],
+    coach: Array.isArray(roles?.coach) ? roles.coach : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.coach],
+    parent: Array.isArray(roles?.parent) ? roles.parent : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.parent],
+    player: Array.isArray(roles?.player) ? roles.player : [...DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.player]
+  };
+
+  try {
+    localStorage.setItem(MOCK_VISIBLE_SECTIONS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {}
+
+  return payload;
+};
+
+const createDefaultMockMetrics = () => ([
+  { id: 'default-trainings-count', name: 'Počet tréningov', shortName: '', type: 'number', valueTypes: ['number'], mode: 'manual', isDefault: true, isActive: true, formula: [] },
+  { id: 'default-matches-count', name: 'Počet zápasov', shortName: '', type: 'number', valueTypes: ['number'], mode: 'manual', isDefault: true, isActive: true, formula: [] },
+  {
+    id: 'default-load-days',
+    name: 'Dni záťaže',
+    shortName: '',
+    type: 'number',
+    valueTypes: ['number'],
+    mode: 'formula',
+    isDefault: true,
+    isActive: true,
+    formula: [
+      { type: 'variable', metricId: 'default-trainings-count' },
+      { type: 'operator', op: '+' },
+      { type: 'variable', metricId: 'default-matches-count' }
+    ]
+  },
+  { id: 'default-calendar-days', name: 'Kalendárne dni', shortName: 'KD', type: 'number', valueTypes: ['number'], mode: 'manual', isDefault: true, isActive: true, formula: [] },
+  { id: 'default-game-load', name: 'Herná záťaž (minúty)', shortName: '', type: 'minutes', valueTypes: ['minutes'], mode: 'manual', isDefault: true, isActive: true, formula: [] },
+  { id: 'default-training-intensity', name: 'Intenzita tréningu', shortName: '', type: 'percent', valueTypes: ['percent'], mode: 'manual', isDefault: true, isActive: true, formula: [] },
+  { id: 'default-attendance', name: 'Dochádzka %', shortName: '', type: 'percent', valueTypes: ['percent'], mode: 'manual', isDefault: true, isActive: true, formula: [] }
+]);
+
+let MOCK_METRICS = createDefaultMockMetrics();
+
+const loadStoredMockMetrics = () => {
+  try {
+    const raw = localStorage.getItem(MOCK_METRICS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistMockMetrics = () => {
+  try {
+    localStorage.setItem(MOCK_METRICS_STORAGE_KEY, JSON.stringify(MOCK_METRICS));
+  } catch {
+    return;
+  }
+};
+
+const storedMockMetrics = loadStoredMockMetrics();
+if (Array.isArray(storedMockMetrics) && storedMockMetrics.length > 0) {
+  MOCK_METRICS = storedMockMetrics;
+} else {
+  persistMockMetrics();
+}
 
 // Export funkce pro změnu režimu
 export const setUseMockData = (value) => {
@@ -35,9 +185,14 @@ class APIClient {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    const buildUrl = (base) => `${base}${endpoint}`;
+    const isFormData = options.body instanceof FormData;
+    const persistedToken = localStorage.getItem('authToken');
+    if (!this.token && persistedToken) {
+      this.token = persistedToken;
+    }
     const headers = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...options.headers,
     };
 
@@ -45,32 +200,100 @@ class APIClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    try {
-      const response = await fetch(url, {
+    const executeRequest = async (baseUrl) => {
+      const response = await fetch(buildUrl(baseUrl), {
         ...options,
         headers,
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'API request failed');
+        let errorBody = null;
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = null;
+        }
+
+        const apiError = new Error(errorBody?.error || `API request failed (${response.status})`);
+        apiError.status = response.status;
+        apiError.payload = errorBody;
+        throw apiError;
       }
 
-      return await response.json();
+      if (response.status === 204) {
+        return {};
+      }
+
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      const rawBody = await response.text();
+      if (!rawBody.trim()) {
+        return {};
+      }
+
+      if (contentType.includes('application/json')) {
+        try {
+          return JSON.parse(rawBody);
+        } catch {
+          return {};
+        }
+      }
+
+      return { raw: rawBody };
+    };
+
+    try {
+      return await executeRequest(this.baseURL);
     } catch (error) {
+      const fallbackBase = toLegacyApiBase(this.baseURL);
+      const shouldFallback =
+        Number(error?.status || 0) === 404 &&
+        fallbackBase &&
+        fallbackBase !== this.baseURL;
+
+      if (shouldFallback) {
+        try {
+          return await executeRequest(fallbackBase);
+        } catch (fallbackError) {
+          console.error('API Error:', fallbackError);
+          throw fallbackError;
+        }
+      }
+
       console.error('API Error:', error);
       throw error;
     }
   }
 
+  isEndpointNotFound(error) {
+    const status = Number(error?.status || 0);
+    if (status === 404) return true;
+
+    const payloadMessage = String(error?.payload?.message || '').toLowerCase();
+    const payloadError = String(error?.payload?.error || '').toLowerCase();
+    const directMessage = String(error?.message || '').toLowerCase();
+    const merged = `${payloadMessage} ${payloadError} ${directMessage}`;
+    return merged.includes('endpoint not found') || merged.includes('not found');
+  }
+
+  async requestWithEndpointFallback(endpoints, options = {}) {
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        return await this.request(endpoint, options);
+      } catch (error) {
+        lastError = error;
+        if (!this.isEndpointNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Endpoint not found');
+  }
+
   // Auth
   async login(email, password) {
-    if (USE_MOCK_DATA) {
-      return {
-        token: 'mock_token_12345',
-        user: { id: 1, email, firstName: 'Admin', lastName: 'User', role: 'admin' }
-      };
-    }
     return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -78,16 +301,21 @@ class APIClient {
   }
 
   async register(userData) {
-    if (USE_MOCK_DATA) {
-      return { 
-        message: 'Registration successful (mock)',
-        user: { id: Date.now(), ...userData }
-      };
-    }
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
+  }
+
+  async getRegistrationContext() {
+    if (USE_MOCK_DATA) {
+      return {
+        role: 'player',
+        isParentFlow: false
+      };
+    }
+
+    return this.request('/auth/registration-context');
   }
 
   // Registration endpoints (new system)
@@ -178,13 +406,62 @@ class APIClient {
 
   // Verification
   async verifyEmail(token) {
-    if (USE_MOCK_DATA) {
-      return { message: 'Email verified (mock)' };
-    }
     return this.request('/verification/verify-email', {
       method: 'POST',
       body: JSON.stringify({ token }),
     });
+  }
+
+  async uploadImage(file, folder = 'misc') {
+    if (USE_MOCK_DATA) {
+      return {
+        message: 'Image uploaded (mock)',
+        fileUrl: `https://example.com/uploads/${folder}/${Date.now()}-${file?.name || 'image.png'}`,
+        relativePath: `/uploads/${folder}/${Date.now()}-${file?.name || 'image.png'}`
+      };
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+
+    return this.request('/uploads/image', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  async uploadClubLogo(file) {
+    return this.uploadImage(file, 'club-logos');
+  }
+
+  async uploadCoachPhoto(file) {
+    return this.uploadImage(file, 'coach-photos');
+  }
+
+  async completeCoachProfile(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Coach profile saved (mock)' };
+    }
+
+    return this.request('/coaches/my-profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getCoachProfile() {
+    if (USE_MOCK_DATA) {
+      return {
+        isClubCoach: false,
+        isPersonalCoach: false,
+        clubName: '',
+        country: 'SK',
+        photo: ''
+      };
+    }
+
+    return this.request('/coaches/my-profile');
   }
 
   async verifyParentConsent(token, consentGiven) {
@@ -198,9 +475,6 @@ class APIClient {
   }
 
   async resendVerification(email) {
-    if (USE_MOCK_DATA) {
-      return { message: 'Verification resent (mock)' };
-    }
     return this.request('/verification/resend-verification', {
       method: 'POST',
       body: JSON.stringify({ email }),
@@ -255,19 +529,563 @@ class APIClient {
     return this.request(`/players/${id}`);
   }
 
+  async completePlayerProfile(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player profile saved (mock)' };
+    }
+
+    return this.request('/players/my-profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyPlayerProfile() {
+    if (USE_MOCK_DATA) {
+      return {
+        clubName: '',
+        personalId: '',
+        photo: ''
+      };
+    }
+
+    return this.request('/players/my-profile');
+  }
+
+  async completePlayerChildrenProfiles(children) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Children profiles saved (mock)', childrenSaved: children?.length || 0 };
+    }
+
+    return this.request('/players/my-children-profiles', {
+      method: 'PUT',
+      body: JSON.stringify({ children }),
+    });
+  }
+
+  async getMyPlayerChildrenProfiles() {
+    if (USE_MOCK_DATA) {
+      return { total: 0, children: [] };
+    }
+
+    return this.request('/players/my-children-profiles');
+  }
+
+  async unlinkPlayerChild(childUserId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Child unlinked (mock)', childUserId, isVirtual: true };
+    }
+
+    return this.request(`/players/unlink-child/${childUserId}`, {
+      method: 'POST',
+    });
+  }
+
+  async getPermissionCatalog() {
+    if (USE_MOCK_DATA) {
+      return { catalog: {}, allPermissions: [] };
+    }
+
+    return this.request('/club-permissions/catalog');
+  }
+
+  async getMyClubPermissions(clubId) {
+    if (USE_MOCK_DATA) {
+      return {
+        clubId,
+        user: { id: 0, role: 'club', customTitle: '' },
+        delegatedPermissions: [],
+        effectivePermissions: []
+      };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/me`);
+  }
+
+  async getClubMembersPermissions(clubId) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, members: [] };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/members`);
+  }
+
+  async updateClubMemberPermissions(clubId, userId, data) {
+    if (USE_MOCK_DATA) {
+      return {
+        message: 'Delegated permissions saved (mock)',
+        clubId,
+        userId,
+        customTitle: data?.customTitle || '',
+        delegatedPermissions: data?.permissions || []
+      };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/member/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getClubVisibleSections(clubId) {
+    if (USE_MOCK_DATA) {
+      const roles = readMockVisibleSectionsByRole();
+      return {
+        clubId,
+        roles
+      };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/visible-sections`);
+  }
+
+  async updateClubVisibleSections(clubId, data) {
+    if (USE_MOCK_DATA) {
+      const roles = writeMockVisibleSectionsByRole(data?.roles || {});
+      return { message: 'Visible sections saved (mock)', clubId, roles };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/visible-sections`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyVisibleSections() {
+    if (USE_MOCK_DATA) {
+      const roles = readMockVisibleSectionsByRole();
+      let role = 'club';
+      try {
+        const userRaw = localStorage.getItem('user');
+        const user = userRaw ? JSON.parse(userRaw) : null;
+        role = normalizeVisibleRole(user?.role || 'club') || 'club';
+      } catch {
+        role = 'club';
+      }
+
+      const sections = Array.isArray(roles?.[role])
+        ? roles[role]
+        : (DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE[role] || DEFAULT_MOCK_VISIBLE_SECTIONS_BY_ROLE.club);
+
+      return { role, sections, source: 'mock-storage' };
+    }
+
+    return this.request('/club-permissions/me/visible-sections');
+  }
+
+  async getClubManagerRoles(clubId) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, roles: [] };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/manager-roles`);
+  }
+
+  async createClubManagerRole(clubId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Manager role saved (mock)', roleId: Date.now() };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/manager-roles`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateClubManagerRole(clubId, roleId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Manager role updated (mock)', roleId };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/manager-roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClubManagerRole(clubId, roleId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Manager role deleted (mock)', roleId };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/manager-roles/${roleId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getClubManagers(clubId) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, managers: [] };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/managers`);
+  }
+
+  async createClubManager(clubId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Manager created (mock)', managerId: Date.now() };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/managers`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateClubManager(clubId, managerId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Manager updated (mock)', managerId };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/managers/${managerId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClubManager(clubId, managerId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Manager deleted (mock)' };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/managers/${managerId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getClubTrainerFunctions(clubId) {
+    if (USE_MOCK_DATA) {
+      return {
+        total: 5,
+        functions: [
+          { id: 1, name: 'Hlavný tréner', baseRole: 'coach', isDefault: true },
+          { id: 2, name: 'Asistent trénera', baseRole: 'assistant', isDefault: true },
+          { id: 3, name: 'Kondičný tréner', baseRole: 'assistant', isDefault: true },
+          { id: 4, name: 'Tréner brankárov', baseRole: 'assistant', isDefault: true },
+          { id: 5, name: 'Mentálny tréner', baseRole: 'assistant', isDefault: true }
+        ]
+      };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/trainer-functions`);
+  }
+
+  async createClubTrainerFunction(clubId, data) {
+    if (USE_MOCK_DATA) {
+      const functionName = String(data?.name || '').trim();
+      const baseRole = functionName.toLowerCase() === 'hlavný tréner' ? 'coach' : 'assistant';
+      return {
+        message: 'Trainer function saved (mock)',
+        function: { id: Date.now(), name: functionName, baseRole, isDefault: false }
+      };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/trainer-functions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateClubTrainerFunction(clubId, functionId, data) {
+    if (USE_MOCK_DATA) {
+      const functionName = String(data?.name || '').trim();
+      const baseRole = functionName.toLowerCase() === 'hlavný tréner' ? 'coach' : 'assistant';
+      return {
+        message: 'Trainer function updated (mock)',
+        function: { id: functionId, name: functionName, baseRole, isDefault: false }
+      };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/trainer-functions/${functionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClubTrainerFunction(clubId, functionId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Trainer function deleted (mock)', functionId };
+    }
+
+    return this.request(`/club-permissions/club/${clubId}/trainer-functions/${functionId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getMetrics(params = {}) {
+    if (USE_MOCK_DATA) {
+      return {
+        total: MOCK_METRICS.length,
+        metrics: MOCK_METRICS.map((metric) => ({
+          ...metric,
+          formula: Array.isArray(metric.formula) ? JSON.parse(JSON.stringify(metric.formula)) : []
+        }))
+      };
+    }
+
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/metrics${query ? `?${query}` : ''}`);
+  }
+
+  async createMetric(data) {
+    if (USE_MOCK_DATA) {
+      const valueTypes = Array.isArray(data?.valueTypes) ? data.valueTypes.filter(Boolean) : [];
+      const primaryType = valueTypes[0] || data?.type || 'number';
+      const created = {
+        id: `custom-${Date.now()}`,
+        name: String(data?.name || '').trim(),
+        shortName: String(data?.shortName || '').trim(),
+        type: primaryType,
+        valueTypes: valueTypes.length > 0 ? valueTypes : [primaryType],
+        mode: data?.mode || 'manual',
+        isDefault: data?.isDefault === true,
+        isActive: data?.isActive !== false,
+        formula: Array.isArray(data?.formula) ? JSON.parse(JSON.stringify(data.formula)) : []
+      };
+
+      MOCK_METRICS = [...MOCK_METRICS, created];
+      persistMockMetrics();
+      return { message: 'Metric created (mock)', metric: created };
+    }
+
+    return this.request('/metrics', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateMetric(metricId, data) {
+    if (USE_MOCK_DATA) {
+      const valueTypes = Array.isArray(data?.valueTypes) ? data.valueTypes.filter(Boolean) : null;
+      MOCK_METRICS = MOCK_METRICS.map((metric) => (
+        String(metric.id) === String(metricId)
+          ? {
+              ...metric,
+              ...data,
+              shortName: data?.shortName === undefined ? metric.shortName : String(data?.shortName || '').trim(),
+              type: valueTypes && valueTypes.length > 0 ? valueTypes[0] : (data?.type || metric.type),
+              valueTypes: valueTypes && valueTypes.length > 0
+                ? valueTypes
+                : (Array.isArray(metric.valueTypes) && metric.valueTypes.length > 0 ? metric.valueTypes : [metric.type || 'number']),
+              formula: Array.isArray(data?.formula) ? JSON.parse(JSON.stringify(data.formula)) : (metric.formula || [])
+            }
+          : metric
+      ));
+
+      const updated = MOCK_METRICS.find((metric) => String(metric.id) === String(metricId));
+      persistMockMetrics();
+      return { message: 'Metric updated (mock)', metric: updated };
+    }
+
+    return this.request(`/metrics/${metricId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteMetric(metricId) {
+    if (USE_MOCK_DATA) {
+      const existing = MOCK_METRICS.find((metric) => String(metric.id) === String(metricId));
+      if (existing?.isDefault) {
+        return { message: 'Default metric cannot be deleted (mock)' };
+      }
+
+      MOCK_METRICS = MOCK_METRICS.filter((metric) => String(metric.id) !== String(metricId));
+      persistMockMetrics();
+      return { message: 'Metric deleted (mock)' };
+    }
+
+    return this.request(`/metrics/${metricId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async validateMetricFormula(data) {
+    if (USE_MOCK_DATA) {
+      const formula = Array.isArray(data?.formula) ? data.formula : [];
+      const hasVariable = formula.some((node) => node?.type === 'variable' || (node?.type === 'function' && Array.isArray(node.args) && node.args.some((arg) => arg?.type === 'variable')));
+      return {
+        valid: hasVariable,
+        errors: hasVariable ? [] : [{ code: 'MISSING_VARIABLE', message: 'Vzorec musí obsahovať aspoň jednu premennú.' }]
+      };
+    }
+
+    return this.request('/metrics/validate-formula', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Teams
   async getTeams() {
     if (USE_MOCK_DATA) {
       return {
         total: 5,
         teams: [
-          { id: 1, name: 'U7', ageGroup: 'U7', playerCount: 12 },
-          { id: 2, name: 'U9', ageGroup: 'U9', playerCount: 10 },
-          { id: 3, name: 'U11', ageGroup: 'U11', playerCount: 15 },
+          { id: 1, name: 'U7', ageGroup: 'U7', playerCount: 12, coachId: null },
+          { id: 2, name: 'U9', ageGroup: 'U9', playerCount: 10, coachId: null },
+          { id: 3, name: 'U11', ageGroup: 'U11', playerCount: 15, coachId: null },
         ]
       };
     }
     return this.request('/teams');
+  }
+
+  async createTeam(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Category created (mock)', teamId: Date.now() };
+    }
+
+    return this.request('/teams', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTeam(teamId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Category updated (mock)', teamId };
+    }
+
+    return this.request(`/teams/${teamId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTeam(teamId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Category deleted (mock)', teamId };
+    }
+
+    return this.request(`/teams/${teamId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async reorderTeams(orderedTeamIds, clubId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Category order updated (mock)', orderedTeamIds };
+    }
+
+    return this.request('/teams/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ orderedTeamIds, clubId }),
+    });
+  }
+
+  async getTeamPlayers(teamId) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, players: [] };
+    }
+
+    return this.request(`/teams/${teamId}/players`);
+  }
+
+  async getTeamCandidatePlayers(teamId) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, candidates: [] };
+    }
+
+    return this.request(`/teams/${teamId}/candidates`);
+  }
+
+  async assignPlayerToTeam(teamId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player assigned (mock)' };
+    }
+
+    return this.request(`/teams/${teamId}/players`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async removePlayerFromTeam(teamId, userId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player removed (mock)' };
+    }
+
+    return this.request(`/teams/${teamId}/players/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getMyClubMembers() {
+    if (USE_MOCK_DATA) {
+      return {
+        clubId: 1,
+        trainers: [],
+        players: [],
+        totals: { trainers: 0, players: 0 }
+      };
+    }
+
+    return this.request('/clubs/my-club/members');
+  }
+
+  async updateMyClubTrainer(userId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Trainer updated (mock)', trainer: { userId, ...data } };
+    }
+
+    return this.request(`/clubs/my-club/trainers/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createMyClubTrainer(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Trainer created (mock)', trainer: { userId: Date.now(), ...data } };
+    }
+
+    return this.request('/clubs/my-club/trainers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteMyClubTrainer(userId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Trainer deleted (mock)' };
+    }
+
+    return this.request(`/clubs/my-club/trainers/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createMyClubPlayer(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player created (mock)', player: { userId: Date.now(), ...data } };
+    }
+
+    return this.request('/clubs/my-club/players', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateMyClubPlayer(userId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player updated (mock)', player: { userId, ...data } };
+    }
+
+    return this.request(`/clubs/my-club/players/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async removeMyClubPlayer(userId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Player removed from club (mock)' };
+    }
+
+    return this.request(`/clubs/my-club/players/${userId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Trainings
@@ -293,6 +1111,178 @@ class APIClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async getTeamTrainingSessions(teamId, params = {}) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, sessions: [] };
+    }
+
+    const safeTeamId = String(teamId || '').trim();
+    if (!safeTeamId) {
+      throw new Error('teamId is required');
+    }
+
+    const query = new URLSearchParams(params).toString();
+    const suffix = query ? `?${query}` : '';
+    const scopedQuery = new URLSearchParams({ ...params, teamId: safeTeamId }).toString();
+    const legacyQuery = new URLSearchParams({ ...params, team_id: safeTeamId }).toString();
+
+    return this.requestWithEndpointFallback([
+      `/teams/${safeTeamId}/training-sessions${suffix}`,
+      `/v1/teams/${safeTeamId}/training-sessions${suffix}`,
+      `/${safeTeamId}/training-sessions${suffix}`,
+      `/v1/${safeTeamId}/training-sessions${suffix}`,
+      `/training-sessions?${scopedQuery}`,
+      `/training-sessions?${legacyQuery}`,
+      `/v1/training-sessions?${scopedQuery}`,
+      `/v1/training-sessions?${legacyQuery}`,
+      `/trainings?${scopedQuery}`,
+      `/trainings?${legacyQuery}`,
+      `/v1/trainings?${scopedQuery}`,
+      `/v1/trainings?${legacyQuery}`,
+    ]);
+  }
+
+  async createTeamTrainingSession(teamId, data) {
+    if (USE_MOCK_DATA) {
+      return { id: Date.now(), ...data };
+    }
+
+    const safeTeamId = String(teamId || '').trim();
+    if (!safeTeamId) {
+      throw new Error('teamId is required');
+    }
+
+    const payload = {
+      ...data,
+      team_id: safeTeamId,
+      teamId: safeTeamId,
+    };
+
+    // Some backend variants reject unknown `name` column in SQL inserts.
+    delete payload.name;
+
+    const payloadForSessionEndpoints = { ...payload };
+    const payloadForTrainingsEndpoints = { ...payload };
+
+    const attempts = [
+      { endpoint: `/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
+      { endpoint: `/v1/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
+      { endpoint: `/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
+      { endpoint: `/v1/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
+      { endpoint: `/training-sessions`, body: payloadForSessionEndpoints },
+      { endpoint: `/v1/training-sessions`, body: payloadForSessionEndpoints },
+      { endpoint: `/trainings`, body: payloadForTrainingsEndpoints },
+      { endpoint: `/v1/trainings`, body: payloadForTrainingsEndpoints },
+    ];
+
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        return await this.request(attempt.endpoint, {
+          method: 'POST',
+          body: JSON.stringify(attempt.body),
+        });
+      } catch (error) {
+        lastError = error;
+        if (!this.isEndpointNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Endpoint not found');
+  }
+
+  async updateTeamTrainingSession(sessionId, teamId, data) {
+    if (USE_MOCK_DATA) {
+      return { id: sessionId, ...data };
+    }
+
+    const safeSessionId = String(sessionId || '').trim();
+    if (!safeSessionId) {
+      throw new Error('sessionId is required');
+    }
+
+    const safeTeamId = String(teamId || '').trim();
+    const payload = {
+      ...data,
+      team_id: safeTeamId || data?.team_id,
+      teamId: safeTeamId || data?.teamId,
+    };
+
+    delete payload.name;
+
+    const attempts = [
+      ...(safeTeamId ? [{ endpoint: `/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
+      ...(safeTeamId ? [{ endpoint: `/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
+      ...(safeTeamId ? [{ endpoint: `/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
+      ...(safeTeamId ? [{ endpoint: `/v1/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
+      { endpoint: `/training-sessions/${safeSessionId}`, method: 'PATCH' },
+      { endpoint: `/v1/training-sessions/${safeSessionId}`, method: 'PATCH' },
+      { endpoint: `/trainings/${safeSessionId}`, method: 'PUT' },
+      { endpoint: `/trainings/${safeSessionId}`, method: 'PATCH' },
+      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PUT' },
+      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PATCH' },
+    ];
+
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        return await this.request(attempt.endpoint, {
+          method: attempt.method,
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        lastError = error;
+        if (!this.isEndpointNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Endpoint not found');
+  }
+
+  async deleteTeamTrainingSession(sessionId, teamId) {
+    if (USE_MOCK_DATA) {
+      return { id: sessionId, message: 'Deleted (mock)' };
+    }
+
+    const safeSessionId = String(sessionId || '').trim();
+    if (!safeSessionId) {
+      throw new Error('sessionId is required');
+    }
+
+    const safeTeamId = String(teamId || '').trim();
+
+    const attempts = [
+      ...(safeTeamId ? [{ endpoint: `/teams/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
+      ...(safeTeamId ? [{ endpoint: `/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
+      ...(safeTeamId ? [{ endpoint: `/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
+      ...(safeTeamId ? [{ endpoint: `/v1/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
+      { endpoint: `/training-sessions/${safeSessionId}` },
+      { endpoint: `/v1/training-sessions/${safeSessionId}` },
+      { endpoint: `/trainings/${safeSessionId}` },
+      { endpoint: `/v1/trainings/${safeSessionId}` },
+    ];
+
+    let lastError = null;
+    for (const attempt of attempts) {
+      try {
+        return await this.request(attempt.endpoint, {
+          method: 'DELETE',
+        });
+      } catch (error) {
+        lastError = error;
+        if (!this.isEndpointNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Endpoint not found');
   }
 
   // Matches
@@ -340,6 +1330,151 @@ class APIClient {
       return { id: Date.now(), message: 'Club created (mock)', club: { ...data, id: Date.now() } };
     }
     return this.request('/clubs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyClub() {
+    if (USE_MOCK_DATA) {
+      return {
+        id: 1,
+        name: 'Mock Club',
+        sport: 'football',
+        ownerFirstName: '',
+        ownerLastName: '',
+        ownerEmail: '',
+        bankName: '',
+        swiftCode: '',
+        accountHolderName: '',
+        iban: '',
+        address: '',
+        city: '',
+        country: 'SK',
+        email: '',
+        phone: '',
+        website: ''
+      };
+    }
+    return this.request('/clubs/my-club');
+  }
+
+  async getMyClubFieldTypes() {
+    if (USE_MOCK_DATA) {
+      return {
+        sport: 'football',
+        types: [
+          { key: 'natural_grass', label: 'Prírodná tráva' },
+          { key: 'artificial_grass', label: 'Umelá tráva' },
+          { key: 'multifunctional_field', label: 'Multifunkčné ihrisko' },
+          { key: 'indoor_hall', label: 'Hala' }
+        ]
+      };
+    }
+
+    return this.request('/clubs/my-club/field-types');
+  }
+
+  async updateMyClub(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Club updated (mock)' };
+    }
+    return this.request('/clubs/my-club', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Club Fields (Ihriská)
+  async getClubFields() {
+    if (USE_MOCK_DATA) {
+      return { total: 0, fields: [] };
+    }
+    return this.request('/clubs/my-club/fields');
+  }
+
+  async createClubField(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Field created (mock)', field: { id: Date.now(), ...data, createdAt: new Date().toISOString() } };
+    }
+    return this.request('/clubs/my-club/fields', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateClubField(fieldId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Field updated (mock)', field: { id: fieldId, ...data } };
+    }
+    return this.request(`/clubs/my-club/fields/${fieldId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClubField(fieldId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Field deleted (mock)' };
+    }
+    return this.request(`/clubs/my-club/fields/${fieldId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Attendance Seasons (Sezóny dochádzky)
+  async getAttendanceSeasons() {
+    if (USE_MOCK_DATA) {
+      return { total: 0, seasons: [] };
+    }
+    return this.request('/clubs/my-club/attendance-seasons');
+  }
+
+  async createAttendanceSeason(data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Season created (mock)', season: { id: Date.now(), ...data, createdAt: new Date().toISOString() } };
+    }
+    return this.request('/clubs/my-club/attendance-seasons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAttendanceSeason(seasonId, data) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Season updated (mock)', season: { id: seasonId, ...data } };
+    }
+    return this.request(`/clubs/my-club/attendance-seasons/${seasonId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAttendanceSeason(seasonId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Season deleted (mock)' };
+    }
+    return this.request(`/clubs/my-club/attendance-seasons/${seasonId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Exercises
+  async createExercise(data) {
+    if (USE_MOCK_DATA) {
+      return {
+        id: Date.now(),
+        message: 'Exercise created (mock)',
+        exercise: {
+          id: Date.now(),
+          title: data?.title || '',
+          isSystem: Boolean(data?.isSystem),
+          clubId: data?.clubId || null
+        }
+      };
+    }
+
+    return this.request('/exercises', {
       method: 'POST',
       body: JSON.stringify(data),
     });
