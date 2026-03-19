@@ -3275,6 +3275,13 @@ function MyClub() {
     return fieldTypeLabelMap.get(key) || key
   }
 
+  const getSelectedTopBlockMetricId = (row) => {
+    const sourceMetrics = row?.metrics && typeof row.metrics === 'object' ? row.metrics : {}
+    return displaySettingsMetrics
+      .map((metric) => String(metric?.id || '').trim())
+      .find((metricId) => sourceMetrics[metricId] === true) || ''
+  }
+
   const toggleTopBlockMetricCell = (rowId, metricId, checked) => {
     const resolvedRowId = String(rowId || '').trim()
     const resolvedMetricId = String(metricId || '').trim()
@@ -3284,11 +3291,20 @@ function MyClub() {
       ...prev,
       topBlockRows: (Array.isArray(prev.topBlockRows) ? prev.topBlockRows : []).map((row) => {
         if (String(row?.id || '') !== resolvedRowId) return row
+
+        const metricIds = displaySettingsMetrics
+          .map((metric) => String(metric?.id || '').trim())
+          .filter(Boolean)
+
+        const selectedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '') === resolvedMetricId)
         return {
           ...row,
+          name: checked ? String(selectedMetric?.name || row?.name || '') : String(row?.name || ''),
           metrics: {
-            ...(row?.metrics && typeof row.metrics === 'object' ? row.metrics : {}),
-            [resolvedMetricId]: checked
+            ...metricIds.reduce((acc, id) => {
+              acc[id] = checked && id === resolvedMetricId
+              return acc
+            }, {})
           }
         }
       })
@@ -3321,14 +3337,31 @@ function MyClub() {
     }))
   }
 
-  const renameTopBlockRow = (rowId, value) => {
+  const selectTopBlockRowMetric = (rowId, metricId) => {
     const resolvedRowId = String(rowId || '').trim()
+    const resolvedMetricId = String(metricId || '').trim()
     if (!resolvedRowId) return
+    if (!resolvedMetricId) return
+
+    const selectedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '') === resolvedMetricId)
+
     setAttendanceDisplayDraft((prev) => ({
       ...prev,
       topBlockRows: (Array.isArray(prev.topBlockRows) ? prev.topBlockRows : []).map((row) => {
         if (String(row?.id || '') !== resolvedRowId) return row
-        return { ...row, name: String(value || '') }
+
+        const metricIds = displaySettingsMetrics
+          .map((metric) => String(metric?.id || '').trim())
+          .filter(Boolean)
+
+        return {
+          ...row,
+          name: String(selectedMetric?.name || row?.name || ''),
+          metrics: metricIds.reduce((acc, id) => {
+            acc[id] = id === resolvedMetricId
+            return acc
+          }, {})
+        }
       })
     }))
   }
@@ -3338,7 +3371,17 @@ function MyClub() {
       const metricIds = displaySettingsMetrics.map((metric) => String(metric.id)).filter(Boolean)
       const currentRows = Array.isArray(prev.topBlockRows) ? prev.topBlockRows : []
       const nextIndex = currentRows.length + 1
-      const newRow = buildDefaultTopBlockRow(metricIds, nextIndex - 1, `Karta ${nextIndex}`)
+
+      const usedMetricIds = new Set(currentRows.map((row) => getSelectedTopBlockMetricId(row)).filter(Boolean))
+      const firstUnusedMetricId = metricIds.find((metricId) => !usedMetricIds.has(metricId)) || String(metricIds[0] || '')
+      const selectedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '') === firstUnusedMetricId)
+      const newRow = buildDefaultTopBlockRow(metricIds, nextIndex - 1, String(selectedMetric?.name || `Karta ${nextIndex}`))
+      if (firstUnusedMetricId) {
+        newRow.metrics = metricIds.reduce((acc, metricId) => {
+          acc[metricId] = metricId === firstUnusedMetricId
+          return acc
+        }, {})
+      }
 
       return {
         ...prev,
@@ -7893,12 +7936,22 @@ function MyClub() {
                                   <tr key={`top-block-row-${row.id}`}>
                                     <td>
                                       <div className="attendance-display-row-name-wrap">
-                                        <input
-                                          type="text"
+                                        <select
                                           className="metrics-control attendance-display-row-name"
-                                          value={String(row?.name || '')}
-                                          onChange={(event) => renameTopBlockRow(row.id, event.target.value)}
-                                        />
+                                          value={getSelectedTopBlockMetricId(row)}
+                                          onChange={(event) => selectTopBlockRowMetric(row.id, event.target.value)}
+                                        >
+                                          {displaySettingsMetrics.map((metric) => {
+                                            const metricId = String(metric?.id || '')
+                                            const shortName = String(metric?.shortName || '').trim()
+                                            const label = shortName ? `${metric.name} (${shortName})` : metric.name
+                                            return (
+                                              <option key={`top-row-select-option-${row.id}-${metricId}`} value={metricId}>
+                                                {label}
+                                              </option>
+                                            )
+                                          })}
+                                        </select>
                                         <button
                                           type="button"
                                           className="attendance-display-delete-btn"
@@ -7911,11 +7964,13 @@ function MyClub() {
                                     </td>
                                     {displaySettingsMetrics.map((metric) => {
                                       const metricId = String(metric.id)
+                                      const selectedMetricId = getSelectedTopBlockMetricId(row)
                                       return (
                                         <td key={`top-cell-${row.id}-${metricId}`} className="attendance-display-matrix-cell">
                                           <input
-                                            type="checkbox"
-                                            checked={row?.metrics?.[metricId] === true}
+                                            type="radio"
+                                            name={`top-block-row-${row.id}`}
+                                            checked={selectedMetricId === metricId}
                                             onChange={(event) => toggleTopBlockMetricCell(row.id, metricId, event.target.checked)}
                                           />
                                         </td>
@@ -7925,6 +7980,15 @@ function MyClub() {
                                 ))}
                               </tbody>
                             </table>
+                            </div>
+                            <div className="form-actions" style={{ marginTop: '0.7rem' }}>
+                              <button
+                                type="button"
+                                className="manager-add-btn attendance-display-add-card-btn"
+                                onClick={addTopBlockRow}
+                              >
+                                Pridať kartu do horného bloku
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -8020,13 +8084,6 @@ function MyClub() {
                     )}
                   </div>
                   <div className="form-actions" style={{ marginTop: '0.9rem' }}>
-                    <button
-                      type="button"
-                      className="manager-add-btn attendance-display-add-card-btn"
-                      onClick={addTopBlockRow}
-                    >
-                      Pridať kartu do horného bloku
-                    </button>
                     <button
                       type="button"
                       className="manager-role-save-btn"
