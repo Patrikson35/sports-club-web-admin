@@ -3302,7 +3302,8 @@ function MyClub() {
           name: checked ? String(selectedMetric?.name || row?.name || '') : String(row?.name || ''),
           metrics: {
             ...metricIds.reduce((acc, id) => {
-              acc[id] = checked && id === resolvedMetricId
+              const existingValue = row?.metrics && typeof row.metrics === 'object' ? row.metrics[id] === true : false
+              acc[id] = id === resolvedMetricId ? checked : existingValue
               return acc
             }, {})
           }
@@ -7964,13 +7965,11 @@ function MyClub() {
                                     </td>
                                     {displaySettingsMetrics.map((metric) => {
                                       const metricId = String(metric.id)
-                                      const selectedMetricId = getSelectedTopBlockMetricId(row)
                                       return (
                                         <td key={`top-cell-${row.id}-${metricId}`} className="attendance-display-matrix-cell">
                                           <input
-                                            type="radio"
-                                            name={`top-block-row-${row.id}`}
-                                            checked={selectedMetricId === metricId}
+                                            type="checkbox"
+                                            checked={row?.metrics?.[metricId] === true}
                                             onChange={(event) => toggleTopBlockMetricCell(row.id, metricId, event.target.checked)}
                                           />
                                         </td>
