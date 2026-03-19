@@ -3046,7 +3046,14 @@ function MyClub() {
         defaultDivisionId: String(trainingExerciseDisplaySettings?.defaultDivisionId || '')
       }
 
-      await api.updateTrainingExerciseDisplaySettings(normalized)
+      try {
+        await api.updateTrainingExerciseDisplaySettings(normalized)
+      } catch (err) {
+        // Older API deployments may not have the endpoint yet; keep UX functional via local fallback.
+        if (!api.isEndpointNotFound(err)) {
+          throw err
+        }
+      }
 
       try {
         localStorage.setItem(`trainingExerciseDisplaySettings:${clubId || 'global'}`, JSON.stringify(normalized))
@@ -3343,7 +3350,16 @@ function MyClub() {
       setSuccess('')
 
       const normalized = normalizeAttendanceDisplayDraft(metrics, attendanceDisplayDraft)
-      await api.updateAttendanceDisplaySettings(normalized)
+
+      try {
+        await api.updateAttendanceDisplaySettings(normalized)
+      } catch (err) {
+        // Older API deployments may not have the endpoint yet; keep UX functional via local fallback.
+        if (!api.isEndpointNotFound(err)) {
+          throw err
+        }
+      }
+
       setAttendanceDisplayDraft(normalized)
 
       try {
