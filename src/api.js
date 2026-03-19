@@ -1467,6 +1467,48 @@ class APIClient {
     });
   }
 
+  async getAttendanceDisplaySettings() {
+    if (USE_MOCK_DATA) {
+      return { settings: {} };
+    }
+
+    return this.request('/clubs/my-club/attendance-display-settings');
+  }
+
+  async updateAttendanceDisplaySettings(settings) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Display settings updated (mock)', settings: settings && typeof settings === 'object' ? settings : {} };
+    }
+
+    return this.request('/clubs/my-club/attendance-display-settings', {
+      method: 'PUT',
+      body: JSON.stringify({
+        settings: settings && typeof settings === 'object' ? settings : {}
+      }),
+    });
+  }
+
+  async getTrainingExerciseDisplaySettings() {
+    if (USE_MOCK_DATA) {
+      return { settings: {} };
+    }
+
+    return this.request('/clubs/my-club/training-exercise-display-settings');
+  }
+
+  async updateTrainingExerciseDisplaySettings(settings) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Training display settings updated (mock)', settings: settings && typeof settings === 'object' ? settings : {} };
+    }
+
+    return this.request('/clubs/my-club/training-exercise-display-settings', {
+      method: 'PUT',
+      body: JSON.stringify({
+        settings: settings && typeof settings === 'object' ? settings : {}
+      }),
+    });
+  }
+
   // Exercises
   async createExercise(data) {
     if (USE_MOCK_DATA) {

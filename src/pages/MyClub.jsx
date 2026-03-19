@@ -879,6 +879,7 @@ function MyClub() {
     divisions: {},
     defaultDivisionId: ''
   })
+  const [trainingExerciseDisplaySaving, setTrainingExerciseDisplaySaving] = useState(false)
   const [showExerciseCategoryForm, setShowExerciseCategoryForm] = useState(false)
   const [exerciseCategoryDraft, setExerciseCategoryDraft] = useState({ name: '', subcategories: [''], assignedDivisionGroups: {} })
   const [exerciseCategories, setExerciseCategories] = useState([])
@@ -889,6 +890,7 @@ function MyClub() {
   const [exerciseSubcategoryDropTargetIndex, setExerciseSubcategoryDropTargetIndex] = useState(null)
   const [attendanceDisplayDraft, setAttendanceDisplayDraft] = useState({ topBlockRows: [], tableColumns: {}, evidenceColumns: {} })
   const [attendanceDisplayLoaded, setAttendanceDisplayLoaded] = useState(false)
+  const [attendanceDisplaySaving, setAttendanceDisplaySaving] = useState(false)
   const [activeMembersSection, setActiveMembersSection] = useState('categories')
   const [activeBasicSection, setActiveBasicSection] = useState('basicInfo')
   const [activeExerciseDatabaseSection, setActiveExerciseDatabaseSection] = useState('exerciseList')
@@ -1025,35 +1027,60 @@ function MyClub() {
 
   useEffect(() => {
     const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
-    try {
-      const raw = localStorage.getItem(storageKey)
-      const parsed = raw ? JSON.parse(raw) : {}
 
-      const rawDivisions = parsed?.divisions && typeof parsed.divisions === 'object'
-        ? parsed.divisions
-        : {}
+    const resolveLocalSettings = () => {
+      try {
+        const raw = localStorage.getItem(storageKey)
+        const parsed = raw ? JSON.parse(raw) : {}
 
-      // Backward compatibility for older storage model.
-      if (Object.keys(rawDivisions).length === 0 && (parsed?.showGroupSection !== undefined || parsed?.divisionId)) {
-        const legacyDivisionId = String(parsed?.divisionId || '')
-        const legacyShow = parsed?.showGroupSection !== false
-        setTrainingExerciseDisplaySettings({
-          divisions: legacyDivisionId ? { [legacyDivisionId]: { visible: legacyShow } } : {},
-          defaultDivisionId: legacyDivisionId
-        })
-        return
+        const rawDivisions = parsed?.divisions && typeof parsed.divisions === 'object'
+          ? parsed.divisions
+          : {}
+
+        // Backward compatibility for older storage model.
+        if (Object.keys(rawDivisions).length === 0 && (parsed?.showGroupSection !== undefined || parsed?.divisionId)) {
+          const legacyDivisionId = String(parsed?.divisionId || '')
+          const legacyShow = parsed?.showGroupSection !== false
+          return {
+            divisions: legacyDivisionId ? { [legacyDivisionId]: { visible: legacyShow } } : {},
+            defaultDivisionId: legacyDivisionId
+          }
+        }
+
+        return {
+          divisions: rawDivisions,
+          defaultDivisionId: String(parsed?.defaultDivisionId || '')
+        }
+      } catch {
+        return {
+          divisions: {},
+          defaultDivisionId: ''
+        }
       }
-
-      setTrainingExerciseDisplaySettings({
-        divisions: rawDivisions,
-        defaultDivisionId: String(parsed?.defaultDivisionId || '')
-      })
-    } catch {
-      setTrainingExerciseDisplaySettings({
-        divisions: {},
-        defaultDivisionId: ''
-      })
     }
+
+    const loadTrainingDisplaySettings = async () => {
+      try {
+        const response = await api.getTrainingExerciseDisplaySettings()
+        const parsed = response?.settings && typeof response.settings === 'object' ? response.settings : {}
+        const normalized = {
+          divisions: parsed?.divisions && typeof parsed.divisions === 'object' ? parsed.divisions : {},
+          defaultDivisionId: String(parsed?.defaultDivisionId || '')
+        }
+
+        setTrainingExerciseDisplaySettings(normalized)
+
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(normalized))
+        } catch {
+          // no-op
+        }
+      } catch {
+        setTrainingExerciseDisplaySettings(resolveLocalSettings())
+      }
+    }
+
+    loadTrainingDisplaySettings()
   }, [clubId])
 
   useEffect(() => {
@@ -1450,16 +1477,32 @@ function MyClub() {
   useEffect(() => {
     if (!clubId || !metricsLoaded) return
 
-    try {
-      const storedValue = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
-      const parsedDraft = storedValue ? JSON.parse(storedValue) : {}
-      const normalized = normalizeAttendanceDisplayDraft(metrics, parsedDraft)
-      setAttendanceDisplayDraft(normalized)
-    } catch {
-      setAttendanceDisplayDraft(normalizeAttendanceDisplayDraft(metrics, {}))
-    } finally {
-      setAttendanceDisplayLoaded(true)
+    const loadAttendanceDisplaySettings = async () => {
+      try {
+        const response = await api.getAttendanceDisplaySettings()
+        const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
+        const normalized = normalizeAttendanceDisplayDraft(metrics, remoteDraft)
+        setAttendanceDisplayDraft(normalized)
+
+        try {
+          localStorage.setItem(`attendanceDisplaySettings:${clubId}`, JSON.stringify(normalized))
+        } catch {
+          // no-op
+        }
+      } catch {
+        try {
+          const storedValue = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
+          const parsedDraft = storedValue ? JSON.parse(storedValue) : {}
+          setAttendanceDisplayDraft(normalizeAttendanceDisplayDraft(metrics, parsedDraft))
+        } catch {
+          setAttendanceDisplayDraft(normalizeAttendanceDisplayDraft(metrics, {}))
+        }
+      } finally {
+        setAttendanceDisplayLoaded(true)
+      }
     }
+
+    loadAttendanceDisplaySettings()
   }, [clubId, metricsLoaded, metrics])
 
   useEffect(() => {
@@ -2988,9 +3031,35 @@ function MyClub() {
     setActiveExerciseDatabaseSection('exerciseList')
   }
 
-  const saveTrainingExerciseDisplaySettings = () => {
-    setError('')
-    setSuccess('Nastavenie zobrazenia tréningov bolo uložené.')
+  const saveTrainingExerciseDisplaySettings = async () => {
+    if (!clubId) return
+
+    try {
+      setTrainingExerciseDisplaySaving(true)
+      setError('')
+      setSuccess('')
+
+      const normalized = {
+        divisions: trainingExerciseDisplaySettings?.divisions && typeof trainingExerciseDisplaySettings.divisions === 'object'
+          ? trainingExerciseDisplaySettings.divisions
+          : {},
+        defaultDivisionId: String(trainingExerciseDisplaySettings?.defaultDivisionId || '')
+      }
+
+      await api.updateTrainingExerciseDisplaySettings(normalized)
+
+      try {
+        localStorage.setItem(`trainingExerciseDisplaySettings:${clubId || 'global'}`, JSON.stringify(normalized))
+      } catch {
+        // no-op
+      }
+
+      setSuccess('Nastavenie zobrazenia tréningov bolo uložené.')
+    } catch (err) {
+      setError(err.message || 'Nepodarilo sa uložiť nastavenie zobrazenia tréningov.')
+    } finally {
+      setTrainingExerciseDisplaySaving(false)
+    }
   }
 
   const resetExerciseListFilters = () => {
@@ -3263,6 +3332,32 @@ function MyClub() {
         topBlockRows: nextRows.length > 0 ? nextRows : [buildDefaultTopBlockRow(displaySettingsMetrics.map((metric) => String(metric.id)).filter(Boolean), 0, 'Karta 1')]
       }
     })
+  }
+
+  const saveAttendanceDisplaySettings = async () => {
+    if (!clubId) return
+
+    try {
+      setAttendanceDisplaySaving(true)
+      setError('')
+      setSuccess('')
+
+      const normalized = normalizeAttendanceDisplayDraft(metrics, attendanceDisplayDraft)
+      await api.updateAttendanceDisplaySettings(normalized)
+      setAttendanceDisplayDraft(normalized)
+
+      try {
+        localStorage.setItem(`attendanceDisplaySettings:${clubId}`, JSON.stringify(normalized))
+      } catch {
+        // no-op
+      }
+
+      setSuccess('Nastavenie zobrazenia ukazovateľov bolo uložené.')
+    } catch (err) {
+      setError(err.message || 'Nepodarilo sa uložiť nastavenie zobrazenia ukazovateľov.')
+    } finally {
+      setAttendanceDisplaySaving(false)
+    }
   }
 
   const toggleMetricActive = async (metric, isActive) => {
@@ -7889,13 +7984,23 @@ function MyClub() {
                       </div>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    className="manager-add-btn attendance-display-add-card-btn"
-                    onClick={addTopBlockRow}
-                  >
-                    Pridať kartu do horného bloku
-                  </button>
+                  <div className="form-actions" style={{ marginTop: '0.9rem' }}>
+                    <button
+                      type="button"
+                      className="manager-add-btn attendance-display-add-card-btn"
+                      onClick={addTopBlockRow}
+                    >
+                      Pridať kartu do horného bloku
+                    </button>
+                    <button
+                      type="button"
+                      className="manager-role-save-btn"
+                      onClick={saveAttendanceDisplaySettings}
+                      disabled={!attendanceDisplayLoaded || attendanceDisplaySaving}
+                    >
+                      {attendanceDisplaySaving ? 'Ukladám...' : 'Uložiť nastavenia zobrazenia'}
+                    </button>
+                  </div>
                   </>
                 )}
               </div>
@@ -8320,8 +8425,13 @@ function MyClub() {
                     </div>
 
                     <div className="form-actions" style={{ marginTop: '0.9rem' }}>
-                      <button type="button" className="manager-role-save-btn" onClick={saveTrainingExerciseDisplaySettings}>
-                        Uložiť nastavenia zobrazenia
+                      <button
+                        type="button"
+                        className="manager-role-save-btn"
+                        onClick={saveTrainingExerciseDisplaySettings}
+                        disabled={trainingExerciseDisplaySaving}
+                      >
+                        {trainingExerciseDisplaySaving ? 'Ukladám...' : 'Uložiť nastavenia zobrazenia'}
                       </button>
                     </div>
                   </div>
