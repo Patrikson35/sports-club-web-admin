@@ -1063,10 +1063,13 @@ function MyClub() {
       try {
         const response = await api.getTrainingExerciseDisplaySettings()
         const parsed = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-        const normalized = {
+        const normalizedRemote = {
           divisions: parsed?.divisions && typeof parsed.divisions === 'object' ? parsed.divisions : {},
           defaultDivisionId: String(parsed?.defaultDivisionId || '')
         }
+        const localSettings = resolveLocalSettings()
+        const hasRemoteValue = Object.keys(normalizedRemote.divisions).length > 0 || Boolean(String(normalizedRemote.defaultDivisionId || '').trim())
+        const normalized = hasRemoteValue ? normalizedRemote : localSettings
 
         setTrainingExerciseDisplaySettings(normalized)
 
@@ -1481,7 +1484,17 @@ function MyClub() {
       try {
         const response = await api.getAttendanceDisplaySettings()
         const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-        const normalized = normalizeAttendanceDisplayDraft(metrics, remoteDraft)
+        const hasRemoteValue = Object.keys(remoteDraft).length > 0
+
+        let localDraft = {}
+        try {
+          const storedValue = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
+          localDraft = storedValue ? JSON.parse(storedValue) : {}
+        } catch {
+          localDraft = {}
+        }
+
+        const normalized = normalizeAttendanceDisplayDraft(metrics, hasRemoteValue ? remoteDraft : localDraft)
         setAttendanceDisplayDraft(normalized)
 
         try {

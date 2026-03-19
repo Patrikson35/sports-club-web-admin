@@ -1355,17 +1355,43 @@ function Evidence() {
       return
     }
 
-    try {
-      const raw = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
-      if (!raw) {
-        setAttendanceDisplayDraft({})
-        return
+    const loadAttendanceDisplayDraft = async () => {
+      try {
+        const response = await api.getAttendanceDisplaySettings()
+        const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
+
+        if (Object.keys(remoteDraft).length > 0) {
+          setAttendanceDisplayDraft(remoteDraft)
+          return
+        }
+
+        try {
+          const raw = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
+          if (!raw) {
+            setAttendanceDisplayDraft({})
+            return
+          }
+          const parsed = JSON.parse(raw)
+          setAttendanceDisplayDraft(parsed && typeof parsed === 'object' ? parsed : {})
+        } catch {
+          setAttendanceDisplayDraft({})
+        }
+      } catch {
+        try {
+          const raw = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
+          if (!raw) {
+            setAttendanceDisplayDraft({})
+            return
+          }
+          const parsed = JSON.parse(raw)
+          setAttendanceDisplayDraft(parsed && typeof parsed === 'object' ? parsed : {})
+        } catch {
+          setAttendanceDisplayDraft({})
+        }
       }
-      const parsed = JSON.parse(raw)
-      setAttendanceDisplayDraft(parsed && typeof parsed === 'object' ? parsed : {})
-    } catch {
-      setAttendanceDisplayDraft({})
     }
+
+    loadAttendanceDisplayDraft()
   }, [clubId])
 
   useEffect(() => {

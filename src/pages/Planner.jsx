@@ -567,12 +567,24 @@ function Planner() {
 
       let attendanceDisplayDraft = {}
       if (resolvedClubId) {
+        const resolveLocalAttendanceDisplayDraft = () => {
+          try {
+            const raw = localStorage.getItem(`attendanceDisplaySettings:${resolvedClubId}`)
+            const parsed = raw ? JSON.parse(raw) : {}
+            return (parsed && typeof parsed === 'object') ? parsed : {}
+          } catch {
+            return {}
+          }
+        }
+
         try {
-          const raw = localStorage.getItem(`attendanceDisplaySettings:${resolvedClubId}`)
-          const parsed = raw ? JSON.parse(raw) : {}
-          attendanceDisplayDraft = (parsed && typeof parsed === 'object') ? parsed : {}
+          const response = await api.getAttendanceDisplaySettings()
+          const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
+          attendanceDisplayDraft = Object.keys(remoteDraft).length > 0
+            ? remoteDraft
+            : resolveLocalAttendanceDisplayDraft()
         } catch {
-          attendanceDisplayDraft = {}
+          attendanceDisplayDraft = resolveLocalAttendanceDisplayDraft()
         }
       }
 
