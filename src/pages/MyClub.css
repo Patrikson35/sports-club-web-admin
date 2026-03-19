@@ -1801,6 +1801,18 @@
   min-width: 0;
 }
 
+/* Keep settings fields tightly stacked and avoid stretched vertical spacing. */
+.settings-main > .panel-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.settings-main > .panel-card .form-group,
+.settings-main > .panel-card .form-row {
+  margin-bottom: 0;
+}
+
 .members-layout {
   margin-top: 0.25rem;
 }
@@ -2924,6 +2936,15 @@
   height: 32px;
   min-height: 32px;
   flex: 0 0 230px;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background-color: rgb(15 17 21 / 0.96);
+  color: #e2e8f0;
+  -webkit-text-fill-color: #e2e8f0;
+}
+
+.attendance-display-row-name option {
+  background-color: rgb(15 17 21 / 0.98);
+  color: #e2e8f0;
 }
 
 .attendance-display-delete-btn {

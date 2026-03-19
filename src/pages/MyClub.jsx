@@ -3282,6 +3282,12 @@ function MyClub() {
       .find((metricId) => sourceMetrics[metricId] === true) || ''
   }
 
+  const getResolvedTopBlockMetricId = (row) => {
+    const selectedMetricId = getSelectedTopBlockMetricId(row)
+    if (selectedMetricId) return selectedMetricId
+    return String(displaySettingsMetrics[0]?.id || '')
+  }
+
   const toggleTopBlockMetricCell = (rowId, metricId, checked) => {
     const resolvedRowId = String(rowId || '').trim()
     const resolvedMetricId = String(metricId || '').trim()
@@ -7939,7 +7945,7 @@ function MyClub() {
                                       <div className="attendance-display-row-name-wrap">
                                         <select
                                           className="metrics-control attendance-display-row-name"
-                                          value={getSelectedTopBlockMetricId(row)}
+                                          value={getResolvedTopBlockMetricId(row)}
                                           onChange={(event) => selectTopBlockRowMetric(row.id, event.target.value)}
                                         >
                                           {displaySettingsMetrics.map((metric) => {
