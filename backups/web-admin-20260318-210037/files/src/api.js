@@ -11,7 +11,10 @@ const stripWrappingQuotes = (value) => {
 };
 
 const normalizeApiBaseUrl = (rawUrl) => {
-  const fallback = 'https://ppsport-api-v2-production.up.railway.app/api';
+  const runtimeOrigin = typeof window !== 'undefined' && window.location?.origin
+    ? window.location.origin
+    : 'https://ppsport.pro';
+  const fallback = `${runtimeOrigin}/api`;
   const value = stripWrappingQuotes(rawUrl);
 
   if (!value) {
@@ -47,8 +50,14 @@ const toLegacyApiBase = (baseUrl) => {
   return value;
 };
 
-// Mock režim je v admin UI vypnutý; klient používa iba reálne API.
-const USE_MOCK_DATA = false;
+// Načtení nastavení z localStorage
+const getUseMockData = () => {
+  const saved = localStorage.getItem('useMockData');
+  return saved === null ? false : saved === 'true';
+};
+
+const ALLOW_MOCK_DATA_TOGGLE = import.meta.env.DEV;
+let USE_MOCK_DATA = ALLOW_MOCK_DATA_TOGGLE ? getUseMockData() : false;
 const MOCK_METRICS_STORAGE_KEY = 'mockMetrics';
 const MOCK_VISIBLE_SECTIONS_STORAGE_KEY = 'mockVisibleSectionsByRole';
 
@@ -150,6 +159,20 @@ if (Array.isArray(storedMockMetrics) && storedMockMetrics.length > 0) {
 } else {
   persistMockMetrics();
 }
+
+// Export funkce pro změnu režimu
+export const setUseMockData = (value) => {
+  if (!ALLOW_MOCK_DATA_TOGGLE) {
+    USE_MOCK_DATA = false;
+    localStorage.setItem('useMockData', 'false');
+    return;
+  }
+
+  USE_MOCK_DATA = value;
+  localStorage.setItem('useMockData', value.toString());
+};
+
+export const getApiMode = () => USE_MOCK_DATA; // Přepnout na false pro reálné API
 
 // API Client
 class APIClient {
@@ -278,16 +301,10 @@ class APIClient {
 
   // Auth
   async login(email, password) {
-    const response = await this.request('/auth/login', {
+    return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-
-    return {
-      token: response?.access_token || response?.token || '',
-      refreshToken: response?.refresh_token || response?.refreshToken || '',
-      user: response?.user || null,
-    };
   }
 
   async register(userData) {
@@ -396,10 +413,7 @@ class APIClient {
 
   // Verification
   async verifyEmail(token) {
-    return this.requestWithEndpointFallback([
-      '/auth/verify-email',
-      '/verification/verify-email',
-    ], {
+    return this.request('/verification/verify-email', {
       method: 'POST',
       body: JSON.stringify({ token }),
     });
@@ -461,20 +475,14 @@ class APIClient {
     if (USE_MOCK_DATA) {
       return { message: 'Consent verified (mock)' };
     }
-    return this.requestWithEndpointFallback([
-      '/auth/verify-parent-consent',
-      '/verification/verify-parent-consent',
-    ], {
+    return this.request('/verification/verify-parent-consent', {
       method: 'POST',
       body: JSON.stringify({ token, consentGiven }),
     });
   }
 
   async resendVerification(email) {
-    return this.requestWithEndpointFallback([
-      '/auth/resend-verification',
-      '/verification/resend-verification',
-    ], {
+    return this.request('/verification/resend-verification', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
@@ -484,20 +492,14 @@ class APIClient {
     if (USE_MOCK_DATA) {
       return { total: 0, users: [] };
     }
-    return this.requestWithEndpointFallback([
-      '/auth/pending',
-      '/registration/pending',
-    ]);
+    return this.request('/auth/pending');
   }
 
   async approveRegistration(userId) {
     if (USE_MOCK_DATA) {
       return { message: 'Approved (mock)' };
     }
-    return this.requestWithEndpointFallback([
-      `/auth/approve/${userId}`,
-      `/registration/approve/${userId}`,
-    ], {
+    return this.request(`/auth/approve/${userId}`, {
       method: 'POST',
     });
   }
@@ -506,10 +508,7 @@ class APIClient {
     if (USE_MOCK_DATA) {
       return { message: 'Rejected (mock)' };
     }
-    return this.requestWithEndpointFallback([
-      `/auth/reject/${userId}`,
-      `/registration/reject/${userId}`,
-    ], {
+    return this.request(`/auth/reject/${userId}`, {
       method: 'POST',
     });
   }

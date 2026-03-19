@@ -1,0 +1,1177 @@
+.planner-stitch-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 5rem);
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.planner-stitch-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.planner-stitch-page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #e8effe;
+  padding: 0;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.planner-stitch-header {
+  min-height: 4.15rem;
+  padding: 0 1.25rem;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  border-radius: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  background: var(--bg-secondary);
+  backdrop-filter: blur(10px);
+  margin-bottom: 1.2rem;
+}
+
+.planner-stitch-header-left,
+.planner-stitch-header-right,
+.planner-stitch-month-nav,
+.planner-stitch-view-switch {
+  display: inline-flex;
+  align-items: center;
+}
+
+.planner-stitch-header-left {
+  gap: 0.75rem;
+}
+
+.planner-stitch-header-right {
+  gap: 0.7rem;
+}
+
+.planner-stitch-month-nav {
+  gap: 0.4rem;
+}
+
+.planner-stitch-month-nav h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e8efff;
+  font-weight: 700;
+}
+
+.planner-stitch-icon-btn {
+  width: 1.95rem;
+  height: 1.95rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.88);
+  color: #cddaf5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.planner-stitch-icon-btn:hover {
+  border-color: rgba(125, 151, 204, 0.45);
+}
+
+.planner-stitch-view-switch {
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  border-radius: 1.08rem;
+  height: 2.3rem;
+  background: rgba(18, 21, 28, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(96, 113, 147, 0.14);
+  overflow: hidden;
+  gap: 0;
+}
+
+.planner-stitch-view-switch button {
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: #c5d0e7;
+  font-size: 0.74rem;
+  font-weight: 800;
+  min-width: 7.4rem;
+  height: 100%;
+  padding: 0 1rem;
+  border-radius: 0;
+  cursor: pointer;
+  text-transform: none;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.planner-stitch-view-switch button:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0.45rem;
+  bottom: 0.45rem;
+  width: 1px;
+  background: rgba(96, 113, 147, 0.42);
+}
+
+.planner-stitch-view-switch button.active {
+  background: linear-gradient(180deg, #4b83d8, #4678c8);
+  color: #eef5ff;
+  box-shadow: inset 0 1px 0 rgba(167, 200, 255, 0.36);
+  border-radius: 0;
+}
+
+.planner-stitch-view-switch button:first-child.active {
+  border-top-left-radius: 0.88rem;
+  border-bottom-left-radius: 0.88rem;
+}
+
+.planner-stitch-view-switch button:last-child.active {
+  border-top-right-radius: 0.88rem;
+  border-bottom-right-radius: 0.88rem;
+}
+
+.planner-stitch-view-switch button.active::after {
+  display: none;
+}
+
+.planner-stitch-view-switch button:not(.active):hover {
+  color: #f3f6ff;
+}
+
+.planner-stitch-search {
+  position: relative;
+  width: min(340px, 42vw);
+}
+
+.planner-stitch-search .material-icons-round {
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.planner-stitch-search input {
+  width: 100%;
+  margin: 0;
+  padding-left: 2rem;
+}
+
+.planner-stitch-search input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.planner-stitch-primary-btn {
+  border: 1px solid rgba(84, 143, 246, 0.55);
+  background: linear-gradient(180deg, #3779e9, #2c67cb);
+  color: #eff6ff;
+  white-space: nowrap;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.55rem 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -4px rgba(59, 130, 246, 0.2);
+}
+
+.planner-stitch-primary-btn .material-icons-round {
+  font-size: 1rem;
+}
+
+.planner-stitch-filter-bar {
+  min-height: 3.1rem;
+  padding: 0 1.25rem;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  border-radius: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  background: var(--bg-secondary);
+  margin-bottom: 1.2rem;
+}
+
+.planner-stitch-filter-chip {
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.88);
+  color: #c5d0e7;
+  border-radius: 999px;
+  padding: 0.32rem 0.62rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.planner-stitch-filter-chip.active {
+  border-color: #3b82f6;
+  background: rgba(18, 21, 28, 0.96);
+  color: #dbeafe;
+}
+
+.planner-stitch-filter-chip:hover {
+  color: #f3f6ff;
+  border-color: rgba(125, 151, 204, 0.8);
+}
+
+.planner-stitch-filter-chip .material-icons-round {
+  font-size: 0.96rem;
+}
+
+.planner-stitch-divider {
+  width: 1px;
+  height: 1.2rem;
+  background: rgba(130, 152, 200, 0.38);
+  margin: 0 0.25rem;
+}
+
+.planner-stitch-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #95a8cc;
+  font-size: 0.69rem;
+  font-weight: 600;
+}
+
+.planner-stitch-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.planner-stitch-legend i {
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.planner-stitch-legend i.training { background: var(--planner-color-tj, #facc15); }
+.planner-stitch-legend i.match { background: var(--planner-color-pz, #fb923c); }
+.planner-stitch-legend i.cancelled { background: var(--planner-color-mz, #ef4444); }
+.planner-stitch-legend i.tournament { background: var(--planner-color-cup, #ec4899); }
+
+.planner-stitch-calendar-shell {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.planner-stitch-day-headers,
+.planner-stitch-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(96, 113, 147, 0.34);
+  min-width: 100%;
+}
+
+.planner-stitch-day-headers {
+  border: 1px solid rgba(166, 189, 235, 0.46);
+  border-bottom: 0;
+  border-radius: 0.8rem 0.8rem 0 0;
+  overflow: hidden;
+}
+
+.planner-stitch-day-headers > div {
+  background: rgba(18, 21, 28, 0.96);
+  color: #9fb2d8;
+  font-size: 0.72rem;
+  text-transform: none;
+  text-align: center;
+  font-weight: 700;
+  padding: 0.55rem 0.3rem;
+  white-space: nowrap;
+}
+
+.planner-stitch-day-headers > div.weekend {
+  color: #9fb2d8;
+}
+
+.planner-stitch-calendar-grid {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid rgba(146, 168, 210, 0.5);
+  border-radius: 0 0 0.8rem 0.8rem;
+  overflow: hidden;
+}
+
+.planner-stitch-day-cell {
+  background: rgba(15, 17, 21, 0.98);
+  padding: 0.44rem 0.45rem;
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.planner-stitch-day-cell.selected-date {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--planner-selected-day-accent, #60a5fa) 16%, rgba(15, 17, 21, 0.98)), rgba(15, 17, 21, 0.98));
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--planner-selected-day-accent, #60a5fa) 88%, white 12%),
+    inset 0 12px 24px -14px color-mix(in srgb, var(--planner-selected-day-accent-soft, rgba(96, 165, 250, 0.22)) 100%, transparent 0%);
+}
+
+.planner-stitch-day-cell.muted {
+  opacity: 0.52;
+  background: rgba(15, 17, 21, 0.82);
+}
+
+.planner-stitch-day-cell.today {
+  background: linear-gradient(160deg, rgba(30, 50, 90, 0.98), rgba(20, 36, 68, 0.98));
+  box-shadow:
+    inset 0 0 0 2px rgba(96, 165, 250, 0.7),
+    inset 0 12px 24px -12px rgba(96, 165, 250, 0.55),
+    0 0 18px -4px rgba(59, 130, 246, 0.35);
+}
+
+.planner-stitch-day-cell.today .planner-stitch-day-number {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.18);
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.3rem;
+}
+
+.planner-stitch-day-number {
+  color: #d8e5ff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.planner-stitch-day-cell small {
+  color: #8dc2ff;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.planner-stitch-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  margin-top: 0.1rem;
+}
+
+.planner-stitch-event {
+  border: 1px solid var(--planner-color-tj-border, rgba(250, 204, 21, 0.72));
+  border-radius: 0.5rem;
+  background: var(--planner-color-tj-bg, rgba(133, 77, 14, 0.28));
+  color: var(--planner-color-tj-text, #fef3c7);
+  font-size: 0.71rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.18rem 0.34rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.23rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.planner-stitch-event .material-icons-round {
+  font-size: 0.76rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planner-stitch-event > span:last-child {
+  display: inline-block;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-stitch-event.match {
+  border-color: var(--planner-color-pz-border, rgba(251, 146, 60, 0.72));
+  background: var(--planner-color-pz-bg, rgba(124, 45, 18, 0.32));
+  color: var(--planner-color-pz-text, #ffedd5);
+}
+
+.planner-stitch-event.tournament {
+  border-color: var(--planner-color-cup-border, rgba(236, 72, 153, 0.72));
+  background: var(--planner-color-cup-bg, rgba(131, 24, 67, 0.32));
+  color: var(--planner-color-cup-text, #fce7f3);
+}
+
+.planner-stitch-event.cancelled {
+  border-color: var(--planner-color-mz-border, rgba(239, 68, 68, 0.74));
+  background: var(--planner-color-mz-bg, rgba(127, 29, 29, 0.34));
+  color: var(--planner-color-mz-text, #fee2e2);
+}
+
+.planner-stitch-event.field-booking {
+  border-color: rgba(52, 211, 153, 0.65);
+  background: rgba(6, 78, 59, 0.32);
+  color: #a7f3d0;
+}
+
+.planner-stitch-week-card.field-booking {
+  border-left-color: #34d399;
+}
+
+.planner-stitch-week-shell {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.timeline-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.planner-stitch-week-table {
+  border: 1px solid rgba(166, 189, 235, 0.46);
+  border-radius: 0 0 0.8rem 0.8rem;
+  overflow: hidden;
+  background: rgba(15, 17, 21, 0.98);
+}
+
+.timeline-grid.flex-1.gap-4 {
+  min-width: 100%;
+  gap: 0;
+  align-items: stretch;
+}
+
+.planner-stitch-week-column {
+  min-width: 0;
+  padding: 0.7rem 0.62rem;
+  border-right: 1px solid rgba(166, 189, 235, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.planner-stitch-week-column.selected-date {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--planner-selected-day-accent, #60a5fa) 13%, rgba(24, 45, 82, 0.32)), rgba(19, 34, 63, 0.3));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--planner-selected-day-accent, #60a5fa) 70%, white 30%);
+}
+
+.planner-stitch-week-column:last-child {
+  border-right: 0;
+}
+
+.planner-stitch-week-events-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.46rem;
+}
+
+.planner-stitch-week-card {
+  border-radius: 0.72rem;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  border-left: 4px solid rgba(96, 113, 147, 0.34);
+  background: rgba(15, 17, 21, 0.98);
+  box-shadow: none;
+  padding: 0.5rem 0.54rem;
+  color: #e6eefc;
+}
+
+.planner-stitch-week-card-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #a9bbdf;
+}
+
+.planner-stitch-week-card-head .material-icons-round {
+  font-size: 0.72rem;
+}
+
+.planner-stitch-week-card h4 {
+  margin: 0.22rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: #eef4ff;
+}
+
+.planner-stitch-week-card p {
+  margin: 0.28rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  color: #97abd3;
+  font-size: 0.64rem;
+  line-height: 1.2;
+}
+
+.planner-stitch-week-card p .material-icons-round {
+  font-size: 0.72rem;
+}
+
+.planner-stitch-week-card.training {
+  border-left-color: var(--planner-color-tj, #facc15);
+}
+
+.planner-stitch-week-card.match {
+  border-left-color: var(--planner-color-pz, #fb923c);
+}
+
+.planner-stitch-week-card.tournament {
+  border-left-color: var(--planner-color-cup, #ec4899);
+}
+
+.planner-stitch-week-card.cancelled {
+  border-left-color: var(--planner-color-mz, #ef4444);
+}
+
+.planner-stitch-week-empty {
+  border: 1px dashed rgba(96, 113, 147, 0.42);
+  border-radius: 0.7rem;
+  background: rgba(15, 20, 30, 0.72);
+  color: #8197c0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  min-height: 4.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.55rem;
+}
+
+/* ===== Body / Main / Sidebar layout ===== */
+
+.planner-stitch-body {
+  flex: 1;
+  display: flex;
+  gap: 1.2rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.planner-stitch-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.planner-stitch-sidebar {
+  width: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border-radius: 0.9rem;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.28s, box-shadow 0.28s;
+  border: 0px solid transparent;
+}
+
+.planner-stitch-sidebar.open {
+  width: clamp(17rem, 30vw, 22rem);
+  border: 1px solid rgba(96, 113, 147, 0.34);
+}
+
+.planner-stitch-sidebar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.1rem 0.8rem;
+  border-bottom: 1px solid rgba(96, 113, 147, 0.3);
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.planner-stitch-sidebar-head h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #e8efff;
+}
+
+.planner-stitch-event-form {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.planner-stitch-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.planner-stitch-form-row > label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #8da8d4;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.planner-stitch-form-row input,
+.planner-stitch-form-row select,
+.planner-stitch-form-row textarea {
+  font-size: 0.82rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  background: rgba(18, 21, 28, 0.9);
+  border: 1px solid rgba(96, 113, 147, 0.42);
+  color: #d8e4fb;
+  width: 100%;
+  margin: 0;
+  color-scheme: dark;
+}
+
+.planner-stitch-form-row input[type="date"]::-webkit-calendar-picker-indicator,
+.planner-stitch-form-row input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.9);
+  cursor: pointer;
+}
+
+.planner-stitch-form-row input[type="date"]::-webkit-datetime-edit,
+.planner-stitch-form-row input[type="time"]::-webkit-datetime-edit {
+  color: #eef5ff;
+}
+
+.planner-stitch-form-row select {
+  color: #eef5ff;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.05rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.62rem center;
+  background-size: 1rem;
+}
+
+.planner-stitch-form-row input:focus,
+.planner-stitch-form-row select:focus,
+.planner-stitch-form-row textarea:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+  background: rgba(18, 21, 28, 0.9);
+}
+
+.planner-stitch-form-row--half {
+  flex-direction: row;
+  gap: 0.65rem;
+}
+
+.planner-stitch-form-row--half > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.planner-stitch-form-row--half > div > label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #8da8d4;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.planner-stitch-indicator-switches {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  gap: 0.38rem;
+}
+
+.planner-stitch-indicator-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  justify-content: center;
+  border: 1px solid rgba(96, 113, 147, 0.5);
+  background: rgba(18, 21, 28, 0.8);
+  color: #9bb0d7;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.22rem 0.42rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease, filter 0.18s ease;
+  filter: saturate(0.85);
+}
+
+.planner-stitch-indicator-chip.active {
+  border-color: var(--chip-accent, #3b82f6);
+  background: var(--chip-accent-soft, rgba(59, 130, 246, 0.22));
+  color: #eef5ff;
+  filter: saturate(1.12) brightness(1.04);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-accent, #3b82f6) 55%, white 45%);
+}
+
+.planner-stitch-more-dates-btn {
+  align-self: flex-start;
+  border: 1px solid rgba(84, 143, 246, 0.65);
+  background: linear-gradient(180deg, #3779e9, #2c67cb);
+  color: #eef5ff;
+  border-radius: 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.22rem 0.54rem;
+  cursor: pointer;
+  box-shadow: 0 8px 14px -6px rgba(59, 130, 246, 0.38);
+}
+
+.planner-stitch-form-help {
+  color: #8ca5cf;
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.planner-stitch-selected-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.planner-stitch-selected-date-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(59, 130, 246, 0.48);
+  background: rgba(30, 64, 175, 0.22);
+  color: #dbeafe;
+  border-radius: 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.18rem 0.45rem;
+}
+
+.planner-stitch-selected-date-chip.muted {
+  border-color: rgba(96, 113, 147, 0.45);
+  background: rgba(18, 21, 28, 0.82);
+  color: #94a7c8;
+}
+
+.planner-stitch-field-visualizer {
+  border: 1px solid rgba(96, 113, 147, 0.42);
+  border-radius: 0.75rem;
+  background: rgba(14, 18, 28, 0.82);
+  padding: 0.58rem;
+}
+
+.planner-stitch-field-visualizer p {
+  margin: 0 0 0.42rem;
+  color: #9db0d2;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.planner-stitch-field-visualizer p span {
+  color: #dbeafe;
+  font-weight: 700;
+}
+
+.planner-stitch-field-dimensions {
+  display: block;
+  margin: 0 0 0.42rem;
+  color: #8fb3de;
+  font-size: 0.66rem;
+}
+
+.planner-stitch-field-pitch {
+  --parts-cols: 1;
+  --parts-rows: 1;
+  --field-ratio: 1.6;
+  display: grid;
+  grid-template-columns: repeat(var(--parts-cols), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--parts-rows), minmax(0, 1fr));
+  gap: 0.28rem;
+  width: 100%;
+  aspect-ratio: var(--field-ratio);
+  min-height: 120px;
+  border-radius: 0.62rem;
+  padding: 0.34rem;
+  border: 1px solid rgba(94, 234, 212, 0.28);
+  background:
+    linear-gradient(180deg, rgba(22, 130, 75, 0.24), rgba(20, 83, 45, 0.24)),
+    repeating-linear-gradient(
+      180deg,
+      rgba(34, 197, 94, 0.28) 0,
+      rgba(34, 197, 94, 0.28) 18px,
+      rgba(21, 128, 61, 0.18) 18px,
+      rgba(21, 128, 61, 0.18) 36px
+    );
+}
+
+.planner-stitch-field-part {
+  border: 1px solid rgba(187, 247, 208, 0.35);
+  border-radius: 0.42rem;
+  background: rgba(15, 23, 42, 0.32);
+  color: #d1fae5;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.08rem;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+}
+
+.planner-stitch-field-part-owner {
+  display: block;
+  font-size: 0.54rem;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
+.planner-stitch-field-part:hover {
+  border-color: rgba(167, 243, 208, 0.62);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.planner-stitch-field-part.active {
+  border-color: rgba(96, 165, 250, 0.85);
+  background: rgba(30, 64, 175, 0.45);
+  color: #eff6ff;
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.4);
+}
+
+.planner-stitch-field-part.reserved,
+.planner-stitch-field-part.reserved:hover {
+  border-color: rgba(248, 113, 113, 0.92);
+  background: rgba(127, 29, 29, 0.62);
+  color: #fee2e2;
+  cursor: not-allowed;
+  box-shadow: inset 0 0 0 1px rgba(252, 165, 165, 0.35);
+}
+
+.planner-stitch-field-part:disabled {
+  opacity: 0.96;
+}
+
+.planner-stitch-field-legend {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.planner-stitch-field-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  color: #b7c7e4;
+}
+
+.planner-stitch-field-legend-item i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 0.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.planner-stitch-field-legend-item.selected i {
+  border-color: rgba(96, 165, 250, 0.85);
+  background: rgba(30, 64, 175, 0.52);
+}
+
+.planner-stitch-field-legend-item.reserved i {
+  border-color: rgba(248, 113, 113, 0.92);
+  background: rgba(127, 29, 29, 0.62);
+}
+
+.planner-stitch-field-legend-item.free i {
+  border-color: rgba(187, 247, 208, 0.5);
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.planner-stitch-form-actions {
+  display: flex;
+  gap: 0.6rem;
+  padding-top: 0.3rem;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.planner-stitch-form-cancel {
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: transparent;
+  color: #a0b4d8;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.55rem 0.95rem;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+
+.planner-stitch-form-cancel:hover {
+  color: #e8efff;
+  border-color: rgba(125, 151, 204, 0.65);
+}
+
+.planner-time-clock-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 10, 18, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.planner-time-clock-modal {
+  width: min(360px, calc(100vw - 2rem));
+  border-radius: 0.9rem;
+  border: 1px solid rgba(96, 113, 147, 0.42);
+  background: rgba(15, 20, 31, 0.98);
+  padding: 0.9rem;
+  box-shadow: 0 20px 40px rgba(4, 8, 16, 0.55);
+}
+
+.planner-time-clock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
+}
+
+.planner-time-clock-head strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  color: #dbeafe;
+}
+
+.planner-time-clock-step-tabs {
+  display: inline-flex;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.planner-time-clock-step-btn {
+  border: none;
+  background: rgba(18, 21, 28, 0.92);
+  color: #c5d0e7;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.35rem 0.62rem;
+  cursor: pointer;
+}
+
+.planner-time-clock-step-btn.active {
+  background: #4a83e3;
+  color: #0b1220;
+}
+
+.planner-time-clock-dial {
+  position: relative;
+  width: 230px;
+  height: 230px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: radial-gradient(circle at center, rgba(53, 84, 140, 0.2), rgba(18, 21, 28, 0.92) 65%);
+}
+
+.planner-time-clock-item {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.95);
+  color: #c5d0e7;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+
+.planner-time-clock-item--outer {
+  width: 24px;
+  height: 24px;
+  font-size: 0.52rem;
+}
+
+.planner-time-clock-item--inner {
+  width: 30px;
+  height: 30px;
+  font-size: 0.7rem;
+}
+
+.planner-time-clock-item.active {
+  background: #4a83e3;
+  border-color: #4a83e3;
+  color: #0b1220;
+}
+
+.planner-time-clock-minute-adjust {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.95);
+}
+
+.planner-time-clock-minute-adjust button {
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.95);
+  color: #c5d0e7;
+  border-radius: 999px;
+  min-width: 34px;
+  height: 24px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.planner-time-clock-minute-adjust span {
+  min-width: 26px;
+  text-align: center;
+  color: #dbeafe;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.planner-time-clock-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.planner-time-clock-action-btn {
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.92);
+  color: #c5d0e7;
+  border-radius: 0.55rem;
+  height: 30px;
+  padding: 0 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.planner-time-clock-action-btn.primary {
+  border-color: #4a83e3;
+  background: #4a83e3;
+  color: #0b1220;
+}
+
+@media (max-width: 1180px) {
+  .planner-stitch-body {
+    flex-direction: column;
+  }
+
+  .planner-stitch-sidebar.open {
+    width: 100%;
+  }
+
+  .planner-stitch-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding: 0.7rem 0.95rem;
+  }
+
+  .planner-stitch-header-left,
+  .planner-stitch-header-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .planner-stitch-search {
+    width: 100%;
+  }
+
+  .planner-stitch-view-switch {
+    width: 100%;
+  }
+
+  .planner-stitch-view-switch button {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.72rem;
+    padding: 0 0.78rem;
+  }
+
+  .planner-stitch-calendar-shell {
+    padding: 0.65rem;
+  }
+}
+
+@media (max-width: 860px) {
+  .planner-stitch-view-switch button {
+    font-size: 0.7rem;
+    padding: 0 0.64rem;
+  }
+
+  .planner-stitch-day-cell {
+    min-height: 5.1rem;
+  }
+
+  .planner-stitch-event {
+    font-size: 0.66rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .planner-stitch-week-card {
+    padding: 0.44rem 0.46rem;
+  }
+
+  .planner-stitch-view-switch button {
+    font-size: 0.67rem;
+    padding: 0 0.54rem;
+  }
+}

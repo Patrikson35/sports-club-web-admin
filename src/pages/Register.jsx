@@ -7,6 +7,8 @@ function Register() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [verificationLink, setVerificationLink] = useState('')
   
   const [formData, setFormData] = useState({
     registrationType: '',
@@ -14,8 +16,24 @@ function Register() {
     firstName: '',
     lastName: '',
     email: '',
-    password: ''
+    password: '',
+    dob: ''
   })
+
+  const mapRegistrationTypeToRole = (registrationType) => {
+    switch (registrationType) {
+      case 'club':
+        return 'club_admin'
+      case 'club_coach':
+        return 'coach'
+      case 'private_coach':
+        return 'private_coach'
+      case 'player':
+        return 'player'
+      default:
+        return ''
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -24,17 +42,20 @@ function Register() {
       [name]: value
     }))
     setError('')
+    setSuccessMessage('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccessMessage('')
+    setVerificationLink('')
 
     try {
       // Validate all fields are filled
       if (!formData.registrationType || !formData.sport || !formData.firstName || 
-          !formData.lastName || !formData.email || !formData.password) {
+          !formData.lastName || !formData.email || !formData.password || !formData.dob) {
         throw new Error('Všetky polia sú povinné')
       }
 
@@ -42,17 +63,32 @@ function Register() {
         throw new Error('Heslo musí mať aspoň 6 znakov')
       }
 
+      const role = mapRegistrationTypeToRole(formData.registrationType)
+      if (!role) {
+        throw new Error('Neplatný typ registrácie')
+      }
+
       const response = await api.register({
         registrationType: formData.registrationType,
         sport: formData.sport,
+        role,
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        dob: formData.dob,
+        country: 'SK',
+        languagePreference: 'sk'
       })
 
-      alert('Registrácia úspešná! Skontrolujte svoj email pre overenie účtu.')
-      navigate('/login')
+      const linkFromApi = response?.verification?.link || ''
+      setVerificationLink(linkFromApi)
+      setSuccessMessage('Registrácia úspešná. Ak email nepríde, použite odkaz nižšie na overenie účtu.')
+
+      if (!linkFromApi) {
+        alert('Registrácia úspešná! Skontrolujte svoj email pre overenie účtu.')
+        navigate('/login')
+      }
       
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Chyba pri registrácii')
@@ -69,6 +105,7 @@ function Register() {
         </div>
 
         {error && <div className="error-message">{error}</div>}
+        {successMessage && <div className="success-message">{successMessage}</div>}
 
         <form onSubmit={handleSubmit} className="register-form">
           <div className="form-group select-group">
@@ -153,6 +190,17 @@ function Register() {
             />
           </div>
 
+          <div className="form-group">
+            <input
+              type="date"
+              name="dob"
+              value={formData.dob}
+              onChange={handleInputChange}
+              className="form-input"
+              required
+            />
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -174,6 +222,20 @@ function Register() {
           >
             {loading ? 'Registrujem...' : 'Registrovať'}
           </button>
+
+          {verificationLink && (
+            <div className="verification-link-box">
+              <p>Overenie účtu:</p>
+              <a href={verificationLink} target="_blank" rel="noreferrer">{verificationLink}</a>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigate('/login')}
+              >
+                Pokračovať na prihlásenie
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -1,0 +1,102 @@
+.club-permissions-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.permissions-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.permissions-member-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.permissions-member-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.permissions-member-header h3 {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.permissions-member-header p {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.permissions-role-badge {
+  display: inline-block;
+  font-size: 12px;
+  color: #111;
+  background: var(--accent);
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-weight: 700;
+}
+
+.permissions-title-row {
+  margin-bottom: 14px;
+}
+
+.permissions-title-row label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.permissions-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--bg-primary);
+}
+
+.permissions-group h4 {
+  margin: 0 0 10px;
+  color: var(--accent);
+  text-transform: capitalize;
+  font-size: 14px;
+}
+
+.permission-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.permission-checkbox:last-child {
+  margin-bottom: 0;
+}
+
+.permission-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.permissions-member-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}

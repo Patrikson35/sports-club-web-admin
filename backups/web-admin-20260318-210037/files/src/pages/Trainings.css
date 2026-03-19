@@ -1,0 +1,388 @@
+.trainings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.trainings-planner-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.trainings-planner-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.15rem 0;
+}
+
+.trainings-planner-head h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1.65rem;
+  line-height: 1.15;
+}
+
+.trainings-planner-head p {
+  margin: 0.35rem 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.trainings-planner-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.trainings-primary-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.trainings-primary-btn:hover {
+  background: #1d4ed8;
+}
+
+.trainings-primary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.trainings-planner-error {
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecdd3;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+.trainings-planner-card {
+  border: 1px solid rgba(93, 112, 146, 0.28);
+  border-radius: 14px;
+  background: rgb(18 21 28 / 0.92);
+  padding: 0.9rem;
+}
+
+.trainings-planner-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.trainings-planner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.trainings-planner-field label {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trainings-planner-input-wrap {
+  position: relative;
+}
+
+.trainings-planner-input-wrap .material-icons-round {
+  position: absolute;
+  left: 0.68rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 18px;
+  pointer-events: none;
+}
+
+.trainings-planner-input-wrap input {
+  padding-left: 2.25rem;
+  height: 42px;
+  line-height: 42px;
+  border-radius: 12px;
+  background: rgb(11 14 20 / 0.92);
+  border: 1px solid rgba(93, 112, 146, 0.35);
+}
+
+.trainings-planner-input-wrap input:focus {
+  border-color: rgba(249, 115, 22, 0.72);
+  background: rgb(17 21 30 / 0.95);
+}
+
+.trainings-planner-input-wrap select {
+  padding-left: 2.25rem;
+  margin: 0;
+  height: 42px;
+  line-height: 42px;
+  border-radius: 12px;
+  background: rgb(11 14 20 / 0.92);
+  border: 1px solid rgba(93, 112, 146, 0.35);
+  color: #e2e8f0;
+}
+
+.trainings-planner-input-wrap select:focus {
+  border-color: rgba(249, 115, 22, 0.72);
+  background: rgb(17 21 30 / 0.95);
+}
+
+.trainings-planner-select-wrap .material-icons-round {
+  pointer-events: none;
+}
+
+.trainings-planner-section {
+  border: 1px solid rgba(93, 112, 146, 0.23);
+  border-radius: 14px;
+  background: rgb(18 21 28 / 0.88);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.trainings-planner-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(93, 112, 146, 0.2);
+}
+
+.trainings-planner-section-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trainings-planner-section-icon .material-icons-round {
+  font-size: 20px;
+}
+
+.trainings-planner-section-icon.warmup {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.trainings-planner-section-icon.main {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.trainings-planner-section-icon.conclusion {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.trainings-planner-section h4 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 1.03rem;
+}
+
+.trainings-planner-minutes {
+  margin-left: auto;
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(93, 112, 146, 0.35);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.trainings-planner-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.trainings-planner-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(93, 112, 146, 0.23);
+  border-radius: 12px;
+  background: rgb(15 17 21 / 0.82);
+  padding: 0.4rem 0.45rem;
+}
+
+.trainings-planner-drag {
+  color: #64748b;
+  font-size: 18px;
+  cursor: grab;
+}
+
+.trainings-planner-item-main {
+  flex: 1;
+}
+
+.trainings-planner-item-main select {
+  margin: 0;
+  height: 38px;
+  line-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(93, 112, 146, 0.3);
+  background: rgb(11 14 20 / 0.9);
+  color: #e2e8f0;
+}
+
+.trainings-planner-item-main select:focus {
+  border-color: rgba(249, 115, 22, 0.72);
+}
+
+.trainings-planner-item-duration {
+  width: 98px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-left: 1px solid rgba(93, 112, 146, 0.28);
+  padding-left: 0.45rem;
+}
+
+.trainings-planner-item-duration input {
+  margin: 0;
+  text-align: center;
+  padding: 0 0.35rem;
+  height: 34px;
+  line-height: 34px;
+}
+
+.trainings-planner-item-duration span {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.trainings-planner-item-delete {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.trainings-planner-item-delete:hover {
+  background: rgba(190, 24, 93, 0.12);
+  color: #fb7185;
+}
+
+.trainings-planner-item-delete .material-icons-round {
+  font-size: 20px;
+}
+
+.trainings-planner-add-item-btn {
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px dashed rgba(93, 112, 146, 0.35);
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.84rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.trainings-planner-add-item-btn:hover {
+  border-color: rgba(249, 115, 22, 0.55);
+  color: #fdba74;
+}
+
+.trainings-planner-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  border-radius: 14px;
+  border: 1px solid rgba(93, 112, 146, 0.35);
+  background: linear-gradient(125deg, rgb(16 19 26 / 0.96), rgb(25 29 39 / 0.94));
+  padding: 0.9rem 1rem;
+}
+
+.trainings-planner-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.trainings-planner-summary-item span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.trainings-planner-summary-item strong {
+  font-size: 1.3rem;
+  color: #f8fafc;
+  line-height: 1;
+}
+
+.trainings-planner-intensity-bars {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+
+.trainings-planner-intensity-bars i {
+  width: 16px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(93, 112, 146, 0.35);
+  display: inline-block;
+}
+
+.trainings-planner-intensity-bars i.active {
+  background: #f97316;
+}
+
+@media (max-width: 980px) {
+  .trainings-planner-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .trainings-planner-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .trainings-planner-head-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .trainings-planner-item-row {
+    flex-wrap: wrap;
+  }
+
+  .trainings-planner-item-main {
+    min-width: 100%;
+  }
+
+  .trainings-planner-item-duration {
+    border-left: 0;
+    padding-left: 0;
+    width: auto;
+  }
+}

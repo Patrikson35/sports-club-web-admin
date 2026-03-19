@@ -1,0 +1,416 @@
+.complete-profile-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+.complete-profile-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=1920&q=80');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: grayscale(100%);
+  z-index: 0;
+}
+
+.complete-profile-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1;
+}
+
+.complete-profile-card {
+  width: 100%;
+  max-width: 380px;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 5;
+}
+
+.complete-profile-header {
+  padding: 32px 24px 24px;
+  text-align: center;
+  background: #000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.complete-profile-header h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.complete-profile-form {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.complete-profile-form .form-group {
+  margin-bottom: 0 !important;
+}
+
+.coach-form-bottom {
+  flex: 1;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 14px 16px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  transition: all 0.3s;
+}
+
+.form-file-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.form-file-input::file-selector-button {
+  float: right;
+  margin-left: 12px;
+  margin-right: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #6b7280;
+  color: #fff;
+  cursor: pointer;
+}
+
+.form-file-input::-webkit-file-upload-button {
+  float: right;
+  margin-left: 12px;
+  margin-right: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #6b7280;
+  color: #fff;
+  cursor: pointer;
+}
+
+.form-file-input::file-selector-button:hover,
+.form-file-input::-webkit-file-upload-button:hover {
+  background: #4b5563;
+}
+
+.club-upload-field {
+  width: 100%;
+  padding: 14px 16px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.club-upload-wrapper {
+  position: relative;
+}
+
+.club-logo-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.club-upload-field:hover {
+  border-color: #ff6b00;
+  background: #333;
+}
+
+.club-upload-text {
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.club-upload-button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #6b7280;
+  color: #fff;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.club-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.club-upload-display {
+  flex: 1;
+  cursor: pointer;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.club-upload-display[readonly] {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  opacity: 1;
+}
+
+.club-upload-trigger {
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: #6b7280;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.club-upload-trigger:hover {
+  background: #4b5563;
+}
+
+.player-child-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.player-child-separator {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  margin-top: 4px;
+}
+
+.btn-add-child {
+  margin-top: 0;
+  background: #6b7280;
+}
+
+.btn-add-child:hover:not(:disabled) {
+  background: #4b5563;
+  transform: none;
+  box-shadow: none;
+}
+
+.coach-top-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coach-bottom-anchor {
+  margin-top: auto;
+}
+
+.coach-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #ff6b00;
+  background: #333;
+}
+
+.form-input::placeholder {
+  color: #888;
+}
+
+.field-caption {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Checkbox styling */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 15px;
+  width: 100%;
+}
+
+.checkbox-label span {
+  color: #fff !important;
+  display: inline-block;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #2a2a2a;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 4px;
+  display: inline-block;
+  position: relative;
+}
+
+.checkbox-label input[type="checkbox"]:checked {
+  background: #6b7280;
+  border-color: #6b7280;
+}
+
+.checkbox-label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-label input[type="checkbox"]:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 1px;
+}
+
+/* File upload styling */
+.file-upload {
+  position: relative;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #888;
+  font-size: 15px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.file-label:hover {
+  border-color: #ff6b00;
+  background: #333;
+}
+
+/* Submit button */
+.btn-submit {
+  width: 100%;
+  padding: 16px;
+  background: #ff6b00;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 8px;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #ff8534;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(255, 107, 0, 0.3);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error message */
+.error-message {
+  margin: 0 24px 16px;
+  padding: 12px 16px;
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Date input styling */
+input[type="date"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}

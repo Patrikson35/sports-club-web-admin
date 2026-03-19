@@ -78,11 +78,6 @@
   margin-bottom: 16px;
 }
 
-.form-group:nth-of-type(3) {
-  margin-top: auto;
-  padding-top: 100px;
-}
-
 .form-group label {
   display: none;
 }
@@ -128,14 +123,48 @@
   transition: border-color 0.2s;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
   margin-bottom: 0 !important;
 }
 
 .form-group.select-group {
   margin-bottom: 16px;
+}
+
+.player-age-switch {
+  margin-bottom: 16px;
+}
+
+.switch-label {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.switch-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.age-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: #2a2a2a;
+  color: #fff;
+  cursor: pointer;
+}
+
+.age-btn.active {
+  background: #ff6b00;
+  border-color: #ff6b00;
+}
+
+.parent-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
 }
 
 .form-select option {
@@ -259,26 +288,26 @@ input[type="file"]::-webkit-file-upload-button:hover {
   text-align: center;
 }
 
-.verification-link-box {
-  margin-top: 16px;
+.dev-verification-box {
+  margin: 0 0 16px 0;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dev-verification-meta {
+  margin-bottom: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.verification-link-box p {
-  margin: 0;
-  color: #fff;
-  font-size: 14px;
-}
-
-.verification-link-box a {
-  color: #ffb27a;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 13px;
+}
+
+.dev-verification-link {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
   word-break: break-all;
 }
 
@@ -286,4 +315,17 @@ input[type="file"]::-webkit-file-upload-button:hover {
   color: #fff;
   text-align: center;
   padding: 20px;
+}
+
+.register-login-link {
+  margin-top: 18px;
+  text-align: center;
+  color: #fff;
+  font-size: 16px;
+  text-decoration: none;
+}
+
+.register-login-link:hover {
+  color: #ff6b00;
+  text-decoration: none;
 }

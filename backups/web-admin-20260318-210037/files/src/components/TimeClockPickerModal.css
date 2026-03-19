@@ -1,0 +1,155 @@
+.time-clock-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 10, 18, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.time-clock-modal {
+  width: min(360px, calc(100vw - 2rem));
+  border-radius: 0.9rem;
+  border: 1px solid rgba(96, 113, 147, 0.42);
+  background: rgba(15, 20, 31, 0.98);
+  padding: 0.9rem;
+  box-shadow: 0 20px 40px rgba(4, 8, 16, 0.55);
+}
+
+.time-clock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
+}
+
+.time-clock-head strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  color: #dbeafe;
+}
+
+.time-clock-step-tabs {
+  display: inline-flex;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.time-clock-step-btn {
+  border: none;
+  background: rgba(18, 21, 28, 0.92);
+  color: #c5d0e7;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.35rem 0.62rem;
+  cursor: pointer;
+}
+
+.time-clock-step-btn.active {
+  background: #4a83e3;
+  color: #0b1220;
+}
+
+.time-clock-dial {
+  position: relative;
+  width: 230px;
+  height: 230px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: radial-gradient(circle at center, rgba(53, 84, 140, 0.2), rgba(18, 21, 28, 0.92) 65%);
+}
+
+.time-clock-item {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.95);
+  color: #c5d0e7;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+
+.time-clock-item--outer {
+  width: 24px;
+  height: 24px;
+  font-size: 0.52rem;
+}
+
+.time-clock-item--inner {
+  width: 30px;
+  height: 30px;
+  font-size: 0.7rem;
+}
+
+.time-clock-item.active {
+  background: #4a83e3;
+  border-color: #4a83e3;
+  color: #0b1220;
+}
+
+.time-clock-minute-adjust {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.95);
+}
+
+.time-clock-minute-adjust button {
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.95);
+  color: #c5d0e7;
+  border-radius: 999px;
+  min-width: 34px;
+  height: 24px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.time-clock-minute-adjust span {
+  min-width: 26px;
+  text-align: center;
+  color: #dbeafe;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.time-clock-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.time-clock-action-btn {
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.92);
+  color: #c5d0e7;
+  border-radius: 0.55rem;
+  height: 30px;
+  padding: 0 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.time-clock-action-btn.primary {
+  border-color: #4a83e3;
+  background: #4a83e3;
+  color: #0b1220;
+}

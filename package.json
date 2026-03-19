@@ -4,6 +4,7 @@
   "description": "Web admin panel for Sports Club",
   "scripts": {
     "dev": "vite",
+    "dev:ui": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },

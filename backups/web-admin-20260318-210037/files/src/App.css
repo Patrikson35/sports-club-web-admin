@@ -214,6 +214,11 @@
   border-color: transparent;
 }
 
+/* Legacy API mode toggle must stay hidden in production UI. */
+.api-mode-toggle {
+  display: none !important;
+}
+
 .main-content {
   flex: 1;
   margin-left: 260px;

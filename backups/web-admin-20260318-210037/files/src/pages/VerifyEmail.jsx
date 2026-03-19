@@ -11,9 +11,18 @@ function VerifyEmail() {
   const [email, setEmail] = useState('')
   const [resending, setResending] = useState(false)
 
+  const getCompleteProfilePath = (role) => {
+    if (role === 'club') return '/complete-profile/club'
+    if (role === 'coach' || role === 'assistant' || role === 'private_coach') return '/complete-profile/coach'
+    if (role === 'player' || role === 'parent') return '/complete-profile/player'
+    return '/login'
+  }
+
   useEffect(() => {
     const token = searchParams.get('token')
     if (token) {
+      api.clearToken()
+      localStorage.removeItem('user')
       verifyToken(token)
     } else {
       setStatus('error')
@@ -22,40 +31,47 @@ function VerifyEmail() {
   }, [searchParams])
 
   const verifyToken = async (token) => {
+    console.log('Starting verification with token:', token)
     try {
+      console.log('Calling API verifyEmail...')
       const response = await api.verifyEmail(token)
+      console.log('API Response:', response)
       setStatus('success')
       setMessage(response.message || 'Email bol úspešne overený!')
-
-      const authToken = response?.token
-      const user = response?.user
-
-      if (authToken && user) {
-        api.setToken(authToken)
-        localStorage.setItem('authToken', authToken)
-        localStorage.setItem('user', JSON.stringify(user))
-
-        const role = String(user.role || '').trim().toLowerCase()
-        let nextRoute = '/login'
-
-        if (role === 'club') {
-          nextRoute = '/complete-profile/club'
-        } else if (role === 'coach' || role === 'assistant' || role === 'private_coach') {
-          nextRoute = '/complete-profile/coach'
-        } else if (role === 'player') {
-          nextRoute = '/complete-profile/player'
+      
+      // Auto-login: save token and user data
+      if (response.token) {
+        console.log('Saving auth data to localStorage')
+        localStorage.setItem('authToken', response.token)
+        if (response.user) {
+          localStorage.setItem('user', JSON.stringify(response.user))
         }
-
-        setTimeout(() => {
-          navigate(nextRoute)
-        }, 1500)
-      } else {
-        // Fallback for legacy API responses without auth payload
-        setTimeout(() => {
-          navigate('/login')
-        }, 3000)
+        api.setToken(response.token)
       }
+      
+      let role = response.user?.role || response.role || null
+
+      // Fallback: ak backend nevrátil user.role, načítame role z registračného kontextu
+      if (!role && response.token) {
+        try {
+          const context = await api.getRegistrationContext()
+          role = context?.role || null
+        } catch (contextError) {
+          console.warn('Nepodarilo sa načítať registration context:', contextError)
+        }
+      }
+
+      const redirectPath = getCompleteProfilePath(role)
+      
+      // Redirect to complete-profile form
+      console.log('Redirecting to:', redirectPath)
+      setTimeout(() => {
+        navigate(redirectPath, { replace: true })
+      }, 100)
     } catch (error) {
+      console.error('Verification error:', error)
+      api.clearToken()
+      localStorage.removeItem('user')
       setStatus('error')
       setMessage(error.message || 'Neplatný alebo expirovaný overovací link')
     }
@@ -94,12 +110,12 @@ function VerifyEmail() {
             <div className="icon">✅</div>
             <h2>Email overený!</h2>
             <p>{message}</p>
-            <p className="redirect-info">Presmerovanie na dokončenie registrácie...</p>
+            <p className="redirect-info">Presmerovanie na doregistráciu...</p>
             <button 
               onClick={() => navigate('/login')} 
               className="btn-primary"
             >
-              Prejsť na prihlásenie
+              Prihlásiť sa teraz
             </button>
           </div>
         )}
