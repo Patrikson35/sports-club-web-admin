@@ -665,6 +665,7 @@ function Evidence() {
   const [clubId, setClubId] = useState(null)
   const [attendancePeriods, setAttendancePeriods] = useState([])
   const [attendanceDisplayDraft, setAttendanceDisplayDraft] = useState({})
+  const [attendanceDisplayLoaded, setAttendanceDisplayLoaded] = useState(false)
   const [query, setQuery] = useState('')
   const [calendarDate, setCalendarDate] = useState(() => new Date())
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDate())
@@ -1352,8 +1353,11 @@ function Evidence() {
   useEffect(() => {
     if (!clubId) {
       setAttendanceDisplayDraft({})
+      setAttendanceDisplayLoaded(false)
       return
     }
+
+    setAttendanceDisplayLoaded(false)
 
     const loadAttendanceDisplayDraft = async () => {
       try {
@@ -1388,6 +1392,8 @@ function Evidence() {
         } catch {
           setAttendanceDisplayDraft({})
         }
+      } finally {
+        setAttendanceDisplayLoaded(true)
       }
     }
 
@@ -1395,7 +1401,7 @@ function Evidence() {
   }, [clubId])
 
   useEffect(() => {
-    if (!clubId) return
+    if (!clubId || !attendanceDisplayLoaded) return
     const normalized = normalizeAttendanceDisplayDraft(attendanceMetrics, attendanceDisplayDraft)
     const prevSignature = JSON.stringify(attendanceDisplayDraft || {})
     const nextSignature = JSON.stringify(normalized || {})
@@ -1407,7 +1413,7 @@ function Evidence() {
     } catch {
       // no-op
     }
-  }, [clubId, attendanceMetrics, attendanceDisplayDraft])
+  }, [clubId, attendanceDisplayLoaded, attendanceMetrics, attendanceDisplayDraft])
 
   useEffect(() => {
     try {

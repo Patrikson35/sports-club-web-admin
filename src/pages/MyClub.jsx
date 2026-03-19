@@ -879,6 +879,7 @@ function MyClub() {
     divisions: {},
     defaultDivisionId: ''
   })
+  const [trainingExerciseDisplayLoaded, setTrainingExerciseDisplayLoaded] = useState(false)
   const [trainingExerciseDisplaySaving, setTrainingExerciseDisplaySaving] = useState(false)
   const [showExerciseCategoryForm, setShowExerciseCategoryForm] = useState(false)
   const [exerciseCategoryDraft, setExerciseCategoryDraft] = useState({ name: '', subcategories: [''], assignedDivisionGroups: {} })
@@ -1027,6 +1028,7 @@ function MyClub() {
 
   useEffect(() => {
     const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
+    setTrainingExerciseDisplayLoaded(false)
 
     const resolveLocalSettings = () => {
       try {
@@ -1080,6 +1082,8 @@ function MyClub() {
         }
       } catch {
         setTrainingExerciseDisplaySettings(resolveLocalSettings())
+      } finally {
+        setTrainingExerciseDisplayLoaded(true)
       }
     }
 
@@ -1087,13 +1091,15 @@ function MyClub() {
   }, [clubId])
 
   useEffect(() => {
+    if (!trainingExerciseDisplayLoaded) return
+
     const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
     try {
       localStorage.setItem(storageKey, JSON.stringify(trainingExerciseDisplaySettings))
     } catch {
       // Ignore write failures and keep in-memory state.
     }
-  }, [clubId, trainingExerciseDisplaySettings])
+  }, [clubId, trainingExerciseDisplayLoaded, trainingExerciseDisplaySettings])
 
   useEffect(() => {
     if (!Array.isArray(trainingDivisions) || trainingDivisions.length === 0) {
