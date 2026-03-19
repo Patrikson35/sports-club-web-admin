@@ -3283,22 +3283,6 @@ function MyClub() {
       .find((metricId) => sourceMetrics[metricId] === true) || ''
   }
 
-  useEffect(() => {
-    const metricIds = displaySettingsMetrics
-      .map((metric) => String(metric?.id || '').trim())
-      .filter(Boolean)
-
-    if (metricIds.length === 0) {
-      setNewTopBlockMetricId('')
-      return
-    }
-
-    setNewTopBlockMetricId((prev) => {
-      const resolvedPrev = String(prev || '').trim()
-      return metricIds.includes(resolvedPrev) ? resolvedPrev : metricIds[0]
-    })
-  }, [displaySettingsMetrics])
-
   const toggleTopBlockMetricCell = (rowId, metricId, checked) => {
     const resolvedRowId = String(rowId || '').trim()
     const resolvedMetricId = String(metricId || '').trim()
@@ -4594,6 +4578,22 @@ function MyClub() {
 
   const metricsSorted = [...metrics]
   const displaySettingsMetrics = metricsSorted.filter((metric) => metric?.isActive !== false)
+
+  useEffect(() => {
+    const metricIds = displaySettingsMetrics
+      .map((metric) => String(metric?.id || '').trim())
+      .filter(Boolean)
+
+    if (metricIds.length === 0) {
+      setNewTopBlockMetricId('')
+      return
+    }
+
+    setNewTopBlockMetricId((prev) => {
+      const resolvedPrev = String(prev || '').trim()
+      return metricIds.includes(resolvedPrev) ? resolvedPrev : metricIds[0]
+    })
+  }, [displaySettingsMetrics])
 
   const activeMetricsCount = metrics.filter((metric) => metric.isActive).length
   const availableFormulaMetrics = metrics.filter((metric) => String(metric.id) !== String(editingMetricId || ''))
