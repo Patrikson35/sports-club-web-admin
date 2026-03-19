@@ -892,6 +892,7 @@ function MyClub() {
   const [attendanceDisplayDraft, setAttendanceDisplayDraft] = useState({ topBlockRows: [], tableColumns: {}, evidenceColumns: {} })
   const [attendanceDisplayLoaded, setAttendanceDisplayLoaded] = useState(false)
   const [attendanceDisplaySaving, setAttendanceDisplaySaving] = useState(false)
+  const [newTopBlockMetricId, setNewTopBlockMetricId] = useState('')
   const [activeMembersSection, setActiveMembersSection] = useState('categories')
   const [activeBasicSection, setActiveBasicSection] = useState('basicInfo')
   const [activeExerciseDatabaseSection, setActiveExerciseDatabaseSection] = useState('exerciseList')
@@ -3282,11 +3283,21 @@ function MyClub() {
       .find((metricId) => sourceMetrics[metricId] === true) || ''
   }
 
-  const getResolvedTopBlockMetricId = (row) => {
-    const selectedMetricId = getSelectedTopBlockMetricId(row)
-    if (selectedMetricId) return selectedMetricId
-    return String(displaySettingsMetrics[0]?.id || '')
-  }
+  useEffect(() => {
+    const metricIds = displaySettingsMetrics
+      .map((metric) => String(metric?.id || '').trim())
+      .filter(Boolean)
+
+    if (metricIds.length === 0) {
+      setNewTopBlockMetricId('')
+      return
+    }
+
+    setNewTopBlockMetricId((prev) => {
+      const resolvedPrev = String(prev || '').trim()
+      return metricIds.includes(resolvedPrev) ? resolvedPrev : metricIds[0]
+    })
+  }, [displaySettingsMetrics])
 
   const toggleTopBlockMetricCell = (rowId, metricId, checked) => {
     const resolvedRowId = String(rowId || '').trim()
@@ -3344,51 +3355,31 @@ function MyClub() {
     }))
   }
 
-  const selectTopBlockRowMetric = (rowId, metricId) => {
-    const resolvedRowId = String(rowId || '').trim()
-    const resolvedMetricId = String(metricId || '').trim()
-    if (!resolvedRowId) return
-    if (!resolvedMetricId) return
-
-    const selectedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '') === resolvedMetricId)
-
-    setAttendanceDisplayDraft((prev) => ({
-      ...prev,
-      topBlockRows: (Array.isArray(prev.topBlockRows) ? prev.topBlockRows : []).map((row) => {
-        if (String(row?.id || '') !== resolvedRowId) return row
-
-        const metricIds = displaySettingsMetrics
-          .map((metric) => String(metric?.id || '').trim())
-          .filter(Boolean)
-
-        return {
-          ...row,
-          name: String(selectedMetric?.name || row?.name || ''),
-          metrics: metricIds.reduce((acc, id) => {
-            acc[id] = id === resolvedMetricId
-            return acc
-          }, {})
-        }
-      })
-    }))
-  }
-
-  const addTopBlockRow = () => {
+  const addTopBlockRow = (selectedMetricId = '') => {
     setAttendanceDisplayDraft((prev) => {
       const metricIds = displaySettingsMetrics.map((metric) => String(metric.id)).filter(Boolean)
+      if (metricIds.length === 0) return prev
+
       const currentRows = Array.isArray(prev.topBlockRows) ? prev.topBlockRows : []
       const nextIndex = currentRows.length + 1
 
       const usedMetricIds = new Set(currentRows.map((row) => getSelectedTopBlockMetricId(row)).filter(Boolean))
       const firstUnusedMetricId = metricIds.find((metricId) => !usedMetricIds.has(metricId)) || String(metricIds[0] || '')
-      const selectedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '') === firstUnusedMetricId)
+      const resolvedSelectedMetricId = metricIds.includes(String(selectedMetricId || '').trim())
+        ? String(selectedMetricId || '').trim()
+        : firstUnusedMetricId
+      const selectedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '') === resolvedSelectedMetricId)
       const newRow = buildDefaultTopBlockRow(metricIds, nextIndex - 1, String(selectedMetric?.name || `Karta ${nextIndex}`))
-      if (firstUnusedMetricId) {
+      if (resolvedSelectedMetricId) {
         newRow.metrics = metricIds.reduce((acc, metricId) => {
-          acc[metricId] = metricId === firstUnusedMetricId
+          acc[metricId] = metricId === resolvedSelectedMetricId
           return acc
         }, {})
       }
+
+      const usedAfterInsert = new Set([...usedMetricIds, resolvedSelectedMetricId])
+      const nextSelectableMetricId = metricIds.find((metricId) => !usedAfterInsert.has(metricId)) || resolvedSelectedMetricId
+      setNewTopBlockMetricId(String(nextSelectableMetricId || ''))
 
       return {
         ...prev,
@@ -7943,22 +7934,9 @@ function MyClub() {
                                   <tr key={`top-block-row-${row.id}`}>
                                     <td>
                                       <div className="attendance-display-row-name-wrap">
-                                        <select
-                                          className="metrics-control attendance-display-row-name"
-                                          value={getResolvedTopBlockMetricId(row)}
-                                          onChange={(event) => selectTopBlockRowMetric(row.id, event.target.value)}
-                                        >
-                                          {displaySettingsMetrics.map((metric) => {
-                                            const metricId = String(metric?.id || '')
-                                            const shortName = String(metric?.shortName || '').trim()
-                                            const label = shortName ? `${metric.name} (${shortName})` : metric.name
-                                            return (
-                                              <option key={`top-row-select-option-${row.id}-${metricId}`} value={metricId}>
-                                                {label}
-                                              </option>
-                                            )
-                                          })}
-                                        </select>
+                                        <span className="attendance-display-row-title">
+                                          {String(row?.name || '').trim() || `Karta ${index + 1}`}
+                                        </span>
                                         <button
                                           type="button"
                                           className="attendance-display-delete-btn"
@@ -7987,10 +7965,26 @@ function MyClub() {
                             </table>
                             </div>
                             <div className="form-actions" style={{ marginTop: '0.7rem' }}>
+                              <select
+                                className="metrics-control attendance-display-row-name"
+                                value={newTopBlockMetricId}
+                                onChange={(event) => setNewTopBlockMetricId(event.target.value)}
+                              >
+                                {displaySettingsMetrics.map((metric) => {
+                                  const metricId = String(metric?.id || '')
+                                  const shortName = String(metric?.shortName || '').trim()
+                                  const label = shortName ? `${metric.name} (${shortName})` : metric.name
+                                  return (
+                                    <option key={`top-row-add-option-${metricId}`} value={metricId}>
+                                      {label}
+                                    </option>
+                                  )
+                                })}
+                              </select>
                               <button
                                 type="button"
                                 className="manager-add-btn attendance-display-add-card-btn"
-                                onClick={addTopBlockRow}
+                                onClick={() => addTopBlockRow(newTopBlockMetricId)}
                               >
                                 Pridať kartu do horného bloku
                               </button>
