@@ -1577,7 +1577,34 @@ function Planner() {
           }
         }))
       } else {
-        await Promise.all(createPayloads.map((payload) => api.createTeamTrainingSession(teamId, payload)))
+        for (const payload of createPayloads) {
+          let created = false
+          let lastError = null
+
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            try {
+              await api.createTeamTrainingSession(teamId, payload)
+              created = true
+              break
+            } catch (error) {
+              lastError = error
+              // Retry once for bulk-create requests that fail on the first pass.
+              if (attempt === 0) {
+                await new Promise((resolve) => setTimeout(resolve, 120))
+              }
+            }
+          }
+
+          if (!created) {
+            const failedDate = String(payload?.date || '').trim()
+            if (failedDate && lastError) {
+              const wrappedError = new Error(`Nepodarilo sa uložiť udalosť pre dátum ${failedDate}: ${getApiErrorMessage(lastError)}`)
+              wrappedError.cause = lastError
+              throw wrappedError
+            }
+            throw lastError || new Error('Nepodarilo sa uložiť hromadnú udalosť')
+          }
+        }
 
         const rangeStart = activeView === 'week'
           ? new Date(displayedWeekStartDate.getFullYear(), displayedWeekStartDate.getMonth(), displayedWeekStartDate.getDate())
