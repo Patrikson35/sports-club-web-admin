@@ -329,6 +329,82 @@ const normalizeRole = (value) => {
   return normalized === 'club_admin' ? 'club' : normalized
 }
 
+const getPlannerFallbackStorageKey = (teamId) => `plannerSessionsFallback:${String(teamId || '').trim() || 'unknown'}`
+
+const readPlannerFallbackSessions = (teamId) => {
+  try {
+    const raw = localStorage.getItem(getPlannerFallbackStorageKey(teamId))
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const writePlannerFallbackSessions = (teamId, sessions) => {
+  try {
+    localStorage.setItem(getPlannerFallbackStorageKey(teamId), JSON.stringify(Array.isArray(sessions) ? sessions : []))
+  } catch {
+    // ignore local storage failures
+  }
+}
+
+const getSessionDateKey = (session) => {
+  const fromDate = String(session?.date || '').trim()
+  if (fromDate) return fromDate
+
+  const startIso = String(session?.startAt || session?.start_at || '').trim()
+  if (!startIso) return ''
+
+  const parsed = new Date(startIso)
+  if (Number.isNaN(parsed.getTime())) return ''
+  return toDateKey(parsed)
+}
+
+const upsertPlannerFallbackSessions = (teamId, sessions) => {
+  const source = Array.isArray(sessions) ? sessions : []
+  const existing = readPlannerFallbackSessions(teamId)
+  const merged = [...existing]
+
+  source.forEach((session) => {
+    const id = String(session?.id || '').trim()
+    if (!id) return
+    const index = merged.findIndex((item) => String(item?.id || '').trim() === id)
+    if (index === -1) {
+      merged.push(session)
+      return
+    }
+    merged[index] = {
+      ...merged[index],
+      ...session,
+    }
+  })
+
+  writePlannerFallbackSessions(teamId, merged)
+}
+
+const removePlannerFallbackSession = (teamId, sessionId) => {
+  const safeId = String(sessionId || '').trim()
+  if (!safeId) return
+  const existing = readPlannerFallbackSessions(teamId)
+  writePlannerFallbackSessions(
+    teamId,
+    existing.filter((session) => String(session?.id || '').trim() !== safeId)
+  )
+}
+
+const filterPlannerFallbackSessionsByRange = (sessions, startDateKey, endDateKey) => {
+  const from = String(startDateKey || '').trim()
+  const to = String(endDateKey || '').trim()
+  if (!from || !to) return Array.isArray(sessions) ? sessions : []
+
+  return (Array.isArray(sessions) ? sessions : []).filter((session) => {
+    const dateKey = getSessionDateKey(session)
+    if (!dateKey) return false
+    return dateKey >= from && dateKey <= to
+  })
+}
+
 function Planner() {
   const [activeView, setActiveView] = useState('month')
   const [activeMode, setActiveMode] = useState('plan')
@@ -854,6 +930,17 @@ function Planner() {
           : (Array.isArray(result.value?.trainings) ? result.value.trainings : [])
         sessions.forEach((session) => {
           merged.push({ ...session, teamId: resolveSessionTeamId(session, teamIds[index]) })
+        })
+      })
+
+      teamIds.forEach((teamId) => {
+        const localSessions = filterPlannerFallbackSessionsByRange(
+          readPlannerFallbackSessions(teamId),
+          params.start_date,
+          params.end_date
+        )
+        localSessions.forEach((session) => {
+          merged.push({ ...session, teamId: resolveSessionTeamId(session, teamId) })
         })
       })
 
@@ -1557,7 +1644,13 @@ function Planner() {
     try {
       if (editingEventId) {
         const payload = createPayloads[0]
-        await api.updateTeamTrainingSession(editingEventId, teamId, payload)
+        try {
+          await api.updateTeamTrainingSession(editingEventId, teamId, payload)
+        } catch (error) {
+          if (!api.isEndpointNotFound(error)) {
+            throw error
+          }
+        }
 
         setPlannerSessions((prev) => prev.map((session) => {
           if (String(session?.id || '') !== String(editingEventId)) return session
@@ -1576,26 +1669,70 @@ function Planner() {
             session_type: payload.session_type,
           }
         }))
-      } else {
-        await Promise.all(createPayloads.map((payload) => api.createTeamTrainingSession(teamId, payload)))
 
-        const rangeStart = activeView === 'week'
-          ? new Date(displayedWeekStartDate.getFullYear(), displayedWeekStartDate.getMonth(), displayedWeekStartDate.getDate())
-          : new Date(displayedMonthDate.getFullYear(), displayedMonthDate.getMonth(), 1)
-        const rangeEnd = activeView === 'week'
-          ? new Date(displayedWeekStartDate.getFullYear(), displayedWeekStartDate.getMonth(), displayedWeekStartDate.getDate() + 6)
-          : new Date(displayedMonthDate.getFullYear(), displayedMonthDate.getMonth() + 1, 0)
-        const refreshed = await api.getTeamTrainingSessions(teamId, {
-          start_date: toDateKey(rangeStart),
-          end_date: toDateKey(rangeEnd)
-        })
-        const refreshedSessions = Array.isArray(refreshed?.sessions)
-          ? refreshed.sessions
-          : (Array.isArray(refreshed?.trainings) ? refreshed.trainings : [])
-        setPlannerSessions((prev) => {
-          const others = prev.filter((session) => resolveSessionTeamId(session) !== teamId)
-          return [...others, ...refreshedSessions.map((session) => ({ ...session, teamId: resolveSessionTeamId(session, teamId) }))]
-        })
+        upsertPlannerFallbackSessions(teamId, [{
+          id: editingEventId,
+          teamId,
+          team_id: teamId,
+          title,
+          date: payload.date,
+          start_time: payload.start_time,
+          end_time: payload.end_time,
+          start_at: payload.start_at,
+          end_at: payload.end_at,
+          location: payload.location,
+          recurrence_rule: payload.recurrence_rule,
+          session_type: payload.session_type,
+        }])
+      } else {
+        let createdViaApi = true
+        try {
+          await Promise.all(createPayloads.map((payload) => api.createTeamTrainingSession(teamId, payload)))
+        } catch (error) {
+          if (!api.isEndpointNotFound(error)) {
+            throw error
+          }
+          createdViaApi = false
+        }
+
+        if (createdViaApi) {
+          const rangeStart = activeView === 'week'
+            ? new Date(displayedWeekStartDate.getFullYear(), displayedWeekStartDate.getMonth(), displayedWeekStartDate.getDate())
+            : new Date(displayedMonthDate.getFullYear(), displayedMonthDate.getMonth(), 1)
+          const rangeEnd = activeView === 'week'
+            ? new Date(displayedWeekStartDate.getFullYear(), displayedWeekStartDate.getMonth(), displayedWeekStartDate.getDate() + 6)
+            : new Date(displayedMonthDate.getFullYear(), displayedMonthDate.getMonth() + 1, 0)
+          const refreshed = await api.getTeamTrainingSessions(teamId, {
+            start_date: toDateKey(rangeStart),
+            end_date: toDateKey(rangeEnd)
+          })
+          const refreshedSessions = Array.isArray(refreshed?.sessions)
+            ? refreshed.sessions
+            : (Array.isArray(refreshed?.trainings) ? refreshed.trainings : [])
+          setPlannerSessions((prev) => {
+            const others = prev.filter((session) => resolveSessionTeamId(session) !== teamId)
+            return [...others, ...refreshedSessions.map((session) => ({ ...session, teamId: resolveSessionTeamId(session, teamId) }))]
+          })
+        } else {
+          const nowSeed = Date.now()
+          const fallbackCreatedSessions = createPayloads.map((payload, index) => ({
+            id: `local-${nowSeed}-${index}`,
+            teamId,
+            team_id: teamId,
+            title,
+            date: payload.date,
+            start_time: payload.start_time,
+            end_time: payload.end_time,
+            start_at: payload.start_at,
+            end_at: payload.end_at,
+            location: payload.location,
+            recurrence_rule: payload.recurrence_rule,
+            session_type: payload.session_type,
+          }))
+
+          upsertPlannerFallbackSessions(teamId, fallbackCreatedSessions)
+          setPlannerSessions((prev) => ([...prev, ...fallbackCreatedSessions]))
+        }
       }
 
       setSidebarOpen(false)
@@ -1662,8 +1799,15 @@ function Planner() {
 
     try {
       setIsSubmittingEvent(true)
-      await api.deleteTeamTrainingSession(editingEventId, eventForm.teamId)
+      try {
+        await api.deleteTeamTrainingSession(editingEventId, eventForm.teamId)
+      } catch (error) {
+        if (!api.isEndpointNotFound(error)) {
+          throw error
+        }
+      }
       setPlannerSessions((prev) => prev.filter((session) => String(session?.id || '') !== String(editingEventId)))
+      removePlannerFallbackSession(eventForm.teamId, editingEventId)
       setSidebarOpen(false)
       resetEventForm()
     } catch (error) {
