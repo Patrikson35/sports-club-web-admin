@@ -993,6 +993,11 @@ function MyClub() {
   }, [success])
 
   useEffect(() => {
+    if (!clubId) {
+      setTrainingDivisions([])
+      return
+    }
+
     const storageKey = `trainingDivisionNames:${clubId || 'global'}`
     try {
       const raw = localStorage.getItem(storageKey)
@@ -1018,6 +1023,8 @@ function MyClub() {
   }, [clubId])
 
   useEffect(() => {
+    if (!clubId) return
+
     const storageKey = `trainingDivisionNames:${clubId || 'global'}`
     try {
       localStorage.setItem(storageKey, JSON.stringify(trainingDivisions))
@@ -1027,6 +1034,11 @@ function MyClub() {
   }, [clubId, trainingDivisions])
 
   useEffect(() => {
+    if (!clubId) {
+      setTrainingExerciseDisplayLoaded(false)
+      return
+    }
+
     const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
     setTrainingExerciseDisplayLoaded(false)
 
@@ -1109,7 +1121,7 @@ function MyClub() {
   }, [clubId])
 
   useEffect(() => {
-    if (!trainingExerciseDisplayLoaded) return
+    if (!clubId || !trainingExerciseDisplayLoaded) return
 
     const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
     try {
@@ -1120,6 +1132,8 @@ function MyClub() {
   }, [clubId, trainingExerciseDisplayLoaded, trainingExerciseDisplaySettings])
 
   useEffect(() => {
+    if (!clubId || !trainingExerciseDisplayLoaded) return
+
     if (!Array.isArray(trainingDivisions) || trainingDivisions.length === 0) {
       setTrainingExerciseDisplaySettings((prev) => ({
         ...prev,
@@ -1158,7 +1172,7 @@ function MyClub() {
         return String(nameMatch?.id || trainingDivisions[0]?.id || '')
       })()
     }))
-  }, [trainingDivisions])
+  }, [clubId, trainingDivisions, trainingExerciseDisplayLoaded])
 
   useEffect(() => {
     const storageKey = `exerciseCategories:${clubId || 'global'}`
