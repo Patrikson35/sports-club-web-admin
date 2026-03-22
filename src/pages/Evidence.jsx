@@ -137,6 +137,30 @@ const toMonthDateKey = (year, monthIndex, day) => {
   return `${year}-${month}-${dayValue}`
 }
 
+const getPlannerFallbackStorageKey = (teamId) => `plannerSessionsFallback:${String(teamId || '').trim() || 'unknown'}`
+
+const readPlannerFallbackSessions = (teamId) => {
+  try {
+    const raw = localStorage.getItem(getPlannerFallbackStorageKey(teamId))
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const filterPlannerFallbackSessionsByRange = (sessions, startDateKey, endDateKey) => {
+  const from = String(startDateKey || '').trim()
+  const to = String(endDateKey || '').trim()
+  if (!from || !to) return Array.isArray(sessions) ? sessions : []
+
+  return (Array.isArray(sessions) ? sessions : []).filter((session) => {
+    const dateKey = getSessionDateKey(session)
+    if (!dateKey) return false
+    return dateKey >= from && dateKey <= to
+  })
+}
+
 const getSessionDateKey = (session) => {
   const directDate = String(session?.date || '').trim()
   if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) return directDate
@@ -807,6 +831,23 @@ function Evidence() {
     let isMounted = true
 
     const loadPlannedSessions = async () => {
+      const merged = []
+      const mergedKeys = new Set()
+      const addMergedSession = (session) => {
+        if (!session || typeof session !== 'object') return
+
+        const id = String(session?.id || '').trim()
+        const dateKey = getSessionDateKey(session)
+        const startToken = String(session?.startAt || session?.start_at || session?.startTime || session?.start_time || '').trim()
+        const teamToken = String(session?.team_id || session?.teamId || '').trim()
+        const typeToken = String(session?.sessionType || session?.session_type || session?.type || '').trim().toLowerCase()
+        const key = id || `${dateKey}|${startToken}|${teamToken}|${typeToken}`
+        if (!key || mergedKeys.has(key)) return
+
+        mergedKeys.add(key)
+        merged.push(session)
+      }
+
       const responses = await Promise.allSettled(teamIds.map((teamId) => api.getTeamTrainingSessions(teamId, {
         start_date: startDate,
         end_date: endDate
@@ -814,13 +855,21 @@ function Evidence() {
 
       if (!isMounted) return
 
-      const merged = []
       responses.forEach((result) => {
         if (result.status !== 'fulfilled') return
         const sessions = Array.isArray(result.value?.sessions)
           ? result.value.sessions
           : (Array.isArray(result.value?.trainings) ? result.value.trainings : [])
-        sessions.forEach((session) => merged.push(session))
+        sessions.forEach((session) => addMergedSession(session))
+      })
+
+      teamIds.forEach((teamId) => {
+        const fallbackSessions = filterPlannerFallbackSessionsByRange(
+          readPlannerFallbackSessions(teamId),
+          startDate,
+          endDate
+        )
+        fallbackSessions.forEach((session) => addMergedSession(session))
       })
 
       setPlannedSessions(merged)
