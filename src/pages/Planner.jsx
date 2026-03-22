@@ -473,13 +473,17 @@ function Planner() {
             if (!groupName) return null
 
             const prefix = `${divisionName} - `
-            const cleaned = groupName.toLowerCase().startsWith(prefix.toLowerCase())
+            const withoutDivisionPrefix = groupName.toLowerCase().startsWith(prefix.toLowerCase())
               ? groupName.slice(prefix.length).trim()
               : groupName
+            const hasDashSeparator = withoutDivisionPrefix.includes(' - ')
+            const cleaned = hasDashSeparator
+              ? withoutDivisionPrefix.split(' - ').slice(1).join(' - ').trim()
+              : withoutDivisionPrefix
 
             return {
-              value: cleaned,
-              label: cleaned
+              value: cleaned || withoutDivisionPrefix,
+              label: cleaned || withoutDivisionPrefix
             }
           }).filter(Boolean)
         })
