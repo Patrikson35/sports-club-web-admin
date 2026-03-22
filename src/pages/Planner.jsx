@@ -51,33 +51,6 @@ const DEFAULT_EVENT_LABEL_BY_TYPE = {
   cancelled: 'Zrusena udalost',
   tournament: 'Turnaj'
 }
-
-const createEmptyNonTjLabelRow = () => ({ left: '', right: '' })
-
-const normalizeNonTjLabelRows = (rows) => {
-  if (!Array.isArray(rows) || rows.length === 0) return [createEmptyNonTjLabelRow()]
-
-  const normalized = rows.map((row) => ({
-    left: String(row?.left || '').trim(),
-    right: String(row?.right || '').trim()
-  }))
-
-  return normalized.length > 0 ? normalized : [createEmptyNonTjLabelRow()]
-}
-
-const buildNonTjEventLabel = (rows) => {
-  const normalized = normalizeNonTjLabelRows(rows)
-  const parts = normalized
-    .map((row) => {
-      const left = String(row?.left || '').trim()
-      const right = String(row?.right || '').trim()
-      if (left && right) return `${left} - ${right}`
-      return left || right
-    })
-    .filter(Boolean)
-
-  return parts.join(' | ')
-}
 const hexToRgba = (hexColor, alpha) => {
   const normalized = String(hexColor || '').replace('#', '')
   const expanded = normalized.length === 3
@@ -369,7 +342,6 @@ function Planner() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eventForm, setEventForm] = useState({
     label: '',
-    nonTjLabelRows: [createEmptyNonTjLabelRow()],
     selectedTrainingGroups: [],
     type: 'training',
     indicatorCode: '',
@@ -1320,55 +1292,8 @@ function Planner() {
     setEventForm((prev) => ({
       ...prev,
       indicatorCode: code,
-      type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training',
-      nonTjLabelRows: code === 'TJ' ? prev.nonTjLabelRows : normalizeNonTjLabelRows(prev.nonTjLabelRows)
+      type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training'
     }))
-  }, [])
-
-  const handleNonTjRowChange = useCallback((index, field, value) => {
-    const safeField = field === 'right' ? 'right' : 'left'
-    const safeValue = String(value || '')
-
-    setEventForm((prev) => {
-      const nextRows = normalizeNonTjLabelRows(prev.nonTjLabelRows).map((row, rowIndex) => {
-        if (rowIndex !== index) return row
-        return {
-          ...row,
-          [safeField]: safeValue
-        }
-      })
-
-      return {
-        ...prev,
-        nonTjLabelRows: nextRows,
-        label: buildNonTjEventLabel(nextRows)
-      }
-    })
-  }, [])
-
-  const addNonTjLabelRow = useCallback(() => {
-    setEventForm((prev) => {
-      const nextRows = [...normalizeNonTjLabelRows(prev.nonTjLabelRows), createEmptyNonTjLabelRow()]
-      return {
-        ...prev,
-        nonTjLabelRows: nextRows,
-        label: buildNonTjEventLabel(nextRows)
-      }
-    })
-  }, [])
-
-  const removeNonTjLabelRow = useCallback((index) => {
-    setEventForm((prev) => {
-      const sourceRows = normalizeNonTjLabelRows(prev.nonTjLabelRows)
-      const nextRows = sourceRows.filter((_, rowIndex) => rowIndex !== index)
-      const safeRows = nextRows.length > 0 ? nextRows : [createEmptyNonTjLabelRow()]
-
-      return {
-        ...prev,
-        nonTjLabelRows: safeRows,
-        label: buildNonTjEventLabel(safeRows)
-      }
-    })
   }, [])
 
   const handleTrainingGroupToggle = useCallback((groupName) => {
@@ -1460,7 +1385,6 @@ function Planner() {
     setEditingEventId('')
     setEventForm({
       label: '',
-      nonTjLabelRows: [createEmptyNonTjLabelRow()],
       selectedTrainingGroups: [],
       type: 'training',
       indicatorCode: availableIndicatorCodes[0] || '',
@@ -1512,34 +1436,12 @@ function Planner() {
         .filter(Boolean)
     )
     const selectedTrainingGroups = labelItems.filter((item) => trainingGroupValueSet.has(item))
-    const recurrenceMeta = parsePlannerRecurrenceRule(event?.recurrenceRule || event?.recurrence_rule)
-    const rawNonTjRows = Array.isArray(recurrenceMeta?.nonTjLabelRows)
-      ? recurrenceMeta.nonTjLabelRows
-      : []
-    const nonTjLabelRows = rawNonTjRows.length > 0
-      ? normalizeNonTjLabelRows(rawNonTjRows)
-      : normalizeNonTjLabelRows(eventLabel.split('|').map((item) => {
-          const text = String(item || '').trim()
-          if (!text) return createEmptyNonTjLabelRow()
-          const parts = text.split(' - ')
-          if (parts.length >= 2) {
-            return {
-              left: String(parts.shift() || '').trim(),
-              right: String(parts.join(' - ') || '').trim()
-            }
-          }
-          return {
-            left: text,
-            right: ''
-          }
-        }))
 
     setEditingEventId(eventId)
     setSidebarOpen(true)
     setEventForm((prev) => ({
       ...prev,
       label: eventLabel,
-      nonTjLabelRows,
       selectedTrainingGroups,
       type: String(event?.type || 'training'),
       indicatorCode: String(event?.metricCode || prev.indicatorCode || availableIndicatorCodes[0] || 'TJ'),
@@ -1605,11 +1507,9 @@ function Planner() {
     const shouldUseTrainingGroupLabel = selectedIndicatorCode === 'TJ'
       && Array.isArray(trainingDivisionGroupOptions)
       && trainingDivisionGroupOptions.length > 0
-    const normalizedNonTjRows = normalizeNonTjLabelRows(eventForm.nonTjLabelRows)
-    const nonTjEventLabel = buildNonTjEventLabel(normalizedNonTjRows)
     const resolvedEventLabel = shouldUseTrainingGroupLabel && selectedTrainingGroups.length > 0
       ? selectedTrainingGroups.join(', ')
-      : (nonTjEventLabel || String(eventForm.label || '').trim())
+      : String(eventForm.label || '').trim()
     const title = resolvedEventLabel || DEFAULT_EVENT_LABEL_BY_TYPE[plannerType] || 'Trening'
 
     const selectedFieldMeta = fieldOptions.find((field) => String(field.id) === String(eventForm.fieldId))
@@ -1644,7 +1544,6 @@ function Planner() {
           fieldId: selectedFieldMeta?.id || '',
           fieldName: selectedFieldMeta?.name || '',
           selectedFieldParts: safeFieldParts,
-          nonTjLabelRows: selectedIndicatorCode === 'TJ' ? [] : normalizedNonTjRows,
         })
       }
     }).filter(Boolean)
@@ -1722,7 +1621,6 @@ function Planner() {
   const shouldUseTrainingDivisionLabelSelect = String(eventForm.indicatorCode || '').trim().toUpperCase() === 'TJ'
     && Array.isArray(trainingDivisionGroupOptions)
     && trainingDivisionGroupOptions.length > 0
-  const nonTjLabelRows = normalizeNonTjLabelRows(eventForm.nonTjLabelRows)
 
   const selectedTrainingGroups = Array.isArray(eventForm.selectedTrainingGroups)
     ? eventForm.selectedTrainingGroups.map((item) => String(item || '').trim()).filter(Boolean)
@@ -2124,37 +2022,12 @@ function Planner() {
                 </div>
               </details>
             ) : (
-              <div className="planner-stitch-nontj-rows">
-                {nonTjLabelRows.map((row, index) => (
-                  <div key={`nontj-row-${index}`} className="planner-stitch-nontj-row">
-                    <input
-                      type="text"
-                      placeholder="Názov 1"
-                      value={row.left}
-                      onChange={(e) => handleNonTjRowChange(index, 'left', e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Názov 2"
-                      value={row.right}
-                      onChange={(e) => handleNonTjRowChange(index, 'right', e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="planner-stitch-nontj-remove"
-                      onClick={() => removeNonTjLabelRow(index)}
-                      disabled={nonTjLabelRows.length <= 1}
-                      aria-label={`Odstrániť riadok ${index + 1}`}
-                      title="Odstrániť riadok"
-                    >
-                      <span className="material-icons-round" aria-hidden="true">close</span>
-                    </button>
-                  </div>
-                ))}
-                <button type="button" className="planner-stitch-nontj-add" onClick={addNonTjLabelRow}>
-                  Pridať riadok
-                </button>
-              </div>
+              <input
+                type="text"
+                placeholder="Napr. Tréning A..."
+                value={eventForm.label}
+                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value, selectedTrainingGroups: [] }))}
+              />
             )}
           </div>
           <div className="planner-stitch-form-row">
