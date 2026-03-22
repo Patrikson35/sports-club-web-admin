@@ -202,6 +202,31 @@ const getMetricCodeFromSession = (session) => {
   return METRIC_CODE_BY_SESSION_TYPE[rawType] || 'TJ'
 }
 
+const normalizeAttendanceSeasons = (payload) => {
+  const source = Array.isArray(payload?.seasons)
+    ? payload.seasons
+    : (Array.isArray(payload?.periods)
+        ? payload.periods
+        : (Array.isArray(payload?.attendanceSeasons)
+            ? payload.attendanceSeasons
+            : (Array.isArray(payload?.data) ? payload.data : [])))
+
+  return source
+    .map((item, index) => {
+      const idValue = item?.id ?? item?.seasonId ?? item?.season_id ?? index
+      const fromValue = item?.from ?? item?.from_date ?? item?.fromDate ?? ''
+      const toValue = item?.to ?? item?.to_date ?? item?.toDate ?? ''
+
+      return {
+        id: String(idValue),
+        name: String(item?.name || item?.title || 'Obdobie').trim(),
+        from: String(fromValue || '').trim(),
+        to: String(toValue || '').trim()
+      }
+    })
+    .filter((item) => item.id && item.from && item.to)
+}
+
 const buildMonthToDateTrendSnapshot = ({
   evidenceEntriesDraft,
   selectedCategory,
@@ -1380,22 +1405,62 @@ function Evidence() {
   }, [selectedCategory, visibleTeams])
 
   useEffect(() => {
-    if (!clubId) {
-      setAttendancePeriods([])
-      return
+    const storageKeys = [
+      `attendanceSeasons:${clubId || 'global'}`,
+      clubId ? `attendanceSeasons:${clubId}` : null,
+      'attendanceSeasons:global'
+    ].filter(Boolean)
+
+    const readLocalFallback = () => {
+      for (const key of storageKeys) {
+        try {
+          const raw = localStorage.getItem(key)
+          if (!raw) continue
+          const parsed = JSON.parse(raw)
+          const normalized = normalizeAttendanceSeasons({ seasons: parsed })
+          if (normalized.length > 0) return normalized
+        } catch {
+          // try next key
+        }
+      }
+      return []
     }
 
-    try {
-      const raw = localStorage.getItem(`attendanceSeasons:${clubId}`)
-      if (!raw) {
-        setAttendancePeriods([])
-        return
+    const writeLocalCache = (seasons) => {
+      storageKeys.forEach((key) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(seasons))
+        } catch {
+          // ignore storage write failures
+        }
+      })
+    }
+
+    let isMounted = true
+
+    const loadAttendancePeriods = async () => {
+      try {
+        const response = await api.getAttendanceSeasons()
+        if (!isMounted) return
+
+        const remoteSeasons = normalizeAttendanceSeasons(response)
+        if (remoteSeasons.length > 0) {
+          setAttendancePeriods(remoteSeasons)
+          writeLocalCache(remoteSeasons)
+          return
+        }
+      } catch {
+        // fallback to local cache
       }
 
-      const parsed = JSON.parse(raw)
-      setAttendancePeriods(Array.isArray(parsed) ? parsed : [])
-    } catch {
-      setAttendancePeriods([])
+      if (!isMounted) return
+      setAttendancePeriods(readLocalFallback())
+    }
+
+    loadAttendancePeriods()
+
+    return () => {
+      isMounted = false
     }
   }, [clubId])
 
