@@ -1323,6 +1323,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.16rem;
+  overflow: visible;
 }
 
 .evidence-calendar-day.has-planned {
@@ -1354,6 +1355,54 @@
   border-color: rgba(96, 165, 250, 0.9);
   background: rgba(24, 33, 52, 0.95);
   color: #dbeafe;
+}
+
+.evidence-calendar-day:hover,
+.evidence-calendar-day:focus-visible {
+  z-index: 12;
+}
+
+.evidence-calendar-day-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.4rem);
+  transform: translateX(-50%) translateY(4px);
+  width: min(19rem, 80vw);
+  max-height: 11rem;
+  overflow-y: auto;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(8, 13, 22, 0.97);
+  box-shadow: 0 14px 30px -16px rgba(2, 6, 23, 0.85);
+  border-radius: 0.5rem;
+  padding: 0.42rem 0.5rem;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.evidence-calendar-day:hover .evidence-calendar-day-tooltip,
+.evidence-calendar-day:focus-visible .evidence-calendar-day-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.evidence-calendar-day-tooltip-row {
+  font-size: 0.66rem;
+  line-height: 1.3;
+  color: #dbeafe;
+}
+
+.evidence-calendar-day-tooltip-row + .evidence-calendar-day-tooltip-row {
+  margin-top: 0.24rem;
+  padding-top: 0.24rem;
+  border-top: 1px solid rgba(96, 113, 147, 0.34);
+}
+
+.evidence-calendar-day-tooltip-more {
+  margin-top: 0.28rem;
+  font-size: 0.63rem;
+  color: #93c5fd;
 }
 
 .evidence-calendar-day.has-evidence {

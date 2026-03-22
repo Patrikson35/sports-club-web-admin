@@ -202,6 +202,46 @@ const getMetricCodeFromSession = (session) => {
   return METRIC_CODE_BY_SESSION_TYPE[rawType] || 'TJ'
 }
 
+const getSessionStartTimeLabel = (session) => {
+  const direct = String(session?.startTime || session?.start_time || '').trim()
+  if (/^\d{1,2}:\d{2}$/.test(direct)) {
+    const [h, m] = direct.split(':')
+    return `${String(Math.max(0, Math.min(23, Number(h) || 0))).padStart(2, '0')}:${String(Math.max(0, Math.min(59, Number(m) || 0))).padStart(2, '0')}`
+  }
+
+  const candidateValues = [
+    session?.startAt,
+    session?.start_at,
+    session?.date
+  ]
+
+  for (const value of candidateValues) {
+    const parsed = new Date(String(value || ''))
+    if (!Number.isNaN(parsed.getTime())) {
+      return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`
+    }
+  }
+
+  return ''
+}
+
+const getSessionDurationMinutes = (session) => {
+  const directMinutes = Number(session?.durationMinutes ?? session?.duration_minutes ?? session?.duration)
+  if (Number.isFinite(directMinutes) && directMinutes > 0) {
+    return Math.round(directMinutes)
+  }
+
+  const startCandidate = session?.startAt || session?.start_at
+  const endCandidate = session?.endAt || session?.end_at
+  const start = new Date(String(startCandidate || ''))
+  const end = new Date(String(endCandidate || ''))
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
+  const diffMinutes = Math.round((end.getTime() - start.getTime()) / 60000)
+  if (!Number.isFinite(diffMinutes) || diffMinutes <= 0) return null
+  return diffMinutes
+}
+
 const normalizeAttendanceSeasons = (payload) => {
   const source = Array.isArray(payload?.seasons)
     ? payload.seasons
@@ -1877,6 +1917,104 @@ function Evidence() {
     return result
   }, [calendarDate, plannedSessions, evidenceEntriesDraft, selectedCategory])
 
+  const calendarDayTooltipByDay = useMemo(() => {
+    const year = calendarDate.getFullYear()
+    const monthIndex = calendarDate.getMonth()
+    const targetPrefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}-`
+    const selectedCategoryId = String(selectedCategory || '')
+    const teamNameById = new Map(
+      (Array.isArray(visibleTeams) ? visibleTeams : []).map((team) => [String(team?.id ?? ''), String(team?.name || '').trim()])
+    )
+
+    const rowsByDay = new Map()
+    const appendRow = (day, row) => {
+      if (!Number.isInteger(day) || day < 1 || day > 31) return
+      const text = String(row || '').trim()
+      if (!text) return
+      const existing = rowsByDay.get(day) || []
+      existing.push(text)
+      rowsByDay.set(day, existing)
+    }
+
+    ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
+      const dateKey = getSessionDateKey(session)
+      if (!dateKey || !dateKey.startsWith(targetPrefix)) return
+
+      const day = Number(String(dateKey).slice(-2))
+      const teamId = String(session?.team_id ?? session?.teamId ?? '').trim()
+      const teamName = teamNameById.get(teamId)
+        || String(session?.teamName || session?.team_name || session?.categoryName || session?.category_name || '').trim()
+        || 'Kategória'
+      const metricCode = getMetricCodeFromSession(session)
+      const title = String(session?.title || session?.name || session?.label || 'Udalosť').trim()
+      const time = getSessionStartTimeLabel(session)
+      const duration = getSessionDurationMinutes(session)
+
+      appendRow(
+        day,
+        `${teamName} ${metricCode} ${title}${time ? ` o ${time}` : ''}${duration ? ` - ${duration} min` : ''}`
+      )
+    })
+
+    const evidenceAggregates = new Map()
+    Object.entries(evidenceEntriesDraft || {}).forEach(([entryKey, value]) => {
+      if (!value || typeof value !== 'object') return
+
+      const parsed = parseEvidenceEntryKey(entryKey)
+      const categoryId = String(parsed?.categoryId || '')
+      const dateKey = String(parsed?.dateKey || '')
+      const sessionId = String(parsed?.sessionId || 'default')
+      const metricId = String(parsed?.metricId || '')
+
+      if (!categoryId || !dateKey || !metricId) return
+      if (!dateKey.startsWith(targetPrefix)) return
+      if (selectedCategoryId !== 'all' && categoryId !== selectedCategoryId) return
+
+      const aggregateKey = `${categoryId}:${dateKey}:${sessionId}:${metricId}`
+      const previous = evidenceAggregates.get(aggregateKey) || {
+        categoryId,
+        dateKey,
+        sessionId,
+        metricId,
+        total: 0,
+        attended: 0,
+        minutes: []
+      }
+
+      previous.total += 1
+      if (value.attended !== false) {
+        previous.attended += 1
+        const parsedMinutes = Number(String(value.minutes || '').replace(/[^\d]/g, ''))
+        if (Number.isFinite(parsedMinutes) && parsedMinutes > 0) {
+          previous.minutes.push(parsedMinutes)
+        }
+      }
+
+      evidenceAggregates.set(aggregateKey, previous)
+    })
+
+    evidenceAggregates.forEach((aggregate) => {
+      const day = Number(String(aggregate.dateKey).slice(-2))
+      const metricCode = normalizeMetricCode(metricCodeById.get(String(aggregate.metricId || '')) || 'TJ') || 'TJ'
+      const teamName = teamNameById.get(String(aggregate.categoryId || '')) || 'Kategória'
+      const attendancePercent = aggregate.total > 0
+        ? Math.round((aggregate.attended / aggregate.total) * 100)
+        : 0
+      const avgMinutes = aggregate.minutes.length > 0
+        ? Math.round(aggregate.minutes.reduce((sum, value) => sum + value, 0) / aggregate.minutes.length)
+        : null
+      const metaKey = `${String(aggregate.categoryId || '')}:${String(aggregate.dateKey || '')}:${String(aggregate.sessionId || 'default')}`
+      const trainingTime = String(evidenceSessionMetaDraft?.[metaKey]?.trainingTime || '').trim()
+
+      appendRow(
+        day,
+        `${teamName} ${metricCode} Evidencia${trainingTime ? ` o ${trainingTime}` : ''}${avgMinutes ? ` - ${avgMinutes} min` : ''} účasť ${attendancePercent}%`
+      )
+    })
+
+    return rowsByDay
+  }, [calendarDate, selectedCategory, visibleTeams, plannedSessions, evidenceEntriesDraft, evidenceSessionMetaDraft, metricCodeById])
+
   const selectedCalendarDate = useMemo(() => {
     const year = calendarDate.getFullYear()
     const monthIndex = calendarDate.getMonth()
@@ -3384,6 +3522,7 @@ function Evidence() {
                 (() => {
                   const dayVisual = !cell.muted ? evidenceDayVisualsInCalendarMonth.get(cell.day) : null
                   const plannedBorder = !cell.muted ? plannedDayBorderByDay.get(cell.day) : null
+                  const tooltipRows = !cell.muted ? (calendarDayTooltipByDay.get(cell.day) || []) : []
                   return (
                 <button
                   key={cell.key}
@@ -3404,6 +3543,16 @@ function Evidence() {
                   }}
                 >
                   <span className="evidence-calendar-day-number">{cell.day}</span>
+                  {tooltipRows.length > 0 ? (
+                    <div className="evidence-calendar-day-tooltip" role="tooltip" aria-hidden="true">
+                      {tooltipRows.slice(0, 6).map((row, index) => (
+                        <div key={`tooltip-${cell.key}-${index}`} className="evidence-calendar-day-tooltip-row">{row}</div>
+                      ))}
+                      {tooltipRows.length > 6 ? (
+                        <div className="evidence-calendar-day-tooltip-more">+{tooltipRows.length - 6} ďalšie</div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </button>
                   )
                 })()
