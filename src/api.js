@@ -282,6 +282,21 @@ class APIClient {
     );
   }
 
+  isRetryableTrainingCreatePayloadError(error) {
+    const payloadMessage = String(error?.payload?.message || '').toLowerCase();
+    const payloadError = String(error?.payload?.error || '').toLowerCase();
+    const directMessage = String(error?.message || '').toLowerCase();
+    const merged = `${payloadMessage} ${payloadError} ${directMessage}`;
+
+    return (
+      merged.includes('missing required fields')
+      || merged.includes('required fields')
+      || merged.includes('missing required time range')
+      || merged.includes('validation failed')
+      || merged.includes('validacia zlyhala')
+    );
+  }
+
   async requestWithEndpointFallback(endpoints, options = {}) {
     let lastError = null;
 
@@ -1196,6 +1211,18 @@ class APIClient {
 
     const payloadForSessionEndpoints = { ...payload };
     const payloadForTrainingsBase = { ...payload };
+    const payloadForTrainingsCamelCase = {
+      ...payload,
+      teamId: safeTeamId,
+      title: payload.title || payload.name,
+      date: payload.date,
+      startTime: payload.startTime || payload.start_time,
+      endTime: payload.endTime || payload.end_time,
+    };
+    delete payloadForTrainingsCamelCase.team_id;
+    delete payloadForTrainingsCamelCase.start_time;
+    delete payloadForTrainingsCamelCase.end_time;
+
     const payloadForTrainingsNoDate = { ...payloadForTrainingsBase };
     delete payloadForTrainingsNoDate.date;
     delete payloadForTrainingsNoDate.start_time;
@@ -1214,6 +1241,7 @@ class APIClient {
     };
 
     const trainingsPayloadVariants = [
+      payloadForTrainingsCamelCase,
       payloadForTrainingsNoDate,
       payloadForTrainingsTrainingDate,
       payloadForTrainingsScheduledDate,
@@ -1248,7 +1276,7 @@ class APIClient {
         const status = Number(error?.status || 0) || 'n/a';
         const message = String(error?.payload?.message || error?.payload?.error || error?.message || '').trim() || 'Unknown error';
         attemptDiagnostics.push(`${attempt.endpoint} -> ${status} (${message})`);
-        if (!this.isEndpointNotFound(error) && !this.isRetryableTrainingSchemaError(error)) {
+        if (!this.isEndpointNotFound(error) && !this.isRetryableTrainingSchemaError(error) && !this.isRetryableTrainingCreatePayloadError(error)) {
           throw error;
         }
       }
