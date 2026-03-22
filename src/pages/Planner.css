@@ -711,9 +711,9 @@
 }
 
 .planner-stitch-checkbox-dropdown {
-  border: 1px solid rgba(96, 113, 147, 0.42);
-  border-radius: 0.6rem;
-  background: rgba(18, 21, 28, 0.9);
+  border: 1px solid rgb(38 41 50 / var(--tw-border-opacity, 1));
+  background-color: rgb(15 17 21 / var(--tw-bg-opacity, 1));
+  border-radius: 10px;
 }
 
 .planner-stitch-checkbox-dropdown > summary {
@@ -721,11 +721,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 0.9rem;
   cursor: pointer;
-  font-size: 0.82rem;
-  color: #eef5ff;
-  padding: 0.5rem 0.7rem;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
 }
 
 .planner-stitch-checkbox-dropdown > summary::-webkit-details-marker {
@@ -733,49 +733,122 @@
 }
 
 .planner-stitch-checkbox-dropdown > summary::after {
-  content: '';
-  width: 0.9rem;
-  height: 0.9rem;
-  flex-shrink: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 0.9rem;
-  transition: transform 0.18s ease;
+  content: 'expand_more';
+  font-family: 'Material Icons Round';
+  font-size: 20px;
+  color: rgb(148 163 184 / 0.9);
 }
 
 .planner-stitch-checkbox-dropdown[open] > summary::after {
-  transform: rotate(180deg);
+  content: 'expand_less';
 }
 
 .planner-stitch-checkbox-dropdown[open] {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+  border-color: rgb(38 41 50 / var(--tw-border-opacity, 1));
 }
 
 .planner-stitch-checkbox-dropdown-menu {
+  border-top: 1px solid rgb(38 41 50 / var(--tw-border-opacity, 1));
+  background-color: rgb(15 17 21 / var(--tw-bg-opacity, 1));
+  min-height: 120px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0 0.7rem 0.62rem;
-  max-height: 10.5rem;
-  overflow-y: auto;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #3a4459 transparent;
+}
+
+.planner-stitch-checkbox-dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.planner-stitch-checkbox-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.planner-stitch-checkbox-dropdown-menu::-webkit-scrollbar-thumb {
+  background: #3a4459;
+  border-radius: 999px;
+}
+
+.planner-stitch-checkbox-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #4d5a74;
 }
 
 .planner-stitch-checkbox-option {
-  display: flex;
+  display: flex !important;
   align-items: center;
-  gap: 0.48rem;
-  font-size: 0.79rem;
-  color: #d8e4fb;
+  justify-content: space-between;
+  gap: 0.9rem;
+  color: #e2e8f0 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-bottom: 1px solid rgba(38, 41, 50, 0.95);
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
 }
 
+.planner-stitch-checkbox-dropdown-menu .planner-stitch-checkbox-option:last-child {
+  border-bottom: none;
+}
+
+.planner-stitch-checkbox-option:hover {
+  background: rgba(51, 65, 85, 0.28);
+}
+
 .planner-stitch-checkbox-option input[type="checkbox"] {
-  width: 0.92rem;
-  height: 0.92rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
   margin: 0;
-  accent-color: #3b82f6;
+  padding: 0 !important;
+  border: 1px solid #27272a;
+  border-radius: 0.25rem;
+  background: #18181b;
+  box-shadow: none;
+  flex: 0 0 auto;
+  order: 2;
+  cursor: pointer;
+  position: relative;
+}
+
+.planner-stitch-checkbox-option input[type="checkbox"]:checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.planner-stitch-checkbox-option input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.planner-stitch-checkbox-option input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+}
+
+.planner-stitch-checkbox-option span {
+  display: inline-block;
+  color: #dbe6fb !important;
+  opacity: 1;
+  line-height: 1.3;
+  order: 1;
 }
 
 .planner-stitch-indicator-switches {
