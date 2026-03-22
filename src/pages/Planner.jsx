@@ -405,6 +405,16 @@ const filterPlannerFallbackSessionsByRange = (sessions, startDateKey, endDateKey
   })
 }
 
+const isLocalPlannerSessionId = (sessionId) => String(sessionId || '').trim().startsWith('local-')
+
+const isInvalidTrainingIdError = (error) => {
+  const payloadMessage = String(error?.payload?.message || '').toLowerCase()
+  const payloadError = String(error?.payload?.error || '').toLowerCase()
+  const directMessage = String(error?.message || '').toLowerCase()
+  const merged = `${payloadMessage} ${payloadError} ${directMessage}`
+  return merged.includes('invalid training id') || merged.includes('neplatne id')
+}
+
 function Planner() {
   const [activeView, setActiveView] = useState('month')
   const [activeMode, setActiveMode] = useState('plan')
@@ -1644,11 +1654,14 @@ function Planner() {
     try {
       if (editingEventId) {
         const payload = createPayloads[0]
-        try {
-          await api.updateTeamTrainingSession(editingEventId, teamId, payload)
-        } catch (error) {
-          if (!api.isEndpointNotFound(error)) {
-            throw error
+        const localSession = isLocalPlannerSessionId(editingEventId)
+        if (!localSession) {
+          try {
+            await api.updateTeamTrainingSession(editingEventId, teamId, payload)
+          } catch (error) {
+            if (!(api.isEndpointNotFound(error) || isInvalidTrainingIdError(error))) {
+              throw error
+            }
           }
         }
 
@@ -1799,11 +1812,14 @@ function Planner() {
 
     try {
       setIsSubmittingEvent(true)
-      try {
-        await api.deleteTeamTrainingSession(editingEventId, eventForm.teamId)
-      } catch (error) {
-        if (!api.isEndpointNotFound(error)) {
-          throw error
+      const localSession = isLocalPlannerSessionId(editingEventId)
+      if (!localSession) {
+        try {
+          await api.deleteTeamTrainingSession(editingEventId, eventForm.teamId)
+        } catch (error) {
+          if (!(api.isEndpointNotFound(error) || isInvalidTrainingIdError(error))) {
+            throw error
+          }
         }
       }
       setPlannerSessions((prev) => prev.filter((session) => String(session?.id || '') !== String(editingEventId)))
