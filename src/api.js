@@ -1195,19 +1195,44 @@ class APIClient {
     delete payload.name;
 
     const payloadForSessionEndpoints = { ...payload };
-    const payloadForTrainingsEndpoints = { ...payload };
+    const payloadForTrainingsBase = { ...payload };
+    const payloadForTrainingsNoDate = { ...payloadForTrainingsBase };
+    delete payloadForTrainingsNoDate.date;
+    delete payloadForTrainingsNoDate.start_time;
+    delete payloadForTrainingsNoDate.end_time;
+    delete payloadForTrainingsNoDate.startTime;
+    delete payloadForTrainingsNoDate.endTime;
+
+    const resolvedDate = String(data?.date || '').trim();
+    const payloadForTrainingsTrainingDate = {
+      ...payloadForTrainingsNoDate,
+      ...(resolvedDate ? { training_date: resolvedDate } : {}),
+    };
+    const payloadForTrainingsScheduledDate = {
+      ...payloadForTrainingsNoDate,
+      ...(resolvedDate ? { scheduled_date: resolvedDate } : {}),
+    };
+
+    const trainingsPayloadVariants = [
+      payloadForTrainingsNoDate,
+      payloadForTrainingsTrainingDate,
+      payloadForTrainingsScheduledDate,
+      payloadForTrainingsBase,
+    ];
 
     const attempts = [
-      { endpoint: `/trainings`, body: payloadForTrainingsEndpoints },
-      { endpoint: `/v1/trainings`, body: payloadForTrainingsEndpoints },
+      ...trainingsPayloadVariants.flatMap((variant) => ([
+        { endpoint: `/trainings`, body: variant },
+        { endpoint: `/v1/trainings`, body: variant },
+        { endpoint: `/trainings/`, body: variant },
+        { endpoint: `/v1/trainings/`, body: variant },
+      ])),
       { endpoint: `/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/trainings/`, body: payloadForTrainingsEndpoints },
-      { endpoint: `/v1/trainings/`, body: payloadForTrainingsEndpoints },
     ];
 
     let lastError = null;
@@ -1258,11 +1283,38 @@ class APIClient {
 
     delete payload.name;
 
+    const trainingsUpdateBase = { ...payload };
+    const trainingsUpdateNoDate = { ...trainingsUpdateBase };
+    delete trainingsUpdateNoDate.date;
+    delete trainingsUpdateNoDate.start_time;
+    delete trainingsUpdateNoDate.end_time;
+    delete trainingsUpdateNoDate.startTime;
+    delete trainingsUpdateNoDate.endTime;
+
+    const resolvedDate = String(data?.date || '').trim();
+    const trainingsUpdateTrainingDate = {
+      ...trainingsUpdateNoDate,
+      ...(resolvedDate ? { training_date: resolvedDate } : {}),
+    };
+    const trainingsUpdateScheduledDate = {
+      ...trainingsUpdateNoDate,
+      ...(resolvedDate ? { scheduled_date: resolvedDate } : {}),
+    };
+
+    const trainingsUpdateVariants = [
+      trainingsUpdateNoDate,
+      trainingsUpdateTrainingDate,
+      trainingsUpdateScheduledDate,
+      trainingsUpdateBase,
+    ];
+
     const attempts = [
-      { endpoint: `/trainings/${safeSessionId}`, method: 'PUT' },
-      { endpoint: `/trainings/${safeSessionId}`, method: 'PATCH' },
-      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PUT' },
-      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PATCH' },
+      ...trainingsUpdateVariants.flatMap((variant) => ([
+        { endpoint: `/trainings/${safeSessionId}`, method: 'PUT', body: variant },
+        { endpoint: `/trainings/${safeSessionId}`, method: 'PATCH', body: variant },
+        { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PUT', body: variant },
+        { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PATCH', body: variant },
+      ])),
       ...(safeTeamId ? [{ endpoint: `/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
       ...(safeTeamId ? [{ endpoint: `/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
       ...(safeTeamId ? [{ endpoint: `/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
@@ -1276,7 +1328,7 @@ class APIClient {
       try {
         return await this.request(attempt.endpoint, {
           method: attempt.method,
-          body: JSON.stringify(payload),
+          body: JSON.stringify(attempt.body || payload),
         });
       } catch (error) {
         lastError = error;
