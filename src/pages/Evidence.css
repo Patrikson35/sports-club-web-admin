@@ -1325,6 +1325,10 @@
   gap: 0.16rem;
 }
 
+.evidence-calendar-day.has-planned {
+  padding-bottom: 0.24rem;
+}
+
 .evidence-calendar-day.has-planned::after {
   content: '';
   position: absolute;
