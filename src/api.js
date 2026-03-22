@@ -256,7 +256,12 @@ class APIClient {
     const payloadError = String(error?.payload?.error || '').toLowerCase();
     const directMessage = String(error?.message || '').toLowerCase();
     const merged = `${payloadMessage} ${payloadError} ${directMessage}`;
-    return merged.includes('endpoint not found') || merged.includes('not found');
+    return (
+      merged.includes('endpoint not found')
+      || merged.includes('route ') && merged.includes(' not found')
+      || payloadError === 'not_found'
+      || payloadError === 'endpoint_not_found'
+    );
   }
 
   isRetryableTrainingSchemaError(error) {
@@ -1193,14 +1198,16 @@ class APIClient {
     const payloadForTrainingsEndpoints = { ...payload };
 
     const attempts = [
+      { endpoint: `/trainings`, body: payloadForTrainingsEndpoints },
+      { endpoint: `/v1/trainings`, body: payloadForTrainingsEndpoints },
       { endpoint: `/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/trainings`, body: payloadForTrainingsEndpoints },
-      { endpoint: `/v1/trainings`, body: payloadForTrainingsEndpoints },
+      { endpoint: `/trainings/`, body: payloadForTrainingsEndpoints },
+      { endpoint: `/v1/trainings/`, body: payloadForTrainingsEndpoints },
     ];
 
     let lastError = null;
@@ -1241,16 +1248,16 @@ class APIClient {
     delete payload.name;
 
     const attempts = [
+      { endpoint: `/trainings/${safeSessionId}`, method: 'PUT' },
+      { endpoint: `/trainings/${safeSessionId}`, method: 'PATCH' },
+      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PUT' },
+      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PATCH' },
       ...(safeTeamId ? [{ endpoint: `/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
       ...(safeTeamId ? [{ endpoint: `/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
       ...(safeTeamId ? [{ endpoint: `/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
       ...(safeTeamId ? [{ endpoint: `/v1/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
       { endpoint: `/training-sessions/${safeSessionId}`, method: 'PATCH' },
       { endpoint: `/v1/training-sessions/${safeSessionId}`, method: 'PATCH' },
-      { endpoint: `/trainings/${safeSessionId}`, method: 'PUT' },
-      { endpoint: `/trainings/${safeSessionId}`, method: 'PATCH' },
-      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PUT' },
-      { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PATCH' },
     ];
 
     let lastError = null;
@@ -1284,14 +1291,14 @@ class APIClient {
     const safeTeamId = String(teamId || '').trim();
 
     const attempts = [
+      { endpoint: `/trainings/${safeSessionId}` },
+      { endpoint: `/v1/trainings/${safeSessionId}` },
       ...(safeTeamId ? [{ endpoint: `/teams/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
       ...(safeTeamId ? [{ endpoint: `/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
       ...(safeTeamId ? [{ endpoint: `/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
       ...(safeTeamId ? [{ endpoint: `/v1/${safeTeamId}/training-sessions/${safeSessionId}` }] : []),
       { endpoint: `/training-sessions/${safeSessionId}` },
       { endpoint: `/v1/training-sessions/${safeSessionId}` },
-      { endpoint: `/trainings/${safeSessionId}` },
-      { endpoint: `/v1/trainings/${safeSessionId}` },
     ];
 
     let lastError = null;
