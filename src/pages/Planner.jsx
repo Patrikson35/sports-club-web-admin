@@ -342,6 +342,7 @@ function Planner() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eventForm, setEventForm] = useState({
     label: '',
+    selectedTrainingGroups: [],
     type: 'training',
     indicatorCode: '',
     date: '',
@@ -463,13 +464,24 @@ function Planner() {
           })
 
         const groupOptions = visibleDivisions.flatMap((division) => {
+          const divisionName = String(division?.name || '').trim()
           const groups = Array.isArray(division.groups) ? division.groups : []
           if (groups.length === 0) return []
 
-          return groups.map((groupName) => ({
-            value: `${division.name} - ${groupName}`,
-            label: `${division.name} - ${groupName}`
-          }))
+          return groups.map((groupNameRaw) => {
+            const groupName = String(groupNameRaw || '').trim()
+            if (!groupName) return null
+
+            const prefix = `${divisionName} - `
+            const cleaned = groupName.toLowerCase().startsWith(prefix.toLowerCase())
+              ? groupName.slice(prefix.length).trim()
+              : groupName
+
+            return {
+              value: cleaned,
+              label: cleaned
+            }
+          }).filter(Boolean)
         })
 
         const uniqueGroupOptions = Array.from(new Map(
@@ -1276,12 +1288,30 @@ function Planner() {
     setEventForm((prev) => ({
       ...prev,
       indicatorCode: code,
-      type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training',
-      label: code === 'TJ' && (Array.isArray(trainingDivisionGroupOptions) ? trainingDivisionGroupOptions.length : 0) > 0 && !String(prev.label || '').trim()
-        ? String(trainingDivisionGroupOptions[0]?.value || '')
-        : prev.label
+      type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training'
     }))
-  }, [trainingDivisionGroupOptions])
+  }, [])
+
+  const handleTrainingGroupToggle = useCallback((groupName) => {
+    const safeGroup = String(groupName || '').trim()
+    if (!safeGroup) return
+
+    setEventForm((prev) => {
+      const current = Array.isArray(prev.selectedTrainingGroups)
+        ? prev.selectedTrainingGroups.map((item) => String(item || '').trim()).filter(Boolean)
+        : []
+
+      const nextGroups = current.includes(safeGroup)
+        ? current.filter((item) => item !== safeGroup)
+        : [...current, safeGroup]
+
+      return {
+        ...prev,
+        selectedTrainingGroups: nextGroups,
+        label: nextGroups.join(', ')
+      }
+    })
+  }, [])
 
   const handleMultiDateToggle = useCallback(() => {
     setEventForm((prev) => {
@@ -1351,6 +1381,7 @@ function Planner() {
     setEditingEventId('')
     setEventForm({
       label: '',
+      selectedTrainingGroups: [],
       type: 'training',
       indicatorCode: availableIndicatorCodes[0] || '',
       date: '',
@@ -1390,12 +1421,24 @@ function Planner() {
     const clampedSelectedParts = selectedFieldParts
       .filter((value) => value <= maxParts)
       .slice(0, maxParts)
+    const eventLabel = String(event?.label || '')
+    const labelItems = eventLabel
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+    const trainingGroupValueSet = new Set(
+      (Array.isArray(trainingDivisionGroupOptions) ? trainingDivisionGroupOptions : [])
+        .map((option) => String(option?.value || '').trim())
+        .filter(Boolean)
+    )
+    const selectedTrainingGroups = labelItems.filter((item) => trainingGroupValueSet.has(item))
 
     setEditingEventId(eventId)
     setSidebarOpen(true)
     setEventForm((prev) => ({
       ...prev,
-      label: String(event?.label || ''),
+      label: eventLabel,
+      selectedTrainingGroups,
       type: String(event?.type || 'training'),
       indicatorCode: String(event?.metricCode || prev.indicatorCode || availableIndicatorCodes[0] || 'TJ'),
       date: dateKey,
@@ -1454,7 +1497,16 @@ function Planner() {
     const selectedIndicatorCode = String(eventForm.indicatorCode || availableIndicatorCodes[0] || 'TJ')
     const plannerType = EVENT_TYPE_BY_METRIC_CODE[selectedIndicatorCode] || 'training'
     const sessionType = SESSION_TYPE_BY_METRIC_CODE[selectedIndicatorCode] || 'training'
-    const title = String(eventForm.label || '').trim() || DEFAULT_EVENT_LABEL_BY_TYPE[plannerType] || 'Trening'
+    const selectedTrainingGroups = Array.isArray(eventForm.selectedTrainingGroups)
+      ? [...new Set(eventForm.selectedTrainingGroups.map((item) => String(item || '').trim()).filter(Boolean))]
+      : []
+    const shouldUseTrainingGroupLabel = selectedIndicatorCode === 'TJ'
+      && Array.isArray(trainingDivisionGroupOptions)
+      && trainingDivisionGroupOptions.length > 0
+    const resolvedEventLabel = shouldUseTrainingGroupLabel && selectedTrainingGroups.length > 0
+      ? selectedTrainingGroups.join(', ')
+      : String(eventForm.label || '').trim()
+    const title = resolvedEventLabel || DEFAULT_EVENT_LABEL_BY_TYPE[plannerType] || 'Trening'
 
     const selectedFieldMeta = fieldOptions.find((field) => String(field.id) === String(eventForm.fieldId))
     const safeFieldParts = Array.isArray(eventForm.selectedFieldParts)
@@ -1552,6 +1604,7 @@ function Planner() {
   }, [
     eventForm,
     availableIndicatorCodes,
+    trainingDivisionGroupOptions,
     fieldOptions,
     activeView,
     displayedWeekStartDate,
@@ -1564,6 +1617,38 @@ function Planner() {
   const shouldUseTrainingDivisionLabelSelect = String(eventForm.indicatorCode || '').trim().toUpperCase() === 'TJ'
     && Array.isArray(trainingDivisionGroupOptions)
     && trainingDivisionGroupOptions.length > 0
+
+  const selectedTrainingGroups = Array.isArray(eventForm.selectedTrainingGroups)
+    ? eventForm.selectedTrainingGroups.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+
+  useEffect(() => {
+    if (!shouldUseTrainingDivisionLabelSelect) return
+
+    const validGroupSet = new Set(trainingDivisionGroupOptions.map((option) => String(option?.value || '').trim()).filter(Boolean))
+    setEventForm((prev) => {
+      const current = Array.isArray(prev.selectedTrainingGroups)
+        ? prev.selectedTrainingGroups.map((item) => String(item || '').trim()).filter(Boolean)
+        : []
+      const filtered = current.filter((item) => validGroupSet.has(item))
+      const nextLabel = filtered.join(', ')
+      if (JSON.stringify(filtered) === JSON.stringify(current) && String(prev.label || '') === nextLabel) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        selectedTrainingGroups: filtered,
+        label: nextLabel
+      }
+    })
+  }, [shouldUseTrainingDivisionLabelSelect, trainingDivisionGroupOptions])
+
+  const trainingGroupSummary = selectedTrainingGroups.length === 0
+    ? 'Vyber skupiny tréningu'
+    : (selectedTrainingGroups.length <= 2
+      ? selectedTrainingGroups.join(', ')
+      : `${selectedTrainingGroups.length} skupiny vybraté`)
 
   const handleDeleteEditingEvent = useCallback(async () => {
     if (!editingEventId) return
@@ -1912,21 +1997,32 @@ function Planner() {
           <div className="planner-stitch-form-row">
             <label>Názov udalosti</label>
             {shouldUseTrainingDivisionLabelSelect ? (
-              <select
-                value={String(eventForm.label || '')}
-                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value }))}
-              >
-                <option value="">Vyber skupinu tréningu</option>
-                {trainingDivisionGroupOptions.map((option) => (
-                  <option key={`training-division-group-${option.value}`} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+              <details className="planner-stitch-checkbox-dropdown">
+                <summary>{trainingGroupSummary}</summary>
+                <div className="planner-stitch-checkbox-dropdown-menu" role="group" aria-label="Skupiny tréningu">
+                  {trainingDivisionGroupOptions.map((option) => {
+                    const safeValue = String(option?.value || '').trim()
+                    if (!safeValue) return null
+
+                    return (
+                      <label key={`training-division-group-${safeValue}`} className="planner-stitch-checkbox-option">
+                        <input
+                          type="checkbox"
+                          checked={selectedTrainingGroups.includes(safeValue)}
+                          onChange={() => handleTrainingGroupToggle(safeValue)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </details>
             ) : (
               <input
                 type="text"
                 placeholder="Napr. Tréning A..."
                 value={eventForm.label}
-                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value }))}
+                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value, selectedTrainingGroups: [] }))}
               />
             )}
           </div>
