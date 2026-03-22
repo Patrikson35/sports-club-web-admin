@@ -259,6 +259,24 @@ class APIClient {
     return merged.includes('endpoint not found') || merged.includes('not found');
   }
 
+  isRetryableTrainingSchemaError(error) {
+    const payloadMessage = String(error?.payload?.message || '').toLowerCase();
+    const payloadError = String(error?.payload?.error || '').toLowerCase();
+    const directMessage = String(error?.message || '').toLowerCase();
+    const merged = `${payloadMessage} ${payloadError} ${directMessage}`;
+
+    return (
+      merged.includes("unknown column 'date'")
+      || merged.includes('unknown column `date`')
+      || merged.includes("unknown column 'start_time'")
+      || merged.includes('unknown column `start_time`')
+      || merged.includes("unknown column 'end_time'")
+      || merged.includes('unknown column `end_time`')
+      || merged.includes("unknown column 'scheduled_date'")
+      || merged.includes('unknown column `scheduled_date`')
+    );
+  }
+
   async requestWithEndpointFallback(endpoints, options = {}) {
     let lastError = null;
 
@@ -267,7 +285,7 @@ class APIClient {
         return await this.request(endpoint, options);
       } catch (error) {
         lastError = error;
-        if (!this.isEndpointNotFound(error)) {
+        if (!this.isEndpointNotFound(error) && !this.isRetryableTrainingSchemaError(error)) {
           throw error;
         }
       }
@@ -1194,7 +1212,7 @@ class APIClient {
         });
       } catch (error) {
         lastError = error;
-        if (!this.isEndpointNotFound(error)) {
+        if (!this.isEndpointNotFound(error) && !this.isRetryableTrainingSchemaError(error)) {
           throw error;
         }
       }
