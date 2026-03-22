@@ -1115,16 +1115,30 @@ function MyClub() {
       ...prev,
       divisions: trainingDivisions.reduce((acc, division) => {
         const divisionId = String(division?.id || '')
+        const divisionName = String(division?.name || '').trim()
+        const normalizedDivisionName = divisionName.toLowerCase()
         if (!divisionId) return acc
-        const existing = prev?.divisions && typeof prev.divisions === 'object' ? prev.divisions[divisionId] : null
+        const rawDivisions = prev?.divisions && typeof prev.divisions === 'object' ? prev.divisions : {}
+        const existing = rawDivisions[divisionId]
+          || rawDivisions[divisionName]
+          || rawDivisions[normalizedDivisionName]
         acc[divisionId] = {
           visible: existing?.visible !== false
         }
         return acc
       }, {}),
-      defaultDivisionId: trainingDivisions.some((item) => String(item?.id || '') === String(prev?.defaultDivisionId || ''))
-        ? String(prev.defaultDivisionId)
-        : String(trainingDivisions[0]?.id || '')
+      defaultDivisionId: (() => {
+        const previousDefault = String(prev?.defaultDivisionId || '').trim()
+        if (!previousDefault) return String(trainingDivisions[0]?.id || '')
+
+        const directMatch = trainingDivisions.find((item) => String(item?.id || '') === previousDefault)
+        if (directMatch) return String(directMatch.id)
+
+        const nameMatch = trainingDivisions.find((item) => (
+          String(item?.name || '').trim().toLowerCase() === previousDefault.toLowerCase()
+        ))
+        return String(nameMatch?.id || trainingDivisions[0]?.id || '')
+      })()
     }))
   }, [trainingDivisions])
 
@@ -3058,11 +3072,34 @@ function MyClub() {
       setError('')
       setSuccess('')
 
+      const rawDivisions = trainingExerciseDisplaySettings?.divisions && typeof trainingExerciseDisplaySettings.divisions === 'object'
+        ? trainingExerciseDisplaySettings.divisions
+        : {}
+
+      const normalizedDivisions = (Array.isArray(trainingDivisions) ? trainingDivisions : []).reduce((acc, division) => {
+        const divisionId = String(division?.id || '').trim()
+        const divisionName = String(division?.name || '').trim()
+        if (!divisionId) return acc
+
+        const existing = rawDivisions[divisionId]
+          || rawDivisions[divisionName]
+          || rawDivisions[divisionName.toLowerCase()]
+
+        acc[divisionId] = {
+          visible: existing?.visible !== false
+        }
+        return acc
+      }, {})
+
+      const fallbackDefaultId = String(trainingDivisions?.[0]?.id || '')
+      const requestedDefaultId = String(trainingExerciseDisplaySettings?.defaultDivisionId || '').trim()
+      const resolvedDefaultId = (Array.isArray(trainingDivisions) ? trainingDivisions : []).some((item) => String(item?.id || '') === requestedDefaultId)
+        ? requestedDefaultId
+        : fallbackDefaultId
+
       const normalized = {
-        divisions: trainingExerciseDisplaySettings?.divisions && typeof trainingExerciseDisplaySettings.divisions === 'object'
-          ? trainingExerciseDisplaySettings.divisions
-          : {},
-        defaultDivisionId: String(trainingExerciseDisplaySettings?.defaultDivisionId || '')
+        divisions: normalizedDivisions,
+        defaultDivisionId: resolvedDefaultId
       }
 
       try {
