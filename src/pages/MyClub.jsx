@@ -1051,12 +1051,14 @@ function MyClub() {
 
         return {
           divisions: rawDivisions,
-          defaultDivisionId: String(parsed?.defaultDivisionId || '')
+            defaultDivisionId: String(parsed?.defaultDivisionId || ''),
+            updatedAt: Number.isFinite(Number(parsed?.updatedAt)) ? Number(parsed.updatedAt) : 0
         }
       } catch {
         return {
           divisions: {},
-          defaultDivisionId: ''
+            defaultDivisionId: '',
+            updatedAt: 0
         }
       }
     }
@@ -1067,11 +1069,27 @@ function MyClub() {
         const parsed = response?.settings && typeof response.settings === 'object' ? response.settings : {}
         const normalizedRemote = {
           divisions: parsed?.divisions && typeof parsed.divisions === 'object' ? parsed.divisions : {},
-          defaultDivisionId: String(parsed?.defaultDivisionId || '')
+          defaultDivisionId: String(parsed?.defaultDivisionId || ''),
+          updatedAt: Number.isFinite(Number(parsed?.updatedAt)) ? Number(parsed.updatedAt) : 0
         }
         const localSettings = resolveLocalSettings()
-        const hasRemoteValue = Object.keys(normalizedRemote.divisions).length > 0 || Boolean(String(normalizedRemote.defaultDivisionId || '').trim())
-        const normalized = hasRemoteValue ? normalizedRemote : localSettings
+        const normalized = Number(localSettings.updatedAt || 0) >= Number(normalizedRemote.updatedAt || 0)
+          ? {
+              divisions: {
+                ...(normalizedRemote.divisions && typeof normalizedRemote.divisions === 'object' ? normalizedRemote.divisions : {}),
+                ...(localSettings.divisions && typeof localSettings.divisions === 'object' ? localSettings.divisions : {})
+              },
+              defaultDivisionId: String(localSettings.defaultDivisionId || normalizedRemote.defaultDivisionId || ''),
+              updatedAt: Number(localSettings.updatedAt || normalizedRemote.updatedAt || 0)
+            }
+          : {
+              divisions: {
+                ...(localSettings.divisions && typeof localSettings.divisions === 'object' ? localSettings.divisions : {}),
+                ...(normalizedRemote.divisions && typeof normalizedRemote.divisions === 'object' ? normalizedRemote.divisions : {})
+              },
+              defaultDivisionId: String(normalizedRemote.defaultDivisionId || localSettings.defaultDivisionId || ''),
+              updatedAt: Number(normalizedRemote.updatedAt || localSettings.updatedAt || 0)
+            }
 
         setTrainingExerciseDisplaySettings(normalized)
 
@@ -3099,7 +3117,8 @@ function MyClub() {
 
       const normalized = {
         divisions: normalizedDivisions,
-        defaultDivisionId: resolvedDefaultId
+        defaultDivisionId: resolvedDefaultId,
+        updatedAt: Date.now()
       }
 
       try {
