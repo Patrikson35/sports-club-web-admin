@@ -1211,6 +1211,7 @@ class APIClient {
     ];
 
     let lastError = null;
+    const attemptDiagnostics = [];
     for (const attempt of attempts) {
       try {
         return await this.request(attempt.endpoint, {
@@ -1219,10 +1220,20 @@ class APIClient {
         });
       } catch (error) {
         lastError = error;
+        const status = Number(error?.status || 0) || 'n/a';
+        const message = String(error?.payload?.message || error?.payload?.error || error?.message || '').trim() || 'Unknown error';
+        attemptDiagnostics.push(`${attempt.endpoint} -> ${status} (${message})`);
         if (!this.isEndpointNotFound(error) && !this.isRetryableTrainingSchemaError(error)) {
           throw error;
         }
       }
+    }
+
+    if (attemptDiagnostics.length > 0) {
+      const diagnosticMessage = `Endpoint not found. Attempts: ${attemptDiagnostics.join(' | ')}`;
+      const wrapped = new Error(diagnosticMessage);
+      wrapped.cause = lastError || null;
+      throw wrapped;
     }
 
     throw lastError || new Error('Endpoint not found');
