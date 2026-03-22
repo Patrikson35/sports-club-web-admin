@@ -357,7 +357,7 @@ function Planner() {
   const [teamFilters, setTeamFilters] = useState([{ id: 'all', label: 'Všetky' }])
   const [availableIndicatorCodes, setAvailableIndicatorCodes] = useState([...DEFAULT_PLANNER_INDICATOR_CODES])
   const [activeIndicatorCodes, setActiveIndicatorCodes] = useState(DEFAULT_PLANNER_INDICATOR_CODES)
-  const [trainingDivisionOptions, setTrainingDivisionOptions] = useState([])
+  const [trainingDivisionGroupOptions, setTrainingDivisionGroupOptions] = useState([])
   const [clubFields, setClubFields] = useState([])
   const [plannerSessions, setPlannerSessions] = useState([])
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false)
@@ -395,7 +395,10 @@ function Planner() {
         return parsed
           .map((item) => ({
             id: String(item?.id || '').trim(),
-            name: String(item?.name || '').trim()
+            name: String(item?.name || '').trim(),
+            groups: Array.isArray(item?.groups)
+              ? item.groups.map((groupName) => String(groupName || '').trim()).filter(Boolean)
+              : []
           }))
           .filter((item) => item.id && item.name)
       } catch {
@@ -434,7 +437,7 @@ function Planner() {
 
         const divisions = resolveLocalTrainingDivisions(resolvedClubId)
         if (divisions.length === 0) {
-          if (isMounted) setTrainingDivisionOptions([])
+          if (isMounted) setTrainingDivisionGroupOptions([])
           return
         }
 
@@ -453,19 +456,31 @@ function Planner() {
           ? displaySettings.divisions
           : {}
 
-        const visibleNames = divisions
+        const visibleDivisions = divisions
           .filter((item) => {
             const config = divisionsConfig[item.id] || {}
             return config?.visible !== false
           })
-          .map((item) => item.name)
-          .filter(Boolean)
+
+        const groupOptions = visibleDivisions.flatMap((division) => {
+          const groups = Array.isArray(division.groups) ? division.groups : []
+          if (groups.length === 0) return []
+
+          return groups.map((groupName) => ({
+            value: `${division.name} - ${groupName}`,
+            label: `${division.name} - ${groupName}`
+          }))
+        })
+
+        const uniqueGroupOptions = Array.from(new Map(
+          groupOptions.map((option) => [option.value, option])
+        ).values())
 
         if (isMounted) {
-          setTrainingDivisionOptions(Array.from(new Set(visibleNames)))
+          setTrainingDivisionGroupOptions(uniqueGroupOptions)
         }
       } catch {
-        if (isMounted) setTrainingDivisionOptions([])
+        if (isMounted) setTrainingDivisionGroupOptions([])
       }
     }
 
@@ -1262,11 +1277,11 @@ function Planner() {
       ...prev,
       indicatorCode: code,
       type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training',
-      label: code === 'TJ' && (Array.isArray(trainingDivisionOptions) ? trainingDivisionOptions.length : 0) > 0 && !String(prev.label || '').trim()
-        ? String(trainingDivisionOptions[0] || '')
+      label: code === 'TJ' && (Array.isArray(trainingDivisionGroupOptions) ? trainingDivisionGroupOptions.length : 0) > 0 && !String(prev.label || '').trim()
+        ? String(trainingDivisionGroupOptions[0]?.value || '')
         : prev.label
     }))
-  }, [trainingDivisionOptions])
+  }, [trainingDivisionGroupOptions])
 
   const handleMultiDateToggle = useCallback(() => {
     setEventForm((prev) => {
@@ -1547,8 +1562,8 @@ function Planner() {
   ])
 
   const shouldUseTrainingDivisionLabelSelect = String(eventForm.indicatorCode || '').trim().toUpperCase() === 'TJ'
-    && Array.isArray(trainingDivisionOptions)
-    && trainingDivisionOptions.length > 0
+    && Array.isArray(trainingDivisionGroupOptions)
+    && trainingDivisionGroupOptions.length > 0
 
   const handleDeleteEditingEvent = useCallback(async () => {
     if (!editingEventId) return
@@ -1901,9 +1916,9 @@ function Planner() {
                 value={String(eventForm.label || '')}
                 onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value }))}
               >
-                <option value="">Vyber rozdelenie tréningu</option>
-                {trainingDivisionOptions.map((name) => (
-                  <option key={`training-division-label-${name}`} value={name}>{name}</option>
+                <option value="">Vyber skupinu tréningu</option>
+                {trainingDivisionGroupOptions.map((option) => (
+                  <option key={`training-division-group-${option.value}`} value={option.value}>{option.label}</option>
                 ))}
               </select>
             ) : (
