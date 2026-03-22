@@ -851,6 +851,53 @@
   order: 1;
 }
 
+.planner-stitch-nontj-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.planner-stitch-nontj-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.planner-stitch-nontj-remove {
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.88);
+  color: #cddaf5;
+  border-radius: 0.55rem;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.planner-stitch-nontj-remove:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.planner-stitch-nontj-remove .material-icons-round {
+  font-size: 1rem;
+}
+
+.planner-stitch-nontj-add {
+  align-self: flex-start;
+  border: 1px solid rgba(84, 143, 246, 0.65);
+  background: linear-gradient(180deg, #3779e9, #2c67cb);
+  color: #eef5ff;
+  border-radius: 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.22rem 0.54rem;
+  cursor: pointer;
+  box-shadow: 0 8px 14px -6px rgba(59, 130, 246, 0.38);
+}
+
 .planner-stitch-indicator-switches {
   display: flex;
   flex-wrap: nowrap;
