@@ -357,6 +357,7 @@ function Planner() {
   const [teamFilters, setTeamFilters] = useState([{ id: 'all', label: 'Všetky' }])
   const [availableIndicatorCodes, setAvailableIndicatorCodes] = useState([...DEFAULT_PLANNER_INDICATOR_CODES])
   const [activeIndicatorCodes, setActiveIndicatorCodes] = useState(DEFAULT_PLANNER_INDICATOR_CODES)
+  const [trainingDivisionOptions, setTrainingDivisionOptions] = useState([])
   const [clubFields, setClubFields] = useState([])
   const [plannerSessions, setPlannerSessions] = useState([])
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false)
@@ -380,6 +381,108 @@ function Planner() {
       .then((res) => { if (isMounted) setClubFields(Array.isArray(res?.fields) ? res.fields : []) })
       .catch(() => { if (isMounted) setClubFields([]) })
     return () => { isMounted = false }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const resolveLocalTrainingDivisions = (resolvedClubId) => {
+      try {
+        const raw = localStorage.getItem(`trainingDivisionNames:${resolvedClubId || 'global'}`)
+        const parsed = raw ? JSON.parse(raw) : []
+        if (!Array.isArray(parsed)) return []
+
+        return parsed
+          .map((item) => ({
+            id: String(item?.id || '').trim(),
+            name: String(item?.name || '').trim()
+          }))
+          .filter((item) => item.id && item.name)
+      } catch {
+        return []
+      }
+    }
+
+    const resolveLocalTrainingDisplaySettings = (resolvedClubId) => {
+      try {
+        const raw = localStorage.getItem(`trainingExerciseDisplaySettings:${resolvedClubId || 'global'}`)
+        const parsed = raw ? JSON.parse(raw) : {}
+        return parsed && typeof parsed === 'object' ? parsed : {}
+      } catch {
+        return {}
+      }
+    }
+
+    const loadTrainingDivisionOptions = async () => {
+      try {
+        let resolvedClubId = ''
+        try {
+          const members = await api.getMyClubMembers()
+          resolvedClubId = String(members?.clubId ?? '').trim()
+        } catch {
+          resolvedClubId = ''
+        }
+
+        if (!resolvedClubId) {
+          try {
+            const club = await api.getMyClub()
+            resolvedClubId = String(club?.id ?? '').trim()
+          } catch {
+            resolvedClubId = ''
+          }
+        }
+
+        const divisions = resolveLocalTrainingDivisions(resolvedClubId)
+        if (divisions.length === 0) {
+          if (isMounted) setTrainingDivisionOptions([])
+          return
+        }
+
+        let displaySettings = {}
+        try {
+          const response = await api.getTrainingExerciseDisplaySettings()
+          const remoteSettings = response?.settings && typeof response.settings === 'object' ? response.settings : {}
+          displaySettings = Object.keys(remoteSettings).length > 0
+            ? remoteSettings
+            : resolveLocalTrainingDisplaySettings(resolvedClubId)
+        } catch {
+          displaySettings = resolveLocalTrainingDisplaySettings(resolvedClubId)
+        }
+
+        const divisionsConfig = displaySettings?.divisions && typeof displaySettings.divisions === 'object'
+          ? displaySettings.divisions
+          : {}
+
+        const visibleNames = divisions
+          .filter((item) => {
+            const config = divisionsConfig[item.id] || {}
+            return config?.visible !== false
+          })
+          .map((item) => item.name)
+          .filter(Boolean)
+
+        if (isMounted) {
+          setTrainingDivisionOptions(Array.from(new Set(visibleNames)))
+        }
+      } catch {
+        if (isMounted) setTrainingDivisionOptions([])
+      }
+    }
+
+    const handleStorage = (event) => {
+      const key = String(event?.key || '')
+      if (!key || key.startsWith('trainingDivisionNames:') || key.startsWith('trainingExerciseDisplaySettings:')) {
+        loadTrainingDivisionOptions()
+      }
+    }
+
+    loadTrainingDivisionOptions()
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      isMounted = false
+      window.removeEventListener('storage', handleStorage)
+    }
   }, [])
 
   const resolveFieldNameById = useCallback((fieldId) => {
@@ -1158,9 +1261,12 @@ function Planner() {
     setEventForm((prev) => ({
       ...prev,
       indicatorCode: code,
-      type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training'
+      type: EVENT_TYPE_BY_METRIC_CODE[code] || 'training',
+      label: code === 'TJ' && (Array.isArray(trainingDivisionOptions) ? trainingDivisionOptions.length : 0) > 0 && !String(prev.label || '').trim()
+        ? String(trainingDivisionOptions[0] || '')
+        : prev.label
     }))
-  }, [])
+  }, [trainingDivisionOptions])
 
   const handleMultiDateToggle = useCallback(() => {
     setEventForm((prev) => {
@@ -1439,6 +1545,10 @@ function Planner() {
     editingEventId,
     resetEventForm,
   ])
+
+  const shouldUseTrainingDivisionLabelSelect = String(eventForm.indicatorCode || '').trim().toUpperCase() === 'TJ'
+    && Array.isArray(trainingDivisionOptions)
+    && trainingDivisionOptions.length > 0
 
   const handleDeleteEditingEvent = useCallback(async () => {
     if (!editingEventId) return
@@ -1786,12 +1896,24 @@ function Planner() {
 
           <div className="planner-stitch-form-row">
             <label>Názov udalosti</label>
-            <input
-              type="text"
-              placeholder="Napr. Tréning A..."
-              value={eventForm.label}
-              onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value }))}
-            />
+            {shouldUseTrainingDivisionLabelSelect ? (
+              <select
+                value={String(eventForm.label || '')}
+                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value }))}
+              >
+                <option value="">Vyber rozdelenie tréningu</option>
+                {trainingDivisionOptions.map((name) => (
+                  <option key={`training-division-label-${name}`} value={name}>{name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                placeholder="Napr. Tréning A..."
+                value={eventForm.label}
+                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value }))}
+              />
+            )}
           </div>
           <div className="planner-stitch-form-row">
             <label>Dátum</label>
