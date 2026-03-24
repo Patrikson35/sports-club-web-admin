@@ -1637,20 +1637,26 @@ class APIClient {
         throw error;
       }
 
+      const club = await this.getMyClub();
+      const clubName = String(club?.name || '').trim();
+
       // Compatibility fallback for older backends that do not expose dedicated endpoint yet.
       try {
-        await this.updateMyClub({ attendanceDisplaySettings: normalizedSettings });
+        await this.updateMyClub({
+          name: clubName,
+          attendanceDisplaySettings: normalizedSettings
+        });
         return {
           message: 'Nastavenie zobrazenia ukazovateľov bolo uložené (kompatibilný režim).',
           settings: normalizedSettings
         };
       } catch {
-        const club = await this.getMyClub();
         const currentMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
           ? club.evidenceSessionMeta
           : {};
 
         await this.updateMyClub({
+          name: clubName,
           evidenceSessionMeta: {
             ...currentMeta,
             attendanceDisplaySettings: normalizedSettings
