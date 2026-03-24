@@ -4662,7 +4662,16 @@ function MyClub() {
   })()
 
   return (
-    <div>
+    <div className="my-club-container">
+      <div className="club-header">
+        <div>
+          <h1>Nastavenia klubu</h1>
+        </div>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
+
       <div className="club-tabs" role="navigation" aria-label="Sekcie nastavení klubu">
         <button
           type="button"
