@@ -4768,7 +4768,7 @@ function MyClub() {
                     id="club-logo"
                     name="club-logo"
                     accept="image/*"
-                    onChange={handleClubLogoChange}
+                    onChange={handleLogoChange}
                     style={{ display: 'none' }}
                   />
 
