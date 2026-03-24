@@ -3511,9 +3511,12 @@ function MyClub() {
   }
 
   const startEditTrainer = (member) => {
-    const selectedCategoryIds = categories
-      .filter((category) => Number(category.coachId) === Number(member.userId))
-      .map((category) => category.id)
+    const selectedCategoryIds = Array.from(new Set(
+      categories
+        .filter((category) => Number(category.coachId) === Number(member.userId))
+        .map((category) => String(category.id || '').trim())
+        .filter(Boolean)
+    ))
     const fallbackFunction = trainerFunctionOptions.find((item) => item.baseRole === member.role) || trainerFunctionOptions[0]
 
     setShowTrainerForm(true)
@@ -3581,11 +3584,14 @@ function MyClub() {
   }
 
   const togglePlayerCategory = (teamId, checked) => {
+    const resolvedTeamId = String(teamId || '').trim()
+    if (!resolvedTeamId) return
+
     setPlayerDraft((prev) => ({
       ...prev,
       categoryIds: checked
-        ? [...new Set([...(prev.categoryIds || []), teamId])]
-        : (prev.categoryIds || []).filter((id) => id !== teamId)
+        ? [...new Set([...(prev.categoryIds || []).map((id) => String(id || '').trim()).filter(Boolean), resolvedTeamId])]
+        : (prev.categoryIds || []).map((id) => String(id || '').trim()).filter((id) => id && id !== resolvedTeamId)
     }))
   }
 
@@ -3687,11 +3693,14 @@ function MyClub() {
   }
 
   const toggleTrainerCategory = (teamId, checked) => {
+    const resolvedTeamId = String(teamId || '').trim()
+    if (!resolvedTeamId) return
+
     setTrainerDraft((prev) => ({
       ...prev,
       categoryIds: checked
-        ? [...new Set([...(prev.categoryIds || []), teamId])]
-        : (prev.categoryIds || []).filter((id) => id !== teamId)
+        ? [...new Set([...(prev.categoryIds || []).map((id) => String(id || '').trim()).filter(Boolean), resolvedTeamId])]
+        : (prev.categoryIds || []).map((id) => String(id || '').trim()).filter((id) => id && id !== resolvedTeamId)
     }))
   }
 
@@ -5469,7 +5478,7 @@ function MyClub() {
                                 <label key={`trainer-category-${team.id}`} className="manager-permission-item">
                                   <input
                                     type="checkbox"
-                                    checked={(trainerDraft.categoryIds || []).includes(team.id)}
+                                    checked={(trainerDraft.categoryIds || []).includes(String(team.id || '').trim())}
                                     onChange={(e) => toggleTrainerCategory(team.id, e.target.checked)}
                                   />
                                   <span>{team.name}</span>
@@ -5757,7 +5766,7 @@ function MyClub() {
                               <label key={`player-category-${team.id}`} className="manager-permission-item">
                                 <input
                                   type="checkbox"
-                                  checked={(playerDraft.categoryIds || []).includes(team.id)}
+                                  checked={(playerDraft.categoryIds || []).includes(String(team.id || '').trim())}
                                   onChange={(e) => togglePlayerCategory(team.id, e.target.checked)}
                                 />
                                 <span>{team.name}</span>
