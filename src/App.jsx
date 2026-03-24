@@ -103,9 +103,18 @@ function AppContent() {
     const user = localStorage.getItem('user')
     
     if (token && user) {
-      setIsAuthenticated(true)
-      setCurrentUser(JSON.parse(user))
-      api.setToken(token)
+      try {
+        const parsedUser = JSON.parse(user)
+        setIsAuthenticated(true)
+        setCurrentUser(parsedUser)
+        api.setToken(token)
+      } catch {
+        // Corrupted local storage should not crash the entire app.
+        api.clearToken()
+        localStorage.removeItem('user')
+        setIsAuthenticated(false)
+        setCurrentUser(null)
+      }
     }
     setLoading(false)
   }, [])
