@@ -1599,7 +1599,23 @@ class APIClient {
       return { settings: {} };
     }
 
-    return this.request('/clubs/my-club/attendance-display-settings');
+    try {
+      return await this.request('/clubs/my-club/attendance-display-settings');
+    } catch (error) {
+      if (!this.isEndpointNotFound(error)) {
+        throw error;
+      }
+
+      const club = await this.getMyClub();
+      const clubLevelSettings = (club?.attendanceDisplaySettings && typeof club.attendanceDisplaySettings === 'object' && !Array.isArray(club.attendanceDisplaySettings))
+        ? club.attendanceDisplaySettings
+        : null;
+      const metaLevelSettings = (club?.evidenceSessionMeta?.attendanceDisplaySettings && typeof club.evidenceSessionMeta.attendanceDisplaySettings === 'object' && !Array.isArray(club.evidenceSessionMeta.attendanceDisplaySettings))
+        ? club.evidenceSessionMeta.attendanceDisplaySettings
+        : null;
+
+      return { settings: clubLevelSettings || metaLevelSettings || {} };
+    }
   }
 
   async updateAttendanceDisplaySettings(settings) {
@@ -1607,12 +1623,46 @@ class APIClient {
       return { message: 'Display settings updated (mock)', settings: settings && typeof settings === 'object' ? settings : {} };
     }
 
-    return this.request('/clubs/my-club/attendance-display-settings', {
-      method: 'PUT',
-      body: JSON.stringify({
-        settings: settings && typeof settings === 'object' ? settings : {}
-      }),
-    });
+    const normalizedSettings = (settings && typeof settings === 'object' && !Array.isArray(settings)) ? settings : {};
+
+    try {
+      return await this.request('/clubs/my-club/attendance-display-settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          settings: normalizedSettings
+        }),
+      });
+    } catch (error) {
+      if (!this.isEndpointNotFound(error)) {
+        throw error;
+      }
+
+      // Compatibility fallback for older backends that do not expose dedicated endpoint yet.
+      try {
+        await this.updateMyClub({ attendanceDisplaySettings: normalizedSettings });
+        return {
+          message: 'Nastavenie zobrazenia ukazovateľov bolo uložené (kompatibilný režim).',
+          settings: normalizedSettings
+        };
+      } catch {
+        const club = await this.getMyClub();
+        const currentMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
+          ? club.evidenceSessionMeta
+          : {};
+
+        await this.updateMyClub({
+          evidenceSessionMeta: {
+            ...currentMeta,
+            attendanceDisplaySettings: normalizedSettings
+          }
+        });
+
+        return {
+          message: 'Nastavenie zobrazenia ukazovateľov bolo uložené (kompatibilný režim).',
+          settings: normalizedSettings
+        };
+      }
+    }
   }
 
   async getTrainingExerciseDisplaySettings() {
