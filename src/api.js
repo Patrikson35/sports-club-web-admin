@@ -1599,13 +1599,14 @@ class APIClient {
       return { settings: {} };
     }
 
-    try {
-      return await this.request('/clubs/my-club/attendance-display-settings');
-    } catch (error) {
-      if (!this.isEndpointNotFound(error)) {
-        throw error;
-      }
+    const isNonEmptyObject = (value) => (
+      value
+      && typeof value === 'object'
+      && !Array.isArray(value)
+      && Object.keys(value).length > 0
+    );
 
+    const readFromMyClubFallback = async () => {
       const club = await this.getMyClub();
       const clubLevelSettings = (club?.attendanceDisplaySettings && typeof club.attendanceDisplaySettings === 'object' && !Array.isArray(club.attendanceDisplaySettings))
         ? club.attendanceDisplaySettings
@@ -1614,7 +1615,34 @@ class APIClient {
         ? club.evidenceSessionMeta.attendanceDisplaySettings
         : null;
 
-      return { settings: clubLevelSettings || metaLevelSettings || {} };
+      if (isNonEmptyObject(clubLevelSettings)) {
+        return { settings: clubLevelSettings };
+      }
+
+      if (isNonEmptyObject(metaLevelSettings)) {
+        return { settings: metaLevelSettings };
+      }
+
+      return { settings: {} };
+    };
+
+    try {
+      const response = await this.request('/clubs/my-club/attendance-display-settings');
+      const endpointSettings = (response?.settings && typeof response.settings === 'object' && !Array.isArray(response.settings))
+        ? response.settings
+        : {};
+
+      if (isNonEmptyObject(endpointSettings)) {
+        return { settings: endpointSettings };
+      }
+
+      return await readFromMyClubFallback();
+    } catch (error) {
+      if (!this.isEndpointNotFound(error)) {
+        throw error;
+      }
+
+      return await readFromMyClubFallback();
     }
   }
 
