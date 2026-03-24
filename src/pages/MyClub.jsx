@@ -4082,6 +4082,24 @@ function MyClub() {
     setSuccess('')
   }
 
+  const openClubLogoPicker = () => {
+    clubLogoInputRef.current?.click()
+  }
+
+  const clearClubLogo = () => {
+    setClub((prev) => ({
+      ...prev,
+      logo: '',
+      logoFile: null
+    }))
+
+    if (clubLogoInputRef.current) {
+      clubLogoInputRef.current.value = ''
+    }
+    setError('')
+    setSuccess('')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
