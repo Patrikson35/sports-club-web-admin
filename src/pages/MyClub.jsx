@@ -4547,6 +4547,60 @@ function MyClub() {
   const metricsSorted = [...metrics]
   const displaySettingsMetrics = metricsSorted.filter((metric) => metric?.isActive !== false)
 
+  useEffect(() => {
+    if (!attendanceDisplayLoaded) return
+
+    const allowedMetricIds = displaySettingsMetrics
+      .map((metric) => String(metric?.id || '').trim())
+      .filter(Boolean)
+
+    if (allowedMetricIds.length === 0) return
+
+    setAttendanceDisplayDraft((prev) => {
+      const sourceRows = Array.isArray(prev?.topBlockRows) ? prev.topBlockRows : []
+      if (sourceRows.length === 0) return prev
+
+      let changed = false
+
+      const nextRows = sourceRows.map((row, index) => {
+        const sourceMetrics = row?.metrics && typeof row.metrics === 'object' ? row.metrics : {}
+        const selectedMetricId = allowedMetricIds.find((metricId) => sourceMetrics[metricId] === true)
+        const fallbackMetricId = String(allowedMetricIds[index] || allowedMetricIds[0] || '').trim()
+        const resolvedMetricId = selectedMetricId || fallbackMetricId
+
+        if (!resolvedMetricId) return row
+
+        const metricsMap = allowedMetricIds.reduce((acc, metricId) => {
+          acc[metricId] = metricId === resolvedMetricId
+          return acc
+        }, {})
+
+        const resolvedMetric = displaySettingsMetrics.find((metric) => String(metric?.id || '').trim() === resolvedMetricId)
+        const nextName = String(row?.name || '').trim() || String(resolvedMetric?.name || `Karta ${index + 1}`)
+
+        const sameName = String(row?.name || '') === nextName
+        const sameMetrics = JSON.stringify(sourceMetrics) === JSON.stringify(metricsMap)
+
+        if (!sameName || !sameMetrics) {
+          changed = true
+        }
+
+        return {
+          ...row,
+          name: nextName,
+          metrics: metricsMap
+        }
+      })
+
+      if (!changed) return prev
+
+      return {
+        ...prev,
+        topBlockRows: nextRows
+      }
+    })
+  }, [attendanceDisplayLoaded, displaySettingsMetrics])
+
   const activeMetricsCount = metrics.filter((metric) => metric.isActive).length
   const availableFormulaMetrics = metrics.filter((metric) => String(metric.id) !== String(editingMetricId || ''))
 
