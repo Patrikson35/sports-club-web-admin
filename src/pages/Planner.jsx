@@ -387,75 +387,36 @@ function Planner() {
   useEffect(() => {
     let isMounted = true
 
-    const resolveLocalTrainingDivisions = (resolvedClubId) => {
-      try {
-        const raw = localStorage.getItem(`trainingDivisionNames:${resolvedClubId || 'global'}`)
-        const parsed = raw ? JSON.parse(raw) : []
-        if (!Array.isArray(parsed)) return []
-
-        return parsed
-          .map((item) => ({
-            id: String(item?.id || '').trim(),
-            name: String(item?.name || '').trim(),
-            groups: Array.isArray(item?.groups)
-              ? item.groups.map((groupName) => String(groupName || '').trim()).filter(Boolean)
-              : []
-          }))
-          .filter((item) => item.id && item.name)
-      } catch {
-        return []
-      }
-    }
-
-    const resolveLocalTrainingDisplaySettings = (resolvedClubId) => {
-      try {
-        const raw = localStorage.getItem(`trainingExerciseDisplaySettings:${resolvedClubId || 'global'}`)
-        const parsed = raw ? JSON.parse(raw) : {}
-        return parsed && typeof parsed === 'object' ? parsed : {}
-      } catch {
-        return {}
-      }
-    }
-
     const loadTrainingDivisionOptions = async () => {
       try {
-        let resolvedClubId = ''
-        try {
-          const members = await api.getMyClubMembers()
-          resolvedClubId = String(members?.clubId ?? '').trim()
-        } catch {
-          resolvedClubId = ''
-        }
+        const club = await api.getMyClub()
+        const divisions = Array.isArray(club?.trainingDivisions)
+          ? club.trainingDivisions
+              .map((item) => ({
+                id: String(item?.id || '').trim(),
+                name: String(item?.name || '').trim(),
+                groups: Array.isArray(item?.groups)
+                  ? item.groups.map((groupName) => String(groupName || '').trim()).filter(Boolean)
+                  : []
+              }))
+              .filter((item) => item.id && item.name)
+          : []
 
-        if (!resolvedClubId) {
-          try {
-            const club = await api.getMyClub()
-            resolvedClubId = String(club?.id ?? '').trim()
-          } catch {
-            resolvedClubId = ''
-          }
-        }
-
-        const divisions = resolveLocalTrainingDivisions(resolvedClubId)
         if (divisions.length === 0) {
           if (isMounted) setTrainingDivisionGroupOptions([])
           return
         }
 
-        let displaySettings = {}
+        let divisionsConfig = {}
         try {
           const response = await api.getTrainingExerciseDisplaySettings()
           const remoteSettings = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-          displaySettings = Object.keys(remoteSettings).length > 0
-            ? remoteSettings
-            : resolveLocalTrainingDisplaySettings(resolvedClubId)
+          divisionsConfig = remoteSettings?.divisions && typeof remoteSettings.divisions === 'object'
+            ? remoteSettings.divisions
+            : {}
         } catch {
-          displaySettings = resolveLocalTrainingDisplaySettings(resolvedClubId)
+          divisionsConfig = {}
         }
-
-        const divisionsConfig = displaySettings?.divisions && typeof displaySettings.divisions === 'object'
-          ? displaySettings.divisions
-          : {}
 
         const visibleDivisions = divisions
           .filter((item) => {
@@ -508,11 +469,9 @@ function Planner() {
     }
 
     loadTrainingDivisionOptions()
-    window.addEventListener('storage', handleStorage)
 
     return () => {
       isMounted = false
-      window.removeEventListener('storage', handleStorage)
     }
   }, [])
 
@@ -533,12 +492,24 @@ function Planner() {
       const inferredType = inferPlannerTypeFromSession(session)
       const type = recurrenceType || PLANNER_TYPE_BY_SESSION_TYPE[rawSessionType] || inferredType || 'training'
       const metricCode = recurrenceIndicatorCode || EVENT_METRIC_CODE_BY_TYPE[type] || 'TJ'
+      const sessionDateValue = session?.date
+        || session?.training_date
+        || session?.scheduled_date
+        || session?.session_date
+      const sessionStartTimeValue = session?.startTime
+        || session?.start_time
+        || session?.time_from
+        || session?.from_time
+      const sessionEndTimeValue = session?.endTime
+        || session?.end_time
+        || session?.time_to
+        || session?.to_time
       const startIso = session?.startAt
         || session?.start_at
-        || toIsoFromLegacyDateTime(session?.date, session?.startTime || session?.start_time, 9, 0)
+        || toIsoFromLegacyDateTime(sessionDateValue, sessionStartTimeValue, 9, 0)
       const endIso = session?.endAt
         || session?.end_at
-        || toIsoFromLegacyDateTime(session?.date, session?.endTime || session?.end_time, 10, 0)
+        || toIsoFromLegacyDateTime(sessionDateValue, sessionEndTimeValue, 10, 0)
       const startDate = new Date(startIso)
 
       const fieldId = String(recurrenceMeta?.fieldId || '').trim()
@@ -701,24 +672,13 @@ function Planner() {
 
       let attendanceDisplayDraft = {}
       if (resolvedClubId) {
-        const resolveLocalAttendanceDisplayDraft = () => {
-          try {
-            const raw = localStorage.getItem(`attendanceDisplaySettings:${resolvedClubId}`)
-            const parsed = raw ? JSON.parse(raw) : {}
-            return (parsed && typeof parsed === 'object') ? parsed : {}
-          } catch {
-            return {}
-          }
-        }
-
         try {
           const response = await api.getAttendanceDisplaySettings()
-          const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-          attendanceDisplayDraft = Object.keys(remoteDraft).length > 0
-            ? remoteDraft
-            : resolveLocalAttendanceDisplayDraft()
+          attendanceDisplayDraft = response?.settings && typeof response.settings === 'object'
+            ? response.settings
+            : {}
         } catch {
-          attendanceDisplayDraft = resolveLocalAttendanceDisplayDraft()
+          attendanceDisplayDraft = {}
         }
       }
 
@@ -767,24 +727,16 @@ function Planner() {
       }
     }
 
-    const handleStorage = (event) => {
-      if (!event?.key || String(event.key).startsWith('attendanceDisplaySettings:')) {
-        loadSafe()
-      }
-    }
-
     loadSafe()
     const intervalId = window.setInterval(loadSafe, 5000)
     window.addEventListener('focus', handleFocus)
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('storage', handleStorage)
 
     return () => {
       isMounted = false
       window.clearInterval(intervalId)
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('storage', handleStorage)
     }
   }, [loadActiveIndicators])
 
@@ -860,9 +812,26 @@ function Planner() {
       const deduped = []
       const seen = new Set()
       merged.forEach((session) => {
-        const id = String(session?.id || '')
-        if (!id || seen.has(id)) return
-        seen.add(id)
+        const id = String(session?.id || '').trim()
+        const sessionDateValue = session?.date
+          || session?.training_date
+          || session?.scheduled_date
+          || session?.session_date
+        const startToken = String(
+          session?.startAt
+          || session?.start_at
+          || session?.startTime
+          || session?.start_time
+          || ''
+        ).trim()
+        const teamToken = resolveSessionTeamId(session)
+        const typeToken = String(session?.sessionType || session?.session_type || session?.type || '').trim().toLowerCase()
+        const dateToken = String(sessionDateValue || '').trim()
+        const dedupeKey = id || `${dateToken}|${startToken}|${teamToken}|${typeToken}`
+
+        if (!dedupeKey || seen.has(dedupeKey)) return
+
+        seen.add(dedupeKey)
         deduped.push(session)
       })
 

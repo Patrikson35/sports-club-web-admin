@@ -1175,6 +1175,11 @@ class APIClient {
     const legacyQuery = new URLSearchParams({ ...params, team_id: safeTeamId }).toString();
 
     return this.requestWithEndpointFallback([
+      // Prefer /trainings feed (DB source of truth) to avoid stale legacy variants.
+      `/trainings?${scopedQuery}`,
+      `/trainings?${legacyQuery}`,
+      `/v1/trainings?${scopedQuery}`,
+      `/v1/trainings?${legacyQuery}`,
       `/teams/${safeTeamId}/training-sessions${suffix}`,
       `/v1/teams/${safeTeamId}/training-sessions${suffix}`,
       `/${safeTeamId}/training-sessions${suffix}`,
@@ -1183,10 +1188,6 @@ class APIClient {
       `/training-sessions?${legacyQuery}`,
       `/v1/training-sessions?${scopedQuery}`,
       `/v1/training-sessions?${legacyQuery}`,
-      `/trainings?${scopedQuery}`,
-      `/trainings?${legacyQuery}`,
-      `/v1/trainings?${scopedQuery}`,
-      `/v1/trainings?${legacyQuery}`,
     ]);
   }
 
@@ -1209,15 +1210,27 @@ class APIClient {
     // Some backend variants reject unknown `name` column in SQL inserts.
     delete payload.name;
 
+    const resolvedTitle = String(payload?.title || data?.name || '').trim();
+    const resolvedDate = String(payload?.date || '').trim();
+    const resolvedStartTime = String(payload?.start_time || payload?.startTime || '').trim();
+    const resolvedEndTime = String(payload?.end_time || payload?.endTime || '').trim();
+
     const payloadForSessionEndpoints = { ...payload };
-    const payloadForTrainingsBase = { ...payload };
+    const payloadForTrainingsBase = {
+      ...payload,
+      team_id: safeTeamId,
+      title: resolvedTitle || payload?.title,
+      date: resolvedDate || payload?.date,
+      start_time: resolvedStartTime || payload?.start_time,
+      end_time: resolvedEndTime || payload?.end_time,
+    };
     const payloadForTrainingsCamelCase = {
       ...payload,
       teamId: safeTeamId,
-      title: payload.title || payload.name,
-      date: payload.date,
-      startTime: payload.startTime || payload.start_time,
-      endTime: payload.endTime || payload.end_time,
+      title: resolvedTitle || payload?.title,
+      date: resolvedDate || payload?.date,
+      startTime: resolvedStartTime || payload?.startTime,
+      endTime: resolvedEndTime || payload?.endTime,
     };
     delete payloadForTrainingsCamelCase.team_id;
     delete payloadForTrainingsCamelCase.start_time;
@@ -1225,42 +1238,40 @@ class APIClient {
 
     const payloadForTrainingsNoDate = { ...payloadForTrainingsBase };
     delete payloadForTrainingsNoDate.date;
-    delete payloadForTrainingsNoDate.start_time;
-    delete payloadForTrainingsNoDate.end_time;
-    delete payloadForTrainingsNoDate.startTime;
-    delete payloadForTrainingsNoDate.endTime;
+    delete payloadForTrainingsNoDate.training_date;
+    delete payloadForTrainingsNoDate.scheduled_date;
 
-    const resolvedDate = String(data?.date || '').trim();
     const payloadForTrainingsTrainingDate = {
       ...payloadForTrainingsNoDate,
       ...(resolvedDate ? { training_date: resolvedDate } : {}),
+      ...(resolvedStartTime ? { start_time: resolvedStartTime } : {}),
+      ...(resolvedEndTime ? { end_time: resolvedEndTime } : {}),
     };
     const payloadForTrainingsScheduledDate = {
       ...payloadForTrainingsNoDate,
       ...(resolvedDate ? { scheduled_date: resolvedDate } : {}),
+      ...(resolvedStartTime ? { start_time: resolvedStartTime } : {}),
+      ...(resolvedEndTime ? { end_time: resolvedEndTime } : {}),
     };
 
     const trainingsPayloadVariants = [
-      payloadForTrainingsCamelCase,
-      payloadForTrainingsNoDate,
       payloadForTrainingsTrainingDate,
       payloadForTrainingsScheduledDate,
+      payloadForTrainingsCamelCase,
       payloadForTrainingsBase,
     ];
 
     const attempts = [
-      ...trainingsPayloadVariants.flatMap((variant) => ([
-        { endpoint: `/trainings`, body: variant },
-        { endpoint: `/v1/trainings`, body: variant },
-        { endpoint: `/trainings/`, body: variant },
-        { endpoint: `/v1/trainings/`, body: variant },
-      ])),
       { endpoint: `/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/training-sessions`, body: payloadForSessionEndpoints },
+      ...trainingsPayloadVariants.flatMap((variant) => ([
+        { endpoint: `/trainings`, body: variant },
+        { endpoint: `/v1/trainings`, body: variant },
+      ])),
     ];
 
     let lastError = null;

@@ -992,126 +992,174 @@ function MyClub() {
     return () => clearTimeout(timeoutId)
   }, [success])
 
+  const normalizeTrainingDivisionsOnline = (value) => {
+    const parsed = Array.isArray(value) ? value : []
+    return parsed
+      .map((item) => {
+        const groups = Array.isArray(item?.groups)
+          ? item.groups.map((groupName) => String(groupName || '').trim()).filter(Boolean)
+          : []
+        return {
+          id: String(item?.id || '').trim(),
+          name: String(item?.name || '').trim(),
+          groups
+        }
+      })
+      .filter((item) => item.id && item.name)
+  }
+
+  const normalizeExerciseCategoriesOnline = (value) => {
+    const parsed = Array.isArray(value) ? value : []
+    return parsed
+      .map((item) => {
+        const subcategories = Array.isArray(item?.subcategories)
+          ? item.subcategories.map((name) => String(name || '').trim()).filter(Boolean)
+          : []
+        const assignedDivisionGroups = item?.assignedDivisionGroups && typeof item.assignedDivisionGroups === 'object'
+          ? Object.entries(item.assignedDivisionGroups).reduce((acc, [divisionId, groups]) => {
+              const resolvedDivisionId = String(divisionId || '').trim()
+              if (!resolvedDivisionId) return acc
+              const normalizedGroups = Array.isArray(groups)
+                ? groups.map((name) => String(name || '').trim()).filter(Boolean)
+                : []
+              if (normalizedGroups.length > 0) {
+                acc[resolvedDivisionId] = Array.from(new Set(normalizedGroups))
+              }
+              return acc
+            }, {})
+          : {}
+        return {
+          id: String(item?.id || '').trim(),
+          name: String(item?.name || '').trim(),
+          subcategories,
+          assignedDivisionGroups
+        }
+      })
+      .filter((item) => item.id && item.name)
+  }
+
+  const normalizeExerciseDatabaseItemsOnline = (value) => {
+    const parsed = Array.isArray(value) ? value : []
+    return parsed
+      .map((item) => {
+        const youtube = item?.youtube && typeof item.youtube === 'object' ? item.youtube : {}
+        return {
+          id: String(item?.id || '').trim(),
+          name: String(item?.name || '').trim(),
+          description: String(item?.description || '').trim(),
+          durationMinutes: Number.parseInt(String(item?.durationMinutes || 0), 10) || 0,
+          intensity: String(item?.intensity || 'Stredná'),
+          playersCount: normalizeExercisePlayersCount(item?.playersCount),
+          imageUrl: String(item?.imageUrl || '').trim(),
+          imageName: String(item?.imageName || '').trim(),
+          selectedCategoryIds: Array.isArray(item?.selectedCategoryIds)
+            ? item.selectedCategoryIds.map((categoryId) => String(categoryId || '').trim()).filter(Boolean)
+            : [],
+          categorySelections: item?.categorySelections && typeof item.categorySelections === 'object' ? item.categorySelections : {},
+          divisionGroups: item?.divisionGroups && typeof item.divisionGroups === 'object' ? item.divisionGroups : {},
+          isActive: item?.isActive !== false,
+          isPublic: item?.isPublic !== false,
+          rating: normalizeExerciseRating(item?.rating),
+          isFavorite: normalizeExerciseFavorite(item?.isFavorite),
+          youtube: {
+            url: String(youtube?.url || '').trim(),
+            videoId: String(youtube?.videoId || '').trim()
+          },
+          createdAt: String(item?.createdAt || ''),
+          updatedAt: String(item?.updatedAt || '')
+        }
+      })
+      .filter((item) => item.id && item.name)
+  }
+
   useEffect(() => {
     if (!clubId) {
       setTrainingDivisions([])
+      setExerciseCategories([])
+      setExerciseDatabaseItems([])
       return
     }
 
-    const storageKey = `trainingDivisionNames:${clubId || 'global'}`
-    try {
-      const raw = localStorage.getItem(storageKey)
-      const parsed = raw ? JSON.parse(raw) : []
-      const normalized = Array.isArray(parsed)
-        ? parsed
-            .map((item) => {
-              const groups = Array.isArray(item?.groups)
-                ? item.groups.map((groupName) => String(groupName || '').trim()).filter(Boolean)
-                : []
-              return {
-                id: String(item?.id || ''),
-                name: String(item?.name || '').trim(),
-                groups
-              }
-            })
-            .filter((item) => item.id && item.name)
-        : []
-      setTrainingDivisions(normalized)
-    } catch {
-      setTrainingDivisions([])
+    let isMounted = true
+
+    const loadClubExerciseData = async () => {
+      try {
+        const data = await api.getMyClub()
+        if (!isMounted) return
+        setTrainingDivisions(normalizeTrainingDivisionsOnline(data?.trainingDivisions))
+        setExerciseCategories(normalizeExerciseCategoriesOnline(data?.exerciseCategories))
+        setExerciseDatabaseItems(normalizeExerciseDatabaseItemsOnline(data?.exerciseDatabaseItems))
+      } catch {
+        if (!isMounted) return
+        setTrainingDivisions([])
+        setExerciseCategories([])
+        setExerciseDatabaseItems([])
+      }
+    }
+
+    loadClubExerciseData()
+
+    return () => {
+      isMounted = false
     }
   }, [clubId])
 
   useEffect(() => {
-    if (!clubId) return
+    if (!clubId || !clubExists) return
 
-    const storageKey = `trainingDivisionNames:${clubId || 'global'}`
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(trainingDivisions))
-    } catch {
-      // Ignore write failures and keep in-memory state.
-    }
-  }, [clubId, trainingDivisions])
+    const timeoutId = setTimeout(() => {
+      api.updateMyClub({ trainingDivisions }).catch(() => {
+        // Keep UI responsive even when sync fails.
+      })
+    }, 450)
+
+    return () => clearTimeout(timeoutId)
+  }, [clubId, clubExists, trainingDivisions])
+
+  useEffect(() => {
+    if (!clubId || !clubExists) return
+
+    const timeoutId = setTimeout(() => {
+      api.updateMyClub({ exerciseCategories }).catch(() => {
+        // Keep UI responsive even when sync fails.
+      })
+    }, 450)
+
+    return () => clearTimeout(timeoutId)
+  }, [clubId, clubExists, exerciseCategories])
+
+  useEffect(() => {
+    if (!clubId || !clubExists) return
+
+    const timeoutId = setTimeout(() => {
+      api.updateMyClub({ exerciseDatabaseItems }).catch(() => {
+        // Keep UI responsive even when sync fails.
+      })
+    }, 450)
+
+    return () => clearTimeout(timeoutId)
+  }, [clubId, clubExists, exerciseDatabaseItems])
 
   useEffect(() => {
     if (!clubId) {
+      setTrainingDivisions([])
       setTrainingExerciseDisplayLoaded(false)
       return
     }
 
-    const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
     setTrainingExerciseDisplayLoaded(false)
-
-    const resolveLocalSettings = () => {
-      try {
-        const raw = localStorage.getItem(storageKey)
-        const parsed = raw ? JSON.parse(raw) : {}
-
-        const rawDivisions = parsed?.divisions && typeof parsed.divisions === 'object'
-          ? parsed.divisions
-          : {}
-
-        // Backward compatibility for older storage model.
-        if (Object.keys(rawDivisions).length === 0 && (parsed?.showGroupSection !== undefined || parsed?.divisionId)) {
-          const legacyDivisionId = String(parsed?.divisionId || '')
-          const legacyShow = parsed?.showGroupSection !== false
-          return {
-            divisions: legacyDivisionId ? { [legacyDivisionId]: { visible: legacyShow } } : {},
-            defaultDivisionId: legacyDivisionId
-          }
-        }
-
-        return {
-          divisions: rawDivisions,
-            defaultDivisionId: String(parsed?.defaultDivisionId || ''),
-            updatedAt: Number.isFinite(Number(parsed?.updatedAt)) ? Number(parsed.updatedAt) : 0
-        }
-      } catch {
-        return {
-          divisions: {},
-            defaultDivisionId: '',
-            updatedAt: 0
-        }
-      }
-    }
 
     const loadTrainingDisplaySettings = async () => {
       try {
         const response = await api.getTrainingExerciseDisplaySettings()
         const parsed = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-        const normalizedRemote = {
+        setTrainingExerciseDisplaySettings({
           divisions: parsed?.divisions && typeof parsed.divisions === 'object' ? parsed.divisions : {},
           defaultDivisionId: String(parsed?.defaultDivisionId || ''),
           updatedAt: Number.isFinite(Number(parsed?.updatedAt)) ? Number(parsed.updatedAt) : 0
-        }
-        const localSettings = resolveLocalSettings()
-        const normalized = Number(localSettings.updatedAt || 0) >= Number(normalizedRemote.updatedAt || 0)
-          ? {
-              divisions: {
-                ...(normalizedRemote.divisions && typeof normalizedRemote.divisions === 'object' ? normalizedRemote.divisions : {}),
-                ...(localSettings.divisions && typeof localSettings.divisions === 'object' ? localSettings.divisions : {})
-              },
-              defaultDivisionId: String(localSettings.defaultDivisionId || normalizedRemote.defaultDivisionId || ''),
-              updatedAt: Number(localSettings.updatedAt || normalizedRemote.updatedAt || 0)
-            }
-          : {
-              divisions: {
-                ...(localSettings.divisions && typeof localSettings.divisions === 'object' ? localSettings.divisions : {}),
-                ...(normalizedRemote.divisions && typeof normalizedRemote.divisions === 'object' ? normalizedRemote.divisions : {})
-              },
-              defaultDivisionId: String(normalizedRemote.defaultDivisionId || localSettings.defaultDivisionId || ''),
-              updatedAt: Number(normalizedRemote.updatedAt || localSettings.updatedAt || 0)
-            }
-
-        setTrainingExerciseDisplaySettings(normalized)
-
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(normalized))
-        } catch {
-          // no-op
-        }
+        })
       } catch {
-        setTrainingExerciseDisplaySettings(resolveLocalSettings())
+        setTrainingExerciseDisplaySettings({ divisions: {}, defaultDivisionId: '', updatedAt: 0 })
       } finally {
         setTrainingExerciseDisplayLoaded(true)
       }
@@ -1119,17 +1167,6 @@ function MyClub() {
 
     loadTrainingDisplaySettings()
   }, [clubId])
-
-  useEffect(() => {
-    if (!clubId || !trainingExerciseDisplayLoaded) return
-
-    const storageKey = `trainingExerciseDisplaySettings:${clubId || 'global'}`
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(trainingExerciseDisplaySettings))
-    } catch {
-      // Ignore write failures and keep in-memory state.
-    }
-  }, [clubId, trainingExerciseDisplayLoaded, trainingExerciseDisplaySettings])
 
   useEffect(() => {
     if (!clubId || !trainingExerciseDisplayLoaded) return
@@ -1174,104 +1211,6 @@ function MyClub() {
     }))
   }, [clubId, trainingDivisions, trainingExerciseDisplayLoaded])
 
-  useEffect(() => {
-    const storageKey = `exerciseCategories:${clubId || 'global'}`
-    try {
-      const raw = localStorage.getItem(storageKey)
-      const parsed = raw ? JSON.parse(raw) : []
-      const normalized = Array.isArray(parsed)
-        ? parsed
-            .map((item) => {
-              const subcategories = Array.isArray(item?.subcategories)
-                ? item.subcategories.map((name) => String(name || '').trim()).filter(Boolean)
-                : []
-              const assignedDivisionGroups = item?.assignedDivisionGroups && typeof item.assignedDivisionGroups === 'object'
-                ? Object.entries(item.assignedDivisionGroups).reduce((acc, [divisionId, groups]) => {
-                    const resolvedDivisionId = String(divisionId || '').trim()
-                    if (!resolvedDivisionId) return acc
-                    const normalizedGroups = Array.isArray(groups)
-                      ? groups.map((name) => String(name || '').trim()).filter(Boolean)
-                      : []
-                    if (normalizedGroups.length > 0) {
-                      acc[resolvedDivisionId] = Array.from(new Set(normalizedGroups))
-                    }
-                    return acc
-                  }, {})
-                : {}
-              return {
-                id: String(item?.id || ''),
-                name: String(item?.name || '').trim(),
-                subcategories,
-                assignedDivisionGroups
-              }
-            })
-            .filter((item) => item.id && item.name)
-        : []
-      setExerciseCategories(normalized)
-    } catch {
-      setExerciseCategories([])
-    }
-  }, [clubId])
-
-  useEffect(() => {
-    const storageKey = `exerciseCategories:${clubId || 'global'}`
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(exerciseCategories))
-    } catch {
-      // Ignore write failures and keep in-memory state.
-    }
-  }, [clubId, exerciseCategories])
-
-  useEffect(() => {
-    const storageKey = `exerciseDatabaseItems:${clubId || 'global'}`
-    try {
-      const raw = localStorage.getItem(storageKey)
-      const parsed = raw ? JSON.parse(raw) : []
-      const normalized = Array.isArray(parsed)
-        ? parsed.map((item) => {
-            const youtube = item?.youtube && typeof item.youtube === 'object' ? item.youtube : {}
-            return {
-              id: String(item?.id || ''),
-              name: String(item?.name || '').trim(),
-              description: String(item?.description || '').trim(),
-              durationMinutes: Number.parseInt(String(item?.durationMinutes || 0), 10) || 0,
-              intensity: String(item?.intensity || 'Stredná'),
-              playersCount: normalizeExercisePlayersCount(item?.playersCount),
-              imageUrl: String(item?.imageUrl || '').trim(),
-              imageName: String(item?.imageName || '').trim(),
-              selectedCategoryIds: Array.isArray(item?.selectedCategoryIds)
-                ? item.selectedCategoryIds.map((categoryId) => String(categoryId || '').trim()).filter(Boolean)
-                : [],
-              categorySelections: item?.categorySelections && typeof item.categorySelections === 'object' ? item.categorySelections : {},
-              divisionGroups: item?.divisionGroups && typeof item.divisionGroups === 'object' ? item.divisionGroups : {},
-              isActive: item?.isActive !== false,
-              isPublic: item?.isPublic !== false,
-              rating: normalizeExerciseRating(item?.rating),
-              isFavorite: normalizeExerciseFavorite(item?.isFavorite),
-              youtube: {
-                url: String(youtube?.url || '').trim(),
-                videoId: String(youtube?.videoId || '').trim()
-              },
-              createdAt: String(item?.createdAt || ''),
-              updatedAt: String(item?.updatedAt || '')
-            }
-          }).filter((item) => item.id && item.name)
-        : []
-
-      setExerciseDatabaseItems(normalized)
-    } catch {
-      setExerciseDatabaseItems([])
-    }
-  }, [clubId])
-
-  useEffect(() => {
-    const storageKey = `exerciseDatabaseItems:${clubId || 'global'}`
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(exerciseDatabaseItems))
-    } catch {
-      // Ignore write failures and keep in-memory state.
-    }
-  }, [clubId, exerciseDatabaseItems])
 
   useEffect(() => {
     if (!playerSuggestionsOpen) return undefined
@@ -1536,32 +1475,10 @@ function MyClub() {
       try {
         const response = await api.getAttendanceDisplaySettings()
         const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-        const hasRemoteValue = Object.keys(remoteDraft).length > 0
-
-        let localDraft = {}
-        try {
-          const storedValue = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
-          localDraft = storedValue ? JSON.parse(storedValue) : {}
-        } catch {
-          localDraft = {}
-        }
-
-        const normalized = normalizeAttendanceDisplayDraft(metrics, hasRemoteValue ? remoteDraft : localDraft)
+        const normalized = normalizeAttendanceDisplayDraft(metrics, remoteDraft)
         setAttendanceDisplayDraft(normalized)
-
-        try {
-          localStorage.setItem(`attendanceDisplaySettings:${clubId}`, JSON.stringify(normalized))
-        } catch {
-          // no-op
-        }
       } catch {
-        try {
-          const storedValue = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
-          const parsedDraft = storedValue ? JSON.parse(storedValue) : {}
-          setAttendanceDisplayDraft(normalizeAttendanceDisplayDraft(metrics, parsedDraft))
-        } catch {
-          setAttendanceDisplayDraft(normalizeAttendanceDisplayDraft(metrics, {}))
-        }
+        setAttendanceDisplayDraft(normalizeAttendanceDisplayDraft(metrics, {}))
       } finally {
         setAttendanceDisplayLoaded(true)
       }
@@ -1569,16 +1486,6 @@ function MyClub() {
 
     loadAttendanceDisplaySettings()
   }, [clubId, metricsLoaded, metrics])
-
-  useEffect(() => {
-    if (!clubId || !attendanceDisplayLoaded) return
-
-    try {
-      localStorage.setItem(`attendanceDisplaySettings:${clubId}`, JSON.stringify(attendanceDisplayDraft))
-    } catch {
-      // no-op
-    }
-  }, [clubId, attendanceDisplayLoaded, attendanceDisplayDraft])
 
   useEffect(() => {
     if (!clubExists || activeTab !== 'settings' || activeSettingsSection !== 'attendance' || metricsLoaded) return
@@ -1633,6 +1540,9 @@ function MyClub() {
       })
       setClubSport(resolvedSport)
       setClubId(data.id || null)
+      setTrainingDivisions(normalizeTrainingDivisionsOnline(data?.trainingDivisions))
+      setExerciseCategories(normalizeExerciseCategoriesOnline(data?.exerciseCategories))
+      setExerciseDatabaseItems(normalizeExerciseDatabaseItemsOnline(data?.exerciseDatabaseItems))
 
       try {
         const fieldTypesResponse = await api.getMyClubFieldTypes()
@@ -1806,26 +1716,7 @@ function MyClub() {
 
       const preparedMetrics = ensureCalendarDaysMetric(dedupeCalendarDaysMetric(loadedMetrics))
       const fallbackMetrics = preparedMetrics.length > 0 ? preparedMetrics : createDefaultAttendanceMetrics()
-
-      let orderedMetrics = fallbackMetrics
-      try {
-        const storageKey = `attendanceMetricsOrder:${clubId || 'global'}`
-        const storedOrderRaw = localStorage.getItem(storageKey)
-        const storedOrder = storedOrderRaw ? JSON.parse(storedOrderRaw) : []
-        if (Array.isArray(storedOrder) && storedOrder.length > 0) {
-          const orderMap = new Map(storedOrder.map((metricId, index) => [String(metricId), index]))
-          orderedMetrics = [...fallbackMetrics].sort((left, right) => {
-            const leftPos = orderMap.get(String(left?.id || ''))
-            const rightPos = orderMap.get(String(right?.id || ''))
-            if (leftPos === undefined && rightPos === undefined) return 0
-            if (leftPos === undefined) return 1
-            if (rightPos === undefined) return -1
-            return leftPos - rightPos
-          })
-        }
-      } catch {
-        orderedMetrics = fallbackMetrics
-      }
+      const orderedMetrics = fallbackMetrics
 
       setMetrics(orderedMetrics)
       setMetricsLoaded(true)
@@ -3135,20 +3026,7 @@ function MyClub() {
         updatedAt: Date.now()
       }
 
-      try {
-        await api.updateTrainingExerciseDisplaySettings(normalized)
-      } catch (err) {
-        // Older API deployments may not have the endpoint yet; keep UX functional via local fallback.
-        if (!api.isEndpointNotFound(err)) {
-          throw err
-        }
-      }
-
-      try {
-        localStorage.setItem(`trainingExerciseDisplaySettings:${clubId || 'global'}`, JSON.stringify(normalized))
-      } catch {
-        // no-op
-      }
+      await api.updateTrainingExerciseDisplaySettings(normalized)
 
       setSuccess('Nastavenie zobrazenia tréningov bolo uložené.')
     } catch (err) {
@@ -3483,22 +3361,9 @@ function MyClub() {
 
       const normalized = normalizeAttendanceDisplayDraft(metrics, attendanceDisplayDraft)
 
-      try {
-        await api.updateAttendanceDisplaySettings(normalized)
-      } catch (err) {
-        // Older API deployments may not have the endpoint yet; keep UX functional via local fallback.
-        if (!api.isEndpointNotFound(err)) {
-          throw err
-        }
-      }
+      await api.updateAttendanceDisplaySettings(normalized)
 
       setAttendanceDisplayDraft(normalized)
-
-      try {
-        localStorage.setItem(`attendanceDisplaySettings:${clubId}`, JSON.stringify(normalized))
-      } catch {
-        // no-op
-      }
 
       setSuccess('Nastavenie zobrazenia ukazovateľov bolo uložené.')
     } catch (err) {
@@ -4189,13 +4054,6 @@ function MyClub() {
 
     setMetrics(next)
     setDraggedMetricId(null)
-
-    try {
-      const storageKey = `attendanceMetricsOrder:${clubId || 'global'}`
-      localStorage.setItem(storageKey, JSON.stringify(next.map((item) => String(item?.id || '')).filter(Boolean)))
-    } catch {
-      // no-op
-    }
   }
 
   const handleMetricDragEnd = () => {
@@ -4212,11 +4070,7 @@ function MyClub() {
     setSuccess('')
   }
 
-  const openClubLogoPicker = () => {
-    clubLogoInputRef.current?.click()
-  }
-
-  const handleClubLogoChange = (e) => {
+  const handleLogoChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -4226,18 +4080,6 @@ function MyClub() {
     }))
     setError('')
     setSuccess('')
-  }
-
-  const clearClubLogo = () => {
-    setClub((prev) => ({
-      ...prev,
-      logo: '',
-      logoFile: null
-    }))
-
-    if (clubLogoInputRef.current) {
-      clubLogoInputRef.current.value = ''
-    }
   }
 
   const handleSubmit = async (e) => {
@@ -4802,16 +4644,7 @@ function MyClub() {
   })()
 
   return (
-    <div className="my-club-container">
-      <div className="club-header">
-        <div>
-          <h1>Nastavenia klubu</h1>
-        </div>
-      </div>
-
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
-
+    <div>
       <div className="club-tabs" role="navigation" aria-label="Sekcie nastavení klubu">
         <button
           type="button"

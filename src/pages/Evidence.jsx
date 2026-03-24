@@ -137,30 +137,6 @@ const toMonthDateKey = (year, monthIndex, day) => {
   return `${year}-${month}-${dayValue}`
 }
 
-const getPlannerFallbackStorageKey = (teamId) => `plannerSessionsFallback:${String(teamId || '').trim() || 'unknown'}`
-
-const readPlannerFallbackSessions = (teamId) => {
-  try {
-    const raw = localStorage.getItem(getPlannerFallbackStorageKey(teamId))
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const filterPlannerFallbackSessionsByRange = (sessions, startDateKey, endDateKey) => {
-  const from = String(startDateKey || '').trim()
-  const to = String(endDateKey || '').trim()
-  if (!from || !to) return Array.isArray(sessions) ? sessions : []
-
-  return (Array.isArray(sessions) ? sessions : []).filter((session) => {
-    const dateKey = getSessionDateKey(session)
-    if (!dateKey) return false
-    return dateKey >= from && dateKey <= to
-  })
-}
-
 const getSessionDateKey = (session) => {
   const directDate = String(session?.date || '').trim()
   if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) return directDate
@@ -384,26 +360,7 @@ const buildMonthToDateTrendSnapshot = ({
 
 const applyStoredMetricOrder = (metricsList, clubId) => {
   const source = Array.isArray(metricsList) ? metricsList : []
-  if (source.length <= 1) return source
-
-  try {
-    const storageKey = `attendanceMetricsOrder:${clubId || 'global'}`
-    const raw = localStorage.getItem(storageKey)
-    const storedOrder = raw ? JSON.parse(raw) : []
-    if (!Array.isArray(storedOrder) || storedOrder.length === 0) return source
-
-    const orderMap = new Map(storedOrder.map((metricId, index) => [String(metricId), index]))
-    return [...source].sort((left, right) => {
-      const leftPos = orderMap.get(String(left?.id || ''))
-      const rightPos = orderMap.get(String(right?.id || ''))
-      if (leftPos === undefined && rightPos === undefined) return 0
-      if (leftPos === undefined) return 1
-      if (rightPos === undefined) return -1
-      return leftPos - rightPos
-    })
-  } catch {
-    return source
-  }
+  return source.length <= 1 ? source : [...source]
 }
 
 const readCurrentUser = () => {
@@ -785,15 +742,6 @@ function Evidence() {
   const monthsScrollRef = useRef(null)
   const monthsWrapRef = useRef(null)
 
-  const evidenceStorageKey = useMemo(
-    () => `attendanceEvidenceDraft:${clubId || 'global'}`,
-    [clubId]
-  )
-  const evidenceSessionMetaStorageKey = useMemo(
-    () => `attendanceEvidenceSessionMeta:${clubId || 'global'}`,
-    [clubId]
-  )
-
   const currentUser = useMemo(() => readCurrentUser(), [])
   const currentRole = normalizeRole(currentUser?.role)
   const currentUserId = String(currentUser?.id ?? currentUser?.userId ?? '').trim()
@@ -926,15 +874,6 @@ function Evidence() {
           ? result.value.sessions
           : (Array.isArray(result.value?.trainings) ? result.value.trainings : [])
         sessions.forEach((session) => addMergedSession(session))
-      })
-
-      teamIds.forEach((teamId) => {
-        const fallbackSessions = filterPlannerFallbackSessionsByRange(
-          readPlannerFallbackSessions(teamId),
-          startDate,
-          endDate
-        )
-        fallbackSessions.forEach((session) => addMergedSession(session))
       })
 
       setPlannedSessions(merged)
@@ -1445,37 +1384,6 @@ function Evidence() {
   }, [selectedCategory, visibleTeams])
 
   useEffect(() => {
-    const storageKeys = [
-      `attendanceSeasons:${clubId || 'global'}`,
-      clubId ? `attendanceSeasons:${clubId}` : null,
-      'attendanceSeasons:global'
-    ].filter(Boolean)
-
-    const readLocalFallback = () => {
-      for (const key of storageKeys) {
-        try {
-          const raw = localStorage.getItem(key)
-          if (!raw) continue
-          const parsed = JSON.parse(raw)
-          const normalized = normalizeAttendanceSeasons({ seasons: parsed })
-          if (normalized.length > 0) return normalized
-        } catch {
-          // try next key
-        }
-      }
-      return []
-    }
-
-    const writeLocalCache = (seasons) => {
-      storageKeys.forEach((key) => {
-        try {
-          localStorage.setItem(key, JSON.stringify(seasons))
-        } catch {
-          // ignore storage write failures
-        }
-      })
-    }
-
     let isMounted = true
 
     const loadAttendancePeriods = async () => {
@@ -1484,17 +1392,11 @@ function Evidence() {
         if (!isMounted) return
 
         const remoteSeasons = normalizeAttendanceSeasons(response)
-        if (remoteSeasons.length > 0) {
-          setAttendancePeriods(remoteSeasons)
-          writeLocalCache(remoteSeasons)
-          return
-        }
+        setAttendancePeriods(remoteSeasons)
       } catch {
-        // fallback to local cache
+        if (!isMounted) return
+        setAttendancePeriods([])
       }
-
-      if (!isMounted) return
-      setAttendancePeriods(readLocalFallback())
     }
 
     loadAttendancePeriods()
@@ -1517,35 +1419,9 @@ function Evidence() {
       try {
         const response = await api.getAttendanceDisplaySettings()
         const remoteDraft = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-
-        if (Object.keys(remoteDraft).length > 0) {
-          setAttendanceDisplayDraft(remoteDraft)
-          return
-        }
-
-        try {
-          const raw = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
-          if (!raw) {
-            setAttendanceDisplayDraft({})
-            return
-          }
-          const parsed = JSON.parse(raw)
-          setAttendanceDisplayDraft(parsed && typeof parsed === 'object' ? parsed : {})
-        } catch {
-          setAttendanceDisplayDraft({})
-        }
+        setAttendanceDisplayDraft(remoteDraft)
       } catch {
-        try {
-          const raw = localStorage.getItem(`attendanceDisplaySettings:${clubId}`)
-          if (!raw) {
-            setAttendanceDisplayDraft({})
-            return
-          }
-          const parsed = JSON.parse(raw)
-          setAttendanceDisplayDraft(parsed && typeof parsed === 'object' ? parsed : {})
-        } catch {
-          setAttendanceDisplayDraft({})
-        }
+        setAttendanceDisplayDraft({})
       } finally {
         setAttendanceDisplayLoaded(true)
       }
@@ -1562,52 +1438,12 @@ function Evidence() {
     if (prevSignature === nextSignature) return
 
     setAttendanceDisplayDraft(normalized)
-    try {
-      localStorage.setItem(`attendanceDisplaySettings:${clubId}`, JSON.stringify(normalized))
-    } catch {
-      // no-op
-    }
   }, [clubId, attendanceDisplayLoaded, attendanceMetrics, attendanceDisplayDraft])
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(evidenceStorageKey)
-      if (!raw) {
-        setEvidenceEntriesDraft({})
-        return
-      }
-      const parsed = JSON.parse(raw)
-      setEvidenceEntriesDraft(parsed && typeof parsed === 'object' ? parsed : {})
-    } catch {
-      setEvidenceEntriesDraft({})
-    }
-  }, [evidenceStorageKey])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(evidenceStorageKey, JSON.stringify(evidenceEntriesDraft))
-    } catch {}
-  }, [evidenceStorageKey, evidenceEntriesDraft])
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(evidenceSessionMetaStorageKey)
-      if (!raw) {
-        setEvidenceSessionMetaDraft({})
-        return
-      }
-      const parsed = JSON.parse(raw)
-      setEvidenceSessionMetaDraft(parsed && typeof parsed === 'object' ? parsed : {})
-    } catch {
-      setEvidenceSessionMetaDraft({})
-    }
-  }, [evidenceSessionMetaStorageKey])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(evidenceSessionMetaStorageKey, JSON.stringify(evidenceSessionMetaDraft))
-    } catch {}
-  }, [evidenceSessionMetaStorageKey, evidenceSessionMetaDraft])
+    setEvidenceEntriesDraft({})
+    setEvidenceSessionMetaDraft({})
+  }, [clubId])
 
   useEffect(() => {
     if (!evidenceSaveNotice) return undefined
@@ -1881,6 +1717,8 @@ function Evidence() {
     ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
       const dateKey = getSessionDateKey(session)
       if (!dateKey || !dateKey.startsWith(targetPrefix)) return
+      const sessionTeamId = String(session?.team_id ?? session?.teamId ?? '').trim()
+      if (selectedCategoryId !== 'all' && sessionTeamId !== selectedCategoryId) return
 
       const shouldHidePlannedForEvidenceDay = String(dateKey) <= todayKey
         && evidenceDatesWithAttendance.has(String(dateKey))
@@ -1939,6 +1777,8 @@ function Evidence() {
     ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
       const dateKey = getSessionDateKey(session)
       if (!dateKey || !dateKey.startsWith(targetPrefix)) return
+      const sessionTeamId = String(session?.team_id ?? session?.teamId ?? '').trim()
+      if (selectedCategoryId !== 'all' && sessionTeamId !== selectedCategoryId) return
 
       const day = Number(String(dateKey).slice(-2))
       const teamId = String(session?.team_id ?? session?.teamId ?? '').trim()
