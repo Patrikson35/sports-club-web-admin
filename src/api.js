@@ -1631,12 +1631,22 @@ class APIClient {
       const endpointSettings = (response?.settings && typeof response.settings === 'object' && !Array.isArray(response.settings))
         ? response.settings
         : {};
+      const fallbackResponse = await readFromMyClubFallback();
+      const fallbackSettings = (fallbackResponse?.settings && typeof fallbackResponse.settings === 'object' && !Array.isArray(fallbackResponse.settings))
+        ? fallbackResponse.settings
+        : {};
+
+      // Prefer my-club fallback when present, because legacy deployments can keep
+      // stale data in attendance_display_settings while UI writes via my-club.
+      if (isNonEmptyObject(fallbackSettings)) {
+        return { settings: fallbackSettings };
+      }
 
       if (isNonEmptyObject(endpointSettings)) {
         return { settings: endpointSettings };
       }
 
-      return await readFromMyClubFallback();
+      return { settings: {} };
     } catch (error) {
       if (!this.isEndpointNotFound(error)) {
         throw error;
@@ -1654,12 +1664,35 @@ class APIClient {
     const normalizedSettings = (settings && typeof settings === 'object' && !Array.isArray(settings)) ? settings : {};
 
     try {
-      return await this.request('/clubs/my-club/attendance-display-settings', {
+      const response = await this.request('/clubs/my-club/attendance-display-settings', {
         method: 'PUT',
         body: JSON.stringify({
           settings: normalizedSettings
         }),
       });
+
+      // Keep compatibility mirror in my-club payload so refresh reads are stable
+      // even when backend deployments split between multiple settings storages.
+      try {
+        const club = await this.getMyClub();
+        const clubName = String(club?.name || '').trim();
+        const currentMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
+          ? club.evidenceSessionMeta
+          : {};
+
+        await this.updateMyClub({
+          name: clubName,
+          attendanceDisplaySettings: normalizedSettings,
+          evidenceSessionMeta: {
+            ...currentMeta,
+            attendanceDisplaySettings: normalizedSettings
+          }
+        });
+      } catch {
+        // Dedicated endpoint save already succeeded; do not fail the action on mirror write.
+      }
+
+      return response;
     } catch (error) {
       if (!this.isEndpointNotFound(error)) {
         throw error;
