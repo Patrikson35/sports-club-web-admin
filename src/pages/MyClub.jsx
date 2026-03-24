@@ -3557,6 +3557,11 @@ function MyClub() {
   const startEditPlayer = (member) => {
     setShowPlayerForm(true)
     setEditingPlayerId(member.userId)
+    const normalizedCategoryIds = Array.from(new Set(
+      (Array.isArray(member.categories) ? member.categories : [])
+        .map((item) => String(item?.id || '').trim())
+        .filter(Boolean)
+    ))
     setPlayerDraft({
       firstName: member.firstName || '',
       lastName: member.lastName || '',
@@ -3565,7 +3570,7 @@ function MyClub() {
       email: member.email || '',
       photo: member.photo || '',
       photoFile: null,
-      categoryIds: Array.isArray(member.categories) ? member.categories.map((item) => item.id) : []
+      categoryIds: normalizedCategoryIds
     })
   }
 
@@ -3640,7 +3645,11 @@ function MyClub() {
         mobile,
         email,
         photo: uploadedPhotoUrl,
-        categories: Array.isArray(playerDraft.categoryIds) ? playerDraft.categoryIds : []
+        categories: Array.from(new Set(
+          (Array.isArray(playerDraft.categoryIds) ? playerDraft.categoryIds : [])
+            .map((categoryId) => String(categoryId || '').trim())
+            .filter(Boolean)
+        ))
       }
 
       const response = editingPlayerId
@@ -3903,9 +3912,11 @@ function MyClub() {
   }
 
   const getPlayerCategoriesLabel = (member) => {
-    const categoryNames = Array.isArray(member?.categories)
-      ? member.categories.map((category) => String(category?.name || '').trim()).filter(Boolean)
-      : []
+    const categoryNames = Array.from(new Set(
+      (Array.isArray(member?.categories) ? member.categories : [])
+        .map((category) => String(category?.name || '').trim())
+        .filter(Boolean)
+    ))
 
     return categoryNames.length > 0 ? categoryNames.join(', ') : '—'
   }
