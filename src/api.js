@@ -1606,6 +1606,36 @@ class APIClient {
       && Object.keys(value).length > 0
     );
 
+    const extractSettings = (value) => (
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? value
+        : {}
+    );
+
+    const getSettingsTimestamp = (value) => {
+      const raw = String(value?._savedAt || '').trim();
+      if (!raw) return 0;
+      const parsed = Date.parse(raw);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const pickNewestSettings = (endpointSettings, fallbackSettings) => {
+      const endpointCandidate = extractSettings(endpointSettings);
+      const fallbackCandidate = extractSettings(fallbackSettings);
+      const endpointHasData = isNonEmptyObject(endpointCandidate);
+      const fallbackHasData = isNonEmptyObject(fallbackCandidate);
+
+      if (endpointHasData && !fallbackHasData) return endpointCandidate;
+      if (!endpointHasData && fallbackHasData) return fallbackCandidate;
+      if (!endpointHasData && !fallbackHasData) return {};
+
+      const endpointTs = getSettingsTimestamp(endpointCandidate);
+      const fallbackTs = getSettingsTimestamp(fallbackCandidate);
+
+      if (fallbackTs > endpointTs) return fallbackCandidate;
+      return endpointCandidate;
+    };
+
     const readFromMyClubFallback = async () => {
       const club = await this.getMyClub();
       const clubLevelSettings = (club?.attendanceDisplaySettings && typeof club.attendanceDisplaySettings === 'object' && !Array.isArray(club.attendanceDisplaySettings))
@@ -1626,34 +1656,27 @@ class APIClient {
       return { settings: {} };
     };
 
+    let endpointSettings = {};
+
     try {
       const response = await this.request('/clubs/my-club/attendance-display-settings');
-      const endpointSettings = (response?.settings && typeof response.settings === 'object' && !Array.isArray(response.settings))
+      endpointSettings = (response?.settings && typeof response.settings === 'object' && !Array.isArray(response.settings))
         ? response.settings
         : {};
-      const fallbackResponse = await readFromMyClubFallback();
-      const fallbackSettings = (fallbackResponse?.settings && typeof fallbackResponse.settings === 'object' && !Array.isArray(fallbackResponse.settings))
-        ? fallbackResponse.settings
-        : {};
-
-      // Prefer my-club fallback when present, because legacy deployments can keep
-      // stale data in attendance_display_settings while UI writes via my-club.
-      if (isNonEmptyObject(fallbackSettings)) {
-        return { settings: fallbackSettings };
-      }
-
-      if (isNonEmptyObject(endpointSettings)) {
-        return { settings: endpointSettings };
-      }
-
-      return { settings: {} };
     } catch (error) {
       if (!this.isEndpointNotFound(error)) {
         throw error;
       }
-
-      return await readFromMyClubFallback();
     }
+
+    const fallbackResponse = await readFromMyClubFallback();
+    const fallbackSettings = (fallbackResponse?.settings && typeof fallbackResponse.settings === 'object' && !Array.isArray(fallbackResponse.settings))
+      ? fallbackResponse.settings
+      : {};
+
+    return {
+      settings: pickNewestSettings(endpointSettings, fallbackSettings)
+    };
   }
 
   async updateAttendanceDisplaySettings(settings) {
@@ -1662,12 +1685,16 @@ class APIClient {
     }
 
     const normalizedSettings = (settings && typeof settings === 'object' && !Array.isArray(settings)) ? settings : {};
+    const savedSettings = {
+      ...normalizedSettings,
+      _savedAt: new Date().toISOString()
+    };
 
     try {
       const response = await this.request('/clubs/my-club/attendance-display-settings', {
         method: 'PUT',
         body: JSON.stringify({
-          settings: normalizedSettings
+          settings: savedSettings
         }),
       });
 
@@ -1682,17 +1709,20 @@ class APIClient {
 
         await this.updateMyClub({
           name: clubName,
-          attendanceDisplaySettings: normalizedSettings,
+          attendanceDisplaySettings: savedSettings,
           evidenceSessionMeta: {
             ...currentMeta,
-            attendanceDisplaySettings: normalizedSettings
+            attendanceDisplaySettings: savedSettings
           }
         });
       } catch {
         // Dedicated endpoint save already succeeded; do not fail the action on mirror write.
       }
 
-      return response;
+      return {
+        ...response,
+        settings: savedSettings
+      };
     } catch (error) {
       if (!this.isEndpointNotFound(error)) {
         throw error;
@@ -1707,16 +1737,16 @@ class APIClient {
       // Compatibility fallback for older backends that do not expose dedicated endpoint yet.
       await this.updateMyClub({
         name: clubName,
-        attendanceDisplaySettings: normalizedSettings,
+        attendanceDisplaySettings: savedSettings,
         evidenceSessionMeta: {
           ...currentMeta,
-          attendanceDisplaySettings: normalizedSettings
+          attendanceDisplaySettings: savedSettings
         }
       });
 
       return {
         message: 'Nastavenie zobrazenia ukazovateľov bolo uložené (kompatibilný režim).',
-        settings: normalizedSettings
+        settings: savedSettings
       };
     }
   }
