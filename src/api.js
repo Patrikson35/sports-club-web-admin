@@ -1656,6 +1656,26 @@ class APIClient {
       return { settings: {} };
     };
 
+    const readFromTrainingDisplayFallback = async () => {
+      try {
+        const response = await this.request('/clubs/my-club/training-exercise-display-settings');
+        const rootSettings = (response?.settings && typeof response.settings === 'object' && !Array.isArray(response.settings))
+          ? response.settings
+          : {};
+        const nestedSettings = (rootSettings?.attendanceDisplaySettings && typeof rootSettings.attendanceDisplaySettings === 'object' && !Array.isArray(rootSettings.attendanceDisplaySettings))
+          ? rootSettings.attendanceDisplaySettings
+          : {};
+
+        if (isNonEmptyObject(nestedSettings)) {
+          return { settings: nestedSettings };
+        }
+      } catch {
+        // Ignore unavailable compatibility endpoint.
+      }
+
+      return { settings: {} };
+    };
+
     let endpointSettings = {};
 
     try {
@@ -1673,9 +1693,15 @@ class APIClient {
     const fallbackSettings = (fallbackResponse?.settings && typeof fallbackResponse.settings === 'object' && !Array.isArray(fallbackResponse.settings))
       ? fallbackResponse.settings
       : {};
+    const trainingFallbackResponse = await readFromTrainingDisplayFallback();
+    const trainingFallbackSettings = (trainingFallbackResponse?.settings && typeof trainingFallbackResponse.settings === 'object' && !Array.isArray(trainingFallbackResponse.settings))
+      ? trainingFallbackResponse.settings
+      : {};
+
+    const mergedFallbackSettings = pickNewestSettings(fallbackSettings, trainingFallbackSettings);
 
     return {
-      settings: pickNewestSettings(endpointSettings, fallbackSettings)
+      settings: pickNewestSettings(endpointSettings, mergedFallbackSettings)
     };
   }
 
@@ -1690,6 +1716,44 @@ class APIClient {
       _savedAt: new Date().toISOString()
     };
 
+    const mirrorToCompatibilitySources = async () => {
+      const club = await this.getMyClub();
+      const clubName = String(club?.name || '').trim();
+      const currentMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
+        ? club.evidenceSessionMeta
+        : {};
+
+      // Legacy my-club payload mirror.
+      await this.updateMyClub({
+        name: clubName,
+        attendanceDisplaySettings: savedSettings,
+        evidenceSessionMeta: {
+          ...currentMeta,
+          attendanceDisplaySettings: savedSettings
+        }
+      });
+
+      // Secondary server-side mirror in training display settings.
+      try {
+        const trainingResponse = await this.request('/clubs/my-club/training-exercise-display-settings');
+        const currentTrainingSettings = (trainingResponse?.settings && typeof trainingResponse.settings === 'object' && !Array.isArray(trainingResponse.settings))
+          ? trainingResponse.settings
+          : {};
+
+        await this.request('/clubs/my-club/training-exercise-display-settings', {
+          method: 'PUT',
+          body: JSON.stringify({
+            settings: {
+              ...currentTrainingSettings,
+              attendanceDisplaySettings: savedSettings
+            }
+          })
+        });
+      } catch {
+        // Keep compatibility mirror best-effort.
+      }
+    };
+
     try {
       const response = await this.request('/clubs/my-club/attendance-display-settings', {
         method: 'PUT',
@@ -1698,23 +1762,10 @@ class APIClient {
         }),
       });
 
-      // Keep compatibility mirror in my-club payload so refresh reads are stable
+      // Keep compatibility mirrors so refresh reads are stable
       // even when backend deployments split between multiple settings storages.
       try {
-        const club = await this.getMyClub();
-        const clubName = String(club?.name || '').trim();
-        const currentMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
-          ? club.evidenceSessionMeta
-          : {};
-
-        await this.updateMyClub({
-          name: clubName,
-          attendanceDisplaySettings: savedSettings,
-          evidenceSessionMeta: {
-            ...currentMeta,
-            attendanceDisplaySettings: savedSettings
-          }
-        });
+        await mirrorToCompatibilitySources();
       } catch {
         // Dedicated endpoint save already succeeded; do not fail the action on mirror write.
       }
@@ -1728,21 +1779,8 @@ class APIClient {
         throw error;
       }
 
-      const club = await this.getMyClub();
-      const clubName = String(club?.name || '').trim();
-      const currentMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
-        ? club.evidenceSessionMeta
-        : {};
-
       // Compatibility fallback for older backends that do not expose dedicated endpoint yet.
-      await this.updateMyClub({
-        name: clubName,
-        attendanceDisplaySettings: savedSettings,
-        evidenceSessionMeta: {
-          ...currentMeta,
-          attendanceDisplaySettings: savedSettings
-        }
-      });
+      await mirrorToCompatibilitySources();
 
       return {
         message: 'Nastavenie zobrazenia ukazovateľov bolo uložené (kompatibilný režim).',
