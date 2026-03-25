@@ -82,6 +82,11 @@ const dedupeCalendarDaysMetric = (metricsList) => {
   })
 }
 
+const normalizeDraftObject = (rawValue) => {
+  if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) return {}
+  return rawValue
+}
+
 const resolveTopBlockCardIcon = (cardName) => {
   const normalized = String(cardName || '')
     .trim()
@@ -741,6 +746,9 @@ function Evidence() {
   const [plannedSessions, setPlannedSessions] = useState([])
   const monthsScrollRef = useRef(null)
   const monthsWrapRef = useRef(null)
+  const evidenceDraftHydratedRef = useRef(false)
+  const evidenceDraftSaveTimeoutRef = useRef(null)
+  const lastEvidenceDraftSignatureRef = useRef('')
 
   const currentUser = useMemo(() => readCurrentUser(), [])
   const currentRole = normalizeRole(currentUser?.role)
@@ -1441,9 +1449,78 @@ function Evidence() {
   }, [clubId, attendanceDisplayLoaded, attendanceMetrics, attendanceDisplayDraft])
 
   useEffect(() => {
-    setEvidenceEntriesDraft({})
-    setEvidenceSessionMetaDraft({})
+    if (!clubId) {
+      evidenceDraftHydratedRef.current = false
+      lastEvidenceDraftSignatureRef.current = ''
+      setEvidenceEntriesDraft({})
+      setEvidenceSessionMetaDraft({})
+      return
+    }
+
+    let isMounted = true
+    evidenceDraftHydratedRef.current = false
+
+    const loadEvidenceDraft = async () => {
+      try {
+        const club = await api.getMyClub()
+        if (!isMounted) return
+
+        const loadedEntries = normalizeDraftObject(club?.evidenceEntries)
+        const loadedSessionMeta = normalizeDraftObject(club?.evidenceSessionMeta)
+
+        setEvidenceEntriesDraft(loadedEntries)
+        setEvidenceSessionMetaDraft(loadedSessionMeta)
+        lastEvidenceDraftSignatureRef.current = JSON.stringify({
+          evidenceEntries: loadedEntries,
+          evidenceSessionMeta: loadedSessionMeta
+        })
+      } catch {
+        if (!isMounted) return
+        setEvidenceEntriesDraft({})
+        setEvidenceSessionMetaDraft({})
+        lastEvidenceDraftSignatureRef.current = JSON.stringify({
+          evidenceEntries: {},
+          evidenceSessionMeta: {}
+        })
+      } finally {
+        evidenceDraftHydratedRef.current = true
+      }
+    }
+
+    loadEvidenceDraft()
+
+    return () => {
+      isMounted = false
+    }
   }, [clubId])
+
+  useEffect(() => {
+    if (!clubId || !evidenceDraftHydratedRef.current) return
+
+    const evidenceEntries = normalizeDraftObject(evidenceEntriesDraft)
+    const evidenceSessionMeta = normalizeDraftObject(evidenceSessionMetaDraft)
+    const signature = JSON.stringify({ evidenceEntries, evidenceSessionMeta })
+    if (signature === lastEvidenceDraftSignatureRef.current) return
+
+    if (evidenceDraftSaveTimeoutRef.current) {
+      window.clearTimeout(evidenceDraftSaveTimeoutRef.current)
+    }
+
+    evidenceDraftSaveTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        await api.updateMyClub({ evidenceEntries, evidenceSessionMeta })
+        lastEvidenceDraftSignatureRef.current = signature
+      } catch {
+        // Ignore transient network errors; user data remains in memory and next change retries save.
+      }
+    }, 700)
+
+    return () => {
+      if (evidenceDraftSaveTimeoutRef.current) {
+        window.clearTimeout(evidenceDraftSaveTimeoutRef.current)
+      }
+    }
+  }, [clubId, evidenceEntriesDraft, evidenceSessionMetaDraft])
 
   useEffect(() => {
     if (!evidenceSaveNotice) return undefined
