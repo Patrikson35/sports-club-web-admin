@@ -1364,20 +1364,23 @@ function Evidence() {
     }
 
     if (isAttendancePercent) {
+      const isAllCategoriesView = String(selectedCategory || '') === 'all'
       const primaryCategoryId = (Array.isArray(row?.categories) ? row.categories : [])
         .find((category) => String(category?.name || '').trim() === String(row?.primaryCategory || '').trim())?.id
-      const rowCategoryId = String(selectedCategory || '') === 'all'
+      const rowCategoryId = isAllCategoriesView
         ? String(primaryCategoryId || row?.categories?.[0]?.id || '')
         : String(selectedCategory || '')
       const totalSessionCount = rowCategoryId
         ? Number(evidenceAggregate.getTotalSessionCountForCategory(rowCategoryId) || 0)
         : Number(evidenceAggregate.totalSessionCount || 0)
       if (totalSessionCount <= 0) return 0
-      const playerSessionCount = rowCategoryId
-        ? evidenceAggregate.getPlayerSessionCountForCategory(row.id, rowCategoryId)
-        : evidenceAggregate.getPlayerSessionCount(row.id)
+      const playerSessionCount = isAllCategoriesView
+        ? evidenceAggregate.getPlayerSessionCount(row.id)
+        : (rowCategoryId
+            ? evidenceAggregate.getPlayerSessionCountForCategory(row.id, rowCategoryId)
+            : evidenceAggregate.getPlayerSessionCount(row.id))
       const percent = Math.round((playerSessionCount / totalSessionCount) * 100)
-      return Math.max(0, Math.min(100, percent))
+      return Math.max(0, percent)
     }
 
     if (metricCode === 'DZ') {
