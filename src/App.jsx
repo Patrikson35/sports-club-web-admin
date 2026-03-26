@@ -26,11 +26,31 @@ import './App.css'
 
 const normalizeRole = (role) => (role === 'club_admin' ? 'club' : role)
 
+const resolveApiOrigin = () => {
+  const fallbackOrigin = 'https://ppsport-api-v2-production.up.railway.app'
+  const raw = String(import.meta.env.VITE_API_URL || '').trim()
+  if (!raw) return fallbackOrigin
+
+  try {
+    return new URL(raw).origin
+  } catch {
+    return fallbackOrigin
+  }
+}
+
+const API_ORIGIN = resolveApiOrigin()
+
 const normalizeClubLogoUrl = (value) => {
   const raw = String(value || '').trim()
   if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) {
+    return raw
+  }
+  if (raw.startsWith('/api/')) {
+    return `${API_ORIGIN}${raw}`
+  }
   if (raw.startsWith('/uploads/')) {
-    return `/api${raw}`
+    return `${API_ORIGIN}/api${raw}`
   }
   return raw
 }
