@@ -585,6 +585,30 @@ const normalizeAttendanceDisplayDraft = (metricsList, rawDraft) => {
     })
   }
 
+  const rowMetricIds = topBlockRows.map((row) => {
+    const sourceMetrics = row?.metrics && typeof row.metrics === 'object' ? row.metrics : {}
+    const selectedMetricIds = metricIds.filter((metricId) => sourceMetrics[metricId] === true)
+    return selectedMetricIds.length === 1 ? selectedMetricIds[0] : ''
+  })
+
+  const canAlignRowOrder = (
+    rowMetricIds.length === metricIds.length
+    && rowMetricIds.every(Boolean)
+    && new Set(rowMetricIds).size === metricIds.length
+  )
+
+  if (canAlignRowOrder) {
+    const orderMap = new Map(metricIds.map((metricId, index) => [metricId, index]))
+    topBlockRows = [...topBlockRows]
+      .map((row, index) => ({ row, metricId: rowMetricIds[index] }))
+      .sort((a, b) => {
+        const aIndex = orderMap.has(a.metricId) ? orderMap.get(a.metricId) : Number.MAX_SAFE_INTEGER
+        const bIndex = orderMap.has(b.metricId) ? orderMap.get(b.metricId) : Number.MAX_SAFE_INTEGER
+        return aIndex - bIndex
+      })
+      .map((item) => item.row)
+  }
+
   return {
     topBlockRows,
     tableColumns,
