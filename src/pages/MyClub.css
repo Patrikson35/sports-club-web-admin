@@ -1007,7 +1007,7 @@
 .exercise-library-head .manager-add-btn {
   height: 48px;
   min-height: 48px;
-  border-radius: 0 !important;
+  border-radius: 5px !important;
   padding: 0 1.35rem;
 }
 

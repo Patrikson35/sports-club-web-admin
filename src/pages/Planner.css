@@ -192,7 +192,7 @@
 .planner-stitch-page-header .planner-stitch-primary-btn {
   height: 48px;
   min-height: 48px;
-  border-radius: 0 !important;
+  border-radius: 5px !important;
   padding: 0 0.95rem;
 }
 
