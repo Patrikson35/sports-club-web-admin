@@ -121,7 +121,7 @@ function AppContent() {
 
   useEffect(() => {
     const loadClubName = async () => {
-      if (!isAuthenticated || currentUser?.role !== 'club') {
+      if (!isAuthenticated || normalizeRole(currentUser?.role) !== 'club') {
         return
       }
 

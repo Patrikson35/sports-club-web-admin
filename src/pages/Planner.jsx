@@ -431,20 +431,6 @@ function Planner() {
       ).values())
     }
 
-    const buildGroupOptionsFromTeams = (teams) => {
-      const options = (Array.isArray(teams) ? teams : [])
-        .map((team) => {
-          const label = String(team?.name || team?.ageGroup || '').trim()
-          if (!label) return null
-          return { value: label, label }
-        })
-        .filter(Boolean)
-
-      return Array.from(new Map(
-        options.map((option) => [option.value, option])
-      ).values())
-    }
-
     const loadTrainingDivisionOptions = async () => {
       try {
         const club = await api.getMyClub()
@@ -473,18 +459,7 @@ function Planner() {
           }
         }
 
-        let uniqueGroupOptions = buildGroupOptionsFromDivisions(divisions, divisionsConfig)
-
-        // Fallback pre kluby, kde trainingDivisions ešte nie sú naplnené v profile.
-        if (uniqueGroupOptions.length === 0) {
-          try {
-            const teamsResponse = await api.getTeams()
-            const teams = Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : []
-            uniqueGroupOptions = buildGroupOptionsFromTeams(teams)
-          } catch {
-            uniqueGroupOptions = []
-          }
-        }
+        const uniqueGroupOptions = buildGroupOptionsFromDivisions(divisions, divisionsConfig)
 
         if (isMounted) {
           setTrainingDivisionGroupOptions(uniqueGroupOptions)
@@ -1648,8 +1623,6 @@ function Planner() {
   ])
 
   const shouldUseTrainingDivisionLabelSelect = String(eventForm.indicatorCode || '').trim().toUpperCase() === 'TJ'
-    && Array.isArray(trainingDivisionGroupOptions)
-    && trainingDivisionGroupOptions.length > 0
 
   const selectedTrainingGroups = Array.isArray(eventForm.selectedTrainingGroups)
     ? eventForm.selectedTrainingGroups.map((item) => String(item || '').trim()).filter(Boolean)
@@ -2033,6 +2006,9 @@ function Planner() {
               <details className="planner-stitch-checkbox-dropdown">
                 <summary>{trainingGroupSummary}</summary>
                 <div className="planner-stitch-checkbox-dropdown-menu" role="group" aria-label="Skupiny tréningu">
+                  {trainingDivisionGroupOptions.length === 0 ? (
+                    <div className="planner-stitch-checkbox-empty">Skupiny tréningu nenájdené. Nastav ich v Nastavenia - Môj klub.</div>
+                  ) : null}
                   {trainingDivisionGroupOptions.map((option) => {
                     const safeValue = String(option?.value || '').trim()
                     if (!safeValue) return null
@@ -2050,13 +2026,23 @@ function Planner() {
                   })}
                 </div>
               </details>
-            ) : (
+            ) : null}
+            {shouldUseTrainingDivisionLabelSelect && trainingDivisionGroupOptions.length === 0 ? (
               <input
                 type="text"
                 placeholder="Napr. Tréning A..."
                 value={eventForm.label}
                 onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value, selectedTrainingGroups: [] }))}
               />
+            ) : (
+              !shouldUseTrainingDivisionLabelSelect ? (
+              <input
+                type="text"
+                placeholder="Napr. Tréning A..."
+                value={eventForm.label}
+                onChange={(e) => setEventForm((f) => ({ ...f, label: e.target.value, selectedTrainingGroups: [] }))}
+              />
+              ) : null
             )}
           </div>
           <div className="planner-stitch-form-row">
