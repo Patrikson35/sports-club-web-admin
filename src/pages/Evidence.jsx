@@ -199,25 +199,36 @@ const getMetricCodeFromSession = (session) => {
   return METRIC_CODE_BY_SESSION_TYPE[rawType] || 'TJ'
 }
 
-const getSessionStartTimeLabel = (session) => {
-  const direct = String(session?.startTime || session?.start_time || '').trim()
-  if (/^\d{1,2}:\d{2}$/.test(direct)) {
-    const [h, m] = direct.split(':')
-    return `${String(Math.max(0, Math.min(23, Number(h) || 0))).padStart(2, '0')}:${String(Math.max(0, Math.min(59, Number(m) || 0))).padStart(2, '0')}`
-  }
+const normalizeTimeToken = (rawValue) => {
+  const raw = String(rawValue || '').trim()
+  const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+  if (!match) return ''
 
-  const candidateValues = [
-    session?.startAt,
-    session?.start_at,
-    session?.date
-  ]
+  const hour = Math.max(0, Math.min(23, Number(match[1]) || 0))
+  const minute = Math.max(0, Math.min(59, Number(match[2]) || 0))
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
 
-  for (const value of candidateValues) {
-    const parsed = new Date(String(value || ''))
-    if (!Number.isNaN(parsed.getTime())) {
-      return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`
-    }
-  }
+const toHourMinuteFromDateCandidate = (value) => {
+  const parsed = new Date(String(value || ''))
+  if (Number.isNaN(parsed.getTime())) return ''
+  return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`
+}
+
+const getSessionTimeRangeLabel = (session) => {
+  const directStart = normalizeTimeToken(session?.startTime || session?.start_time)
+  const directEnd = normalizeTimeToken(session?.endTime || session?.end_time)
+
+  if (directStart && directEnd) return `od ${directStart} do ${directEnd}`
+  if (directStart) return `od ${directStart}`
+  if (directEnd) return `do ${directEnd}`
+
+  const parsedStart = toHourMinuteFromDateCandidate(session?.startAt || session?.start_at)
+  const parsedEnd = toHourMinuteFromDateCandidate(session?.endAt || session?.end_at)
+
+  if (parsedStart && parsedEnd) return `od ${parsedStart} do ${parsedEnd}`
+  if (parsedStart) return `od ${parsedStart}`
+  if (parsedEnd) return `do ${parsedEnd}`
 
   return ''
 }
@@ -1974,12 +1985,12 @@ function Evidence() {
         || 'Kategória'
       const metricCode = getMetricCodeFromSession(session)
       const title = String(session?.title || session?.name || session?.label || 'Udalosť').trim()
-      const time = getSessionStartTimeLabel(session)
+      const timeRange = getSessionTimeRangeLabel(session)
       const duration = getSessionDurationMinutes(session)
 
       appendRow(
         day,
-        `${teamName} ${metricCode} ${title}${time ? ` o ${time}` : ''}${duration ? ` - ${duration} min` : ''}`
+        `${teamName} ${metricCode} ${title}${timeRange ? ` ${timeRange}` : ''}${!timeRange && duration ? ` - ${duration} min` : ''}`
       )
     })
 
