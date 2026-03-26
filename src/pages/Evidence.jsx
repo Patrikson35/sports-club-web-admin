@@ -250,6 +250,47 @@ const getSessionDurationMinutes = (session) => {
   return diffMinutes
 }
 
+const parseSessionRecurrenceMeta = (session) => {
+  const raw = session?.recurrenceRule ?? session?.recurrence_rule
+  if (!raw) return {}
+  if (typeof raw === 'object') return raw
+
+  try {
+    const parsed = JSON.parse(String(raw || '{}'))
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const getSessionFieldContextLabel = (session) => {
+  const recurrenceMeta = parseSessionRecurrenceMeta(session)
+
+  const fieldName = String(
+    recurrenceMeta?.fieldName
+    || session?.fieldName
+    || session?.field_name
+    || session?.location
+    || ''
+  ).trim()
+
+  const parts = (Array.isArray(recurrenceMeta?.selectedFieldParts)
+    ? recurrenceMeta.selectedFieldParts
+    : (Array.isArray(session?.selectedFieldParts) ? session.selectedFieldParts : []))
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value >= 1)
+
+  const uniqueParts = [...new Set(parts)].sort((a, b) => a - b)
+  const partsLabel = uniqueParts.length > 0
+    ? `${uniqueParts.length === 1 ? 'Časť' : 'Časti'}: ${uniqueParts.join(', ')}`
+    : ''
+
+  if (fieldName && partsLabel) return `Ihrisko: ${fieldName} (${partsLabel})`
+  if (fieldName) return `Ihrisko: ${fieldName}`
+  if (partsLabel) return partsLabel
+  return ''
+}
+
 const normalizeAttendanceSeasons = (payload) => {
   const source = Array.isArray(payload?.seasons)
     ? payload.seasons
@@ -1986,11 +2027,12 @@ function Evidence() {
       const metricCode = getMetricCodeFromSession(session)
       const title = String(session?.title || session?.name || session?.label || 'Udalosť').trim()
       const timeRange = getSessionTimeRangeLabel(session)
+      const fieldContext = getSessionFieldContextLabel(session)
       const duration = getSessionDurationMinutes(session)
 
       appendRow(
         day,
-        `${teamName} ${metricCode} ${title}${timeRange ? ` ${timeRange}` : ''}${!timeRange && duration ? ` - ${duration} min` : ''}`
+        `${teamName} ${metricCode} ${title}${timeRange ? ` ${timeRange}` : ''}${fieldContext ? ` | ${fieldContext}` : ''}${!timeRange && duration ? ` - ${duration} min` : ''}`
       )
     })
 
