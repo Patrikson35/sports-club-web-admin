@@ -189,6 +189,13 @@
   font-size: 1rem;
 }
 
+.planner-stitch-page-header .planner-stitch-primary-btn {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 0 !important;
+  padding: 0 0.95rem;
+}
+
 .planner-stitch-filter-bar {
   min-height: 3.1rem;
   padding: 0 1.25rem;

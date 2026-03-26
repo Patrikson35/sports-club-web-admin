@@ -1004,6 +1004,13 @@
   letter-spacing: -0.01em;
 }
 
+.exercise-library-head .manager-add-btn {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 0 !important;
+  padding: 0 1.35rem;
+}
+
 .exercise-db-head-row {
   display: flex;
   align-items: center;
