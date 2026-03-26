@@ -387,6 +387,64 @@ function Planner() {
   useEffect(() => {
     let isMounted = true
 
+    const sanitizeTrainingGroupLabel = (groupNameRaw, divisionNameRaw = '') => {
+      const divisionName = String(divisionNameRaw || '').trim()
+      const groupName = String(groupNameRaw || '').trim()
+      if (!groupName) return ''
+
+      const prefix = divisionName ? `${divisionName} - ` : ''
+      const withoutDivisionPrefix = prefix && groupName.toLowerCase().startsWith(prefix.toLowerCase())
+        ? groupName.slice(prefix.length).trim()
+        : groupName
+      const hasDashSeparator = withoutDivisionPrefix.includes(' - ')
+
+      if (!hasDashSeparator) return withoutDivisionPrefix
+      const stripped = withoutDivisionPrefix.split(' - ').slice(1).join(' - ').trim()
+      return stripped || withoutDivisionPrefix
+    }
+
+    const buildGroupOptionsFromDivisions = (divisions, divisionsConfig) => {
+      const visibleDivisions = divisions
+        .filter((item) => {
+          const config = divisionsConfig[item.id] || {}
+          return config?.visible !== false
+        })
+
+      const groupOptions = visibleDivisions.flatMap((division) => {
+        const divisionName = String(division?.name || '').trim()
+        const groups = Array.isArray(division.groups) ? division.groups : []
+        if (groups.length === 0) return []
+
+        return groups.map((groupNameRaw) => {
+          const cleaned = sanitizeTrainingGroupLabel(groupNameRaw, divisionName)
+          if (!cleaned) return null
+
+          return {
+            value: cleaned,
+            label: cleaned
+          }
+        }).filter(Boolean)
+      })
+
+      return Array.from(new Map(
+        groupOptions.map((option) => [option.value, option])
+      ).values())
+    }
+
+    const buildGroupOptionsFromTeams = (teams) => {
+      const options = (Array.isArray(teams) ? teams : [])
+        .map((team) => {
+          const label = String(team?.name || team?.ageGroup || '').trim()
+          if (!label) return null
+          return { value: label, label }
+        })
+        .filter(Boolean)
+
+      return Array.from(new Map(
+        options.map((option) => [option.value, option])
+      ).values())
+    }
+
     const loadTrainingDivisionOptions = async () => {
       try {
         const club = await api.getMyClub()
@@ -402,56 +460,31 @@ function Planner() {
               .filter((item) => item.id && item.name)
           : []
 
-        if (divisions.length === 0) {
-          if (isMounted) setTrainingDivisionGroupOptions([])
-          return
-        }
-
         let divisionsConfig = {}
-        try {
-          const response = await api.getTrainingExerciseDisplaySettings()
-          const remoteSettings = response?.settings && typeof response.settings === 'object' ? response.settings : {}
-          divisionsConfig = remoteSettings?.divisions && typeof remoteSettings.divisions === 'object'
-            ? remoteSettings.divisions
-            : {}
-        } catch {
-          divisionsConfig = {}
+        if (divisions.length > 0) {
+          try {
+            const response = await api.getTrainingExerciseDisplaySettings()
+            const remoteSettings = response?.settings && typeof response.settings === 'object' ? response.settings : {}
+            divisionsConfig = remoteSettings?.divisions && typeof remoteSettings.divisions === 'object'
+              ? remoteSettings.divisions
+              : {}
+          } catch {
+            divisionsConfig = {}
+          }
         }
 
-        const visibleDivisions = divisions
-          .filter((item) => {
-            const config = divisionsConfig[item.id] || {}
-            return config?.visible !== false
-          })
+        let uniqueGroupOptions = buildGroupOptionsFromDivisions(divisions, divisionsConfig)
 
-        const groupOptions = visibleDivisions.flatMap((division) => {
-          const divisionName = String(division?.name || '').trim()
-          const groups = Array.isArray(division.groups) ? division.groups : []
-          if (groups.length === 0) return []
-
-          return groups.map((groupNameRaw) => {
-            const groupName = String(groupNameRaw || '').trim()
-            if (!groupName) return null
-
-            const prefix = `${divisionName} - `
-            const withoutDivisionPrefix = groupName.toLowerCase().startsWith(prefix.toLowerCase())
-              ? groupName.slice(prefix.length).trim()
-              : groupName
-            const hasDashSeparator = withoutDivisionPrefix.includes(' - ')
-            const cleaned = hasDashSeparator
-              ? withoutDivisionPrefix.split(' - ').slice(1).join(' - ').trim()
-              : withoutDivisionPrefix
-
-            return {
-              value: cleaned || withoutDivisionPrefix,
-              label: cleaned || withoutDivisionPrefix
-            }
-          }).filter(Boolean)
-        })
-
-        const uniqueGroupOptions = Array.from(new Map(
-          groupOptions.map((option) => [option.value, option])
-        ).values())
+        // Fallback pre kluby, kde trainingDivisions ešte nie sú naplnené v profile.
+        if (uniqueGroupOptions.length === 0) {
+          try {
+            const teamsResponse = await api.getTeams()
+            const teams = Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : []
+            uniqueGroupOptions = buildGroupOptionsFromTeams(teams)
+          } catch {
+            uniqueGroupOptions = []
+          }
+        }
 
         if (isMounted) {
           setTrainingDivisionGroupOptions(uniqueGroupOptions)
