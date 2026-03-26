@@ -1272,6 +1272,15 @@ function Evidence() {
       totalDzDays: allEvidenceDays.size,
       totalSessionCount: allEvidenceSessions.size,
       getTotalSessionCountForCategory: (categoryId) => sessionsByCategory.get(String(categoryId || ''))?.size || 0,
+      getPlayerSessionCountsByCategory: (playerId) => {
+        const source = playerSessionsByCategory.get(String(playerId || ''))
+        if (!source) return new Map()
+        const next = new Map()
+        source.forEach((sessionSet, categoryId) => {
+          next.set(String(categoryId || ''), Number(sessionSet?.size || 0))
+        })
+        return next
+      },
       getGlobalMetricCount,
       getGlobalMetricEventCount,
       getPlayerDzDays: (playerId) => playerDays.get(String(playerId || ''))?.size || 0,
@@ -1406,6 +1415,37 @@ function Evidence() {
     if (isAttendancePercentMetric(metric)) return `${rawValue}%`
     if (isHzMetric(metric, metricCode)) return `${rawValue} min`
     return String(rawValue)
+  }
+
+  const getMetricCellTooltip = (row, metric) => {
+    const metricCode = normalizeMetricCode(toMetricShortLabel(metric))
+    const isPercentMetric = isAttendancePercentMetric(metric) || metricCode === '%'
+    const isAllCategoriesView = String(selectedCategory || '') === 'all'
+    if (!isPercentMetric || !isAllCategoriesView) return ''
+
+    const rowCategoryMap = new Map(
+      (Array.isArray(row?.categories) ? row.categories : [])
+        .map((category) => [String(category?.id || '').trim(), String(category?.name || '').trim()])
+        .filter(([categoryId]) => Boolean(categoryId))
+    )
+
+    const playerCountsByCategory = evidenceAggregate.getPlayerSessionCountsByCategory(row?.id)
+    const categoryIds = Array.from(new Set([
+      ...Array.from(rowCategoryMap.keys()),
+      ...Array.from(playerCountsByCategory.keys())
+    ])).filter(Boolean)
+
+    const lines = categoryIds
+      .map((categoryId) => {
+        const categoryName = rowCategoryMap.get(String(categoryId || '')) || String(categoryId || '')
+        const playerDz = Number(playerCountsByCategory.get(String(categoryId || '')) || 0)
+        const totalDz = Number(evidenceAggregate.getTotalSessionCountForCategory(categoryId) || 0)
+        const percent = totalDz > 0 ? Math.round((playerDz / totalDz) * 100) : 0
+        return `${categoryName} DZ ${playerDz} ${percent}%`
+      })
+      .filter(Boolean)
+
+    return lines.join('\n')
   }
 
   const sortedRoster = useMemo(() => {
@@ -3419,7 +3459,13 @@ function Evidence() {
                       <>
                         {shouldShowCategoryColumn ? <span className="evidence-category-col">{row.primaryCategory}</span> : null}
                         {metricsForRosterTable.map((metric) => (
-                          <span key={`metric-cell-${row.id}-${metric.id}`} className="evidence-metric-col">{getMetricCellValue(row, metric)}</span>
+                          <span
+                            key={`metric-cell-${row.id}-${metric.id}`}
+                            className="evidence-metric-col"
+                            title={getMetricCellTooltip(row, metric) || undefined}
+                          >
+                            {getMetricCellValue(row, metric)}
+                          </span>
                         ))}
                       </>
                     )}
