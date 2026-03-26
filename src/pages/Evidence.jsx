@@ -1098,16 +1098,22 @@ function Evidence() {
 
   const rosterGridTemplateColumns = useMemo(() => {
     if (isEvidenceMode) {
-      return ['1.6fr', '1.15fr', '0.95fr', '1.7fr', '0.7fr'].join(' ')
+      return [
+        'minmax(0, 1.6fr)',
+        'minmax(0, 1.15fr)',
+        'minmax(0, 0.95fr)',
+        'minmax(0, 1.7fr)',
+        'minmax(0, 0.7fr)'
+      ].join(' ')
     }
 
-    const columns = ['1.6fr']
+    const columns = ['minmax(0, 1.6fr)']
     if (shouldShowCategoryColumn) {
-      columns.push('0.85fr')
+      columns.push('minmax(0, 0.85fr)')
     }
     const metricCount = Math.max(0, metricsForRosterTable.length)
     for (let index = 0; index < metricCount; index += 1) {
-      columns.push('0.75fr')
+      columns.push('minmax(0, 0.75fr)')
     }
     return columns.join(' ')
   }, [isEvidenceMode, metricsForRosterTable.length, shouldShowCategoryColumn])
@@ -3573,7 +3579,7 @@ function Evidence() {
         </div>
 
         <div className="evidence-side-stack">
-          <div className="card evidence-panel">
+          <div className="card evidence-panel evidence-calendar-panel">
             <div className="evidence-panel-head">
               <h3>Kalendár dochádzky</h3>
               <span>{monthNames[calendarDate.getMonth()]} {calendarDate.getFullYear()}</span>

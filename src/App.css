@@ -2,6 +2,9 @@
   display: flex;
   min-height: 100vh;
   background: rgb(15 17 21 / var(--tw-bg-opacity, 1));
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .sidebar-hamburger {
@@ -215,11 +218,15 @@
 }
 
 .main-content {
-  flex: 1;
+  flex: 0 0 calc(100% - 260px);
   margin-left: 260px;
+  width: calc(100% - 260px);
+  max-width: calc(100% - 260px);
+  min-width: 0;
   padding: 20px;
   min-height: 100vh;
   background: rgb(15 17 21 / var(--tw-bg-opacity, 1));
+  overflow-x: hidden;
 }
 
 .page-header {
@@ -314,7 +321,10 @@
   }
 
   .main-content {
+    flex: 1 1 auto;
     margin-left: 0;
+    width: 100%;
+    max-width: 100%;
     padding-top: 64px;
   }
 }
