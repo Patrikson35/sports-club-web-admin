@@ -3170,7 +3170,7 @@ function Evidence() {
             <span className="material-icons-round" aria-hidden="true">search</span>
             <input
               type="text"
-              placeholder="Hľadať hráča alebo kategóriu"
+              placeholder="Hľadať hráča"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
