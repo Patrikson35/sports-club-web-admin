@@ -154,7 +154,8 @@ function AppContent() {
             }
 
             const nextClubName = club?.name || prev.clubName
-            const nextClubLogo = normalizeClubLogoUrl(club?.logo_url || club?.logoUrl || club?.logo || '')
+            const rawClubLogo = normalizeClubLogoUrl(club?.logo_url || club?.logoUrl || club?.logo || '')
+            const nextClubLogo = rawClubLogo || String(prev.clubLogoUrl || '').trim()
 
             if (prev.clubName === nextClubName && prev.clubLogoUrl === nextClubLogo) {
               return prev
