@@ -93,7 +93,7 @@ function AppContent() {
     ...(Array.isArray(currentUser?.delegatedPermissions) ? currentUser.delegatedPermissions : []),
     ...(Array.isArray(currentUser?.effectivePermissions) ? currentUser.effectivePermissions : [])
   ].map((permission) => String(permission || '').trim()).filter(Boolean))
-  const canOpenSettings = currentRole === 'club' || currentUserPermissionSet.has('fields.manage')
+  const canOpenSettings = currentRole === 'club' || currentRole === 'admin' || currentUserPermissionSet.has('fields.manage')
   const canUseRemoteSections = (
     (currentRole === 'assistant' && remoteVisibleRole === 'coach') ||
     remoteVisibleRole === currentRole
