@@ -929,6 +929,27 @@ class APIClient {
     });
   }
 
+  async reorderMetrics(metricIds = []) {
+    if (USE_MOCK_DATA) {
+      const order = Array.isArray(metricIds) ? metricIds.map((id) => String(id || '').trim()).filter(Boolean) : [];
+      if (order.length > 0) {
+        const orderMap = new Map(order.map((id, index) => [id, index]));
+        MOCK_METRICS = [...MOCK_METRICS].sort((a, b) => {
+          const aIndex = orderMap.has(String(a?.id || '')) ? orderMap.get(String(a?.id || '')) : Number.MAX_SAFE_INTEGER;
+          const bIndex = orderMap.has(String(b?.id || '')) ? orderMap.get(String(b?.id || '')) : Number.MAX_SAFE_INTEGER;
+          return aIndex - bIndex;
+        });
+        persistMockMetrics();
+      }
+      return { message: 'Metrics reordered (mock)' };
+    }
+
+    return this.request('/metrics/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ metricIds: Array.isArray(metricIds) ? metricIds : [] }),
+    });
+  }
+
   async deleteMetric(metricId) {
     if (USE_MOCK_DATA) {
       const existing = MOCK_METRICS.find((metric) => String(metric.id) === String(metricId));

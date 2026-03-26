@@ -4048,7 +4048,7 @@ function MyClub() {
     event.dataTransfer.dropEffect = 'move'
   }
 
-  const handleMetricDrop = (event, targetMetricId) => {
+  const handleMetricDrop = async (event, targetMetricId) => {
     event.preventDefault()
 
     const sourceMetricId = String(draggedMetricId || '').trim()
@@ -4074,6 +4074,15 @@ function MyClub() {
 
     setMetrics(next)
     setDraggedMetricId(null)
+
+    try {
+      await api.reorderMetrics(next.map((item) => String(item?.id || '').trim()).filter(Boolean))
+      setError('')
+      setSuccess('Poradie ukazovateľov bolo uložené')
+    } catch (err) {
+      setError(err.message || 'Nepodarilo sa uložiť poradie ukazovateľov')
+      await fetchAttendanceMetrics()
+    }
   }
 
   const handleMetricDragEnd = () => {
