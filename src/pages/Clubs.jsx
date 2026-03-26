@@ -71,15 +71,6 @@ function Clubs() {
         <p>Správa sportovních klubů</p>
       </div>
 
-      <div className="actions">
-        <button 
-          className="btn" 
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? '✕ Zrušit' : '+ Vytvořit klub'}
-        </button>
-      </div>
-
       {showForm && (
         <div className="card" style={{ marginBottom: '24px' }}>
           <h3 style={{ marginBottom: '16px' }}>Nový klub</h3>
@@ -186,7 +177,7 @@ function Clubs() {
       {clubs.length === 0 && !showForm && (
         <div className="card">
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Žádné kluby v systému. Klikněte na tlačítko "+ Vytvořit klub" pro vytvoření prvního klubu.
+            Žádné kluby v systému.
           </p>
         </div>
       )}
