@@ -282,11 +282,11 @@ const getSessionFieldContextLabel = (session) => {
 
   const uniqueParts = [...new Set(parts)].sort((a, b) => a - b)
   const partsLabel = uniqueParts.length > 0
-    ? `${uniqueParts.length === 1 ? 'Časť' : 'Časti'}: ${uniqueParts.join(', ')}`
+    ? `${uniqueParts.length} ${uniqueParts.length === 1 ? 'časť' : 'časti'}: ${uniqueParts.join(', ')}`
     : ''
 
-  if (fieldName && partsLabel) return `Ihrisko: ${fieldName} (${partsLabel})`
-  if (fieldName) return `Ihrisko: ${fieldName}`
+  if (fieldName && partsLabel) return `${fieldName} (${partsLabel})`
+  if (fieldName) return fieldName
   if (partsLabel) return partsLabel
   return ''
 }
