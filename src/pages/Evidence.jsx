@@ -171,6 +171,22 @@ const getSessionDateKey = (session) => {
   return ''
 }
 
+const getSessionTeamId = (session) => String(
+  session?.team_id
+  ?? session?.teamId
+  ?? session?.team?.id
+  ?? ''
+).trim()
+
+const getSessionTeamName = (session) => String(
+  session?.teamName
+  ?? session?.team_name
+  ?? session?.categoryName
+  ?? session?.category_name
+  ?? session?.team?.name
+  ?? ''
+).trim()
+
 const getMetricCodeFromSession = (session) => {
   const rawType = String(
     session?.sessionType
@@ -884,7 +900,7 @@ function Evidence() {
         const id = String(session?.id || '').trim()
         const dateKey = getSessionDateKey(session)
         const startToken = String(session?.startAt || session?.start_at || session?.startTime || session?.start_time || '').trim()
-        const teamToken = String(session?.team_id || session?.teamId || '').trim()
+        const teamToken = getSessionTeamId(session)
         const typeToken = String(session?.sessionType || session?.session_type || session?.type || '').trim().toLowerCase()
         const key = id || `${dateKey}|${startToken}|${teamToken}|${typeToken}`
         if (!key || mergedKeys.has(key)) return
@@ -1818,7 +1834,7 @@ function Evidence() {
     ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
       const dateKey = getSessionDateKey(session)
       if (!dateKey || !dateKey.startsWith(targetPrefix)) return
-      const sessionTeamId = String(session?.team_id ?? session?.teamId ?? '').trim()
+      const sessionTeamId = getSessionTeamId(session)
       if (selectedCategoryId !== 'all' && sessionTeamId !== selectedCategoryId) return
 
       const shouldHidePlannedForEvidenceDay = String(dateKey) <= todayKey
@@ -1878,13 +1894,13 @@ function Evidence() {
     ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
       const dateKey = getSessionDateKey(session)
       if (!dateKey || !dateKey.startsWith(targetPrefix)) return
-      const sessionTeamId = String(session?.team_id ?? session?.teamId ?? '').trim()
+      const sessionTeamId = getSessionTeamId(session)
       if (selectedCategoryId !== 'all' && sessionTeamId !== selectedCategoryId) return
 
       const day = Number(String(dateKey).slice(-2))
-      const teamId = String(session?.team_id ?? session?.teamId ?? '').trim()
+      const teamId = getSessionTeamId(session)
       const teamName = teamNameById.get(teamId)
-        || String(session?.teamName || session?.team_name || session?.categoryName || session?.category_name || '').trim()
+        || getSessionTeamName(session)
         || 'Kategória'
       const metricCode = getMetricCodeFromSession(session)
       const title = String(session?.title || session?.name || session?.label || 'Udalosť').trim()
