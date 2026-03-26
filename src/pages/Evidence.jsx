@@ -1129,8 +1129,10 @@ function Evidence() {
 
     const allEvidenceDays = new Set()
     const allEvidenceSessions = new Set()
+    const sessionsByCategory = new Map()
     const playerDays = new Map()
     const playerSessions = new Map()
+    const playerSessionsByCategory = new Map()
     const metricCounts = new Map()
     const metricEventCounts = new Map()
     const playerMetricCounts = new Map()
@@ -1158,11 +1160,22 @@ function Evidence() {
       allEvidenceDays.add(dayToken)
       allEvidenceSessions.add(sessionToken)
 
+      if (!sessionsByCategory.has(String(categoryId || ''))) {
+        sessionsByCategory.set(String(categoryId || ''), new Set())
+      }
+      sessionsByCategory.get(String(categoryId || '')).add(sessionToken)
+
       if (!playerDays.has(playerId)) playerDays.set(playerId, new Set())
       playerDays.get(playerId).add(dayToken)
 
       if (!playerSessions.has(playerId)) playerSessions.set(playerId, new Set())
       playerSessions.get(playerId).add(sessionToken)
+
+      if (!playerSessionsByCategory.has(playerId)) playerSessionsByCategory.set(playerId, new Map())
+      const perCategorySessions = playerSessionsByCategory.get(playerId)
+      const safeCategoryId = String(categoryId || '')
+      if (!perCategorySessions.has(safeCategoryId)) perCategorySessions.set(safeCategoryId, new Set())
+      perCategorySessions.get(safeCategoryId).add(sessionToken)
 
       const incrementCount = (targetMap, keyCode, amount = 1) => {
         if (!keyCode) return
@@ -1258,10 +1271,14 @@ function Evidence() {
     return {
       totalDzDays: allEvidenceDays.size,
       totalSessionCount: allEvidenceSessions.size,
+      getTotalSessionCountForCategory: (categoryId) => sessionsByCategory.get(String(categoryId || ''))?.size || 0,
       getGlobalMetricCount,
       getGlobalMetricEventCount,
       getPlayerDzDays: (playerId) => playerDays.get(String(playerId || ''))?.size || 0,
       getPlayerSessionCount: (playerId) => playerSessions.get(String(playerId || ''))?.size || 0,
+      getPlayerSessionCountForCategory: (playerId, categoryId) => (
+        playerSessionsByCategory.get(String(playerId || ''))?.get(String(categoryId || ''))?.size || 0
+      ),
       getPlayerMetricCount,
       getGlobalMinutes,
       getPlayerMinutes,
@@ -1346,9 +1363,16 @@ function Evidence() {
     }
 
     if (isAttendancePercentMetric(metric)) {
-      const totalSessionCount = Number(evidenceAggregate.totalSessionCount || 0)
+      const rowCategoryId = String(selectedCategory || '') === 'all'
+        ? String(row?.categories?.[0]?.id || '')
+        : String(selectedCategory || '')
+      const totalSessionCount = rowCategoryId
+        ? Number(evidenceAggregate.getTotalSessionCountForCategory(rowCategoryId) || 0)
+        : Number(evidenceAggregate.totalSessionCount || 0)
       if (totalSessionCount <= 0) return 0
-      const playerSessionCount = evidenceAggregate.getPlayerSessionCount(row.id)
+      const playerSessionCount = rowCategoryId
+        ? evidenceAggregate.getPlayerSessionCountForCategory(row.id, rowCategoryId)
+        : evidenceAggregate.getPlayerSessionCount(row.id)
       const percent = Math.round((playerSessionCount / totalSessionCount) * 100)
       return Math.max(0, Math.min(100, percent))
     }
