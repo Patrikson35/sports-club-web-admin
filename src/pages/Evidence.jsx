@@ -1357,14 +1357,17 @@ function Evidence() {
 
   const getMetricRawValue = (row, metric) => {
     const metricCode = normalizeMetricCode(toMetricShortLabel(metric))
+    const isAttendancePercent = isAttendancePercentMetric(metric) || metricCode === '%'
 
     if (isCalendarDaysMetric(metric)) {
       return getTimelineDaysCount(selectedTimeline, attendancePeriods, calendarDate)
     }
 
-    if (isAttendancePercentMetric(metric)) {
+    if (isAttendancePercent) {
+      const primaryCategoryId = (Array.isArray(row?.categories) ? row.categories : [])
+        .find((category) => String(category?.name || '').trim() === String(row?.primaryCategory || '').trim())?.id
       const rowCategoryId = String(selectedCategory || '') === 'all'
-        ? String(row?.categories?.[0]?.id || '')
+        ? String(primaryCategoryId || row?.categories?.[0]?.id || '')
         : String(selectedCategory || '')
       const totalSessionCount = rowCategoryId
         ? Number(evidenceAggregate.getTotalSessionCountForCategory(rowCategoryId) || 0)
