@@ -19,18 +19,45 @@ const formatSportLabel = (value) => {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
 
+const normalizeRole = (role) => {
+  const normalized = String(role || '').trim().toLowerCase()
+  if (normalized === 'club_admin') return 'club'
+  return normalized || 'club'
+}
+
 function Dashboard() {
+  const [currentRole] = useState(() => {
+    try {
+      const raw = localStorage.getItem('user')
+      const parsed = raw ? JSON.parse(raw) : null
+      return normalizeRole(parsed?.role)
+    } catch {
+      return 'club'
+    }
+  })
   const [clubs, setClubs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState(null)
 
   useEffect(() => {
     loadStats()
-  }, [])
+  }, [currentRole])
 
   const loadStats = async () => {
     try {
-      const clubsData = await api.getClubs()
-      setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
+      if (currentRole === 'admin') {
+        const [dashboardStats, clubsData] = await Promise.all([
+          api.getDashboardStats(),
+          api.getClubs()
+        ])
+        setStats(dashboardStats)
+        setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
+        return
+      }
+
+      const dashboardStats = await api.getDashboardStats()
+      setStats(dashboardStats)
+      setClubs([])
     } catch (error) {
       console.error('Chyba načítání statistik:', error)
     } finally {
@@ -80,13 +107,8 @@ function Dashboard() {
     return <div className="loading">Načítání...</div>
   }
 
-  return (
-    <div>
-      <div className="page-header">
-        <h2>Dashboard</h2>
-        <p>Přehled Sports Club systému</p>
-      </div>
-
+  const renderAdminDashboard = () => (
+    <>
       <div className="card dashboard-sports-card">
         <h3 style={{ marginBottom: '16px' }}>Bloky podľa druhu športu</h3>
 
@@ -143,6 +165,92 @@ function Dashboard() {
           </tbody>
         </table>
       </div>
+    </>
+  )
+
+  const renderRoleStats = (title, description, cards) => (
+    <>
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <h3 style={{ marginBottom: '8px' }}>{title}</h3>
+        <p className="dashboard-empty-text">{description}</p>
+      </div>
+      <div className="stats-grid" style={{ marginBottom: '24px' }}>
+        {cards.map((card) => (
+          <div key={card.label} className="stat-card">
+            <h3>{card.label}</h3>
+            <div className="value">{card.value}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+
+  const roleContent = (() => {
+    if (currentRole === 'admin') {
+      return renderAdminDashboard()
+    }
+
+    if (currentRole === 'club') {
+      return renderRoleStats('Dashboard klubu', 'Prehľad výkonu a aktivít vášho klubu.', [
+        { label: 'Celkem hráčov', value: stats?.totalPlayers || 0 },
+        { label: 'Počet tímov', value: stats?.totalTeams || 0 },
+        { label: 'Nadchádzajúce tréningy', value: stats?.upcomingTrainings || 0 },
+        { label: 'Nadchádzajúce zápasy', value: stats?.upcomingMatches || 0 }
+      ])
+    }
+
+    if (currentRole === 'coach') {
+      return renderRoleStats('Dashboard trénera', 'Prehľad tímových aktivít a plánovania tréningov.', [
+        { label: 'Nadchádzajúce tréningy', value: stats?.upcomingTrainings || 0 },
+        { label: 'Nadchádzajúce zápasy', value: stats?.upcomingMatches || 0 },
+        { label: 'Počet hráčov', value: stats?.totalPlayers || 0 },
+        { label: 'Počet tímov', value: stats?.totalTeams || 0 }
+      ])
+    }
+
+    if (currentRole === 'assistant') {
+      return renderRoleStats('Dashboard asistenta', 'Operatívny prehľad k denným tréningovým úlohám.', [
+        { label: 'Tréningy tento týždeň', value: stats?.upcomingTrainings || 0 },
+        { label: 'Zápasy tento týždeň', value: stats?.upcomingMatches || 0 },
+        { label: 'Aktívni hráči', value: stats?.totalPlayers || 0 },
+        { label: 'Aktívne tímy', value: stats?.totalTeams || 0 }
+      ])
+    }
+
+    if (currentRole === 'private_coach') {
+      return renderRoleStats('Dashboard súkromného trénera', 'Prehľad individuálnych tréningových aktivít.', [
+        { label: 'Nadchádzajúce tréningy', value: stats?.upcomingTrainings || 0 },
+        { label: 'Nadchádzajúce zápasy', value: stats?.upcomingMatches || 0 },
+        { label: 'Počet hráčov', value: stats?.totalPlayers || 0 },
+        { label: 'Počet tímov', value: stats?.totalTeams || 0 }
+      ])
+    }
+
+    if (currentRole === 'parent') {
+      return renderRoleStats('Dashboard rodiča', 'Prehľad aktivít a termínov vašich detí.', [
+        { label: 'Nadchádzajúce tréningy', value: stats?.upcomingTrainings || 0 },
+        { label: 'Nadchádzajúce zápasy', value: stats?.upcomingMatches || 0 },
+        { label: 'Počet tímov', value: stats?.totalTeams || 0 },
+        { label: 'Počet hráčov', value: stats?.totalPlayers || 0 }
+      ])
+    }
+
+    return renderRoleStats('Dashboard hráča', 'Prehľad vašich najbližších športových aktivít.', [
+      { label: 'Nadchádzajúce tréningy', value: stats?.upcomingTrainings || 0 },
+      { label: 'Nadchádzajúce zápasy', value: stats?.upcomingMatches || 0 },
+      { label: 'Počet tímov', value: stats?.totalTeams || 0 },
+      { label: 'Počet hráčov', value: stats?.totalPlayers || 0 }
+    ])
+  })()
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>Dashboard</h2>
+        <p>Přehled Sports Club systému</p>
+      </div>
+
+      {roleContent}
     </div>
   )
 }
