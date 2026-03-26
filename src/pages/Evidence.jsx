@@ -592,9 +592,9 @@ const normalizeAttendanceDisplayDraft = (metricsList, rawDraft) => {
   })
 
   const canAlignRowOrder = (
-    rowMetricIds.length === metricIds.length
-    && rowMetricIds.every(Boolean)
-    && new Set(rowMetricIds).size === metricIds.length
+    rowMetricIds.length > 1
+    && rowMetricIds.some(Boolean)
+    && new Set(rowMetricIds.filter(Boolean)).size === rowMetricIds.filter(Boolean).length
   )
 
   if (canAlignRowOrder) {

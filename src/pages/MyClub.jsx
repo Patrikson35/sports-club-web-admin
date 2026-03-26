@@ -507,9 +507,9 @@ const normalizeAttendanceDisplayDraft = (metricsList, rawDraft) => {
   })
 
   const canAlignRowOrder = (
-    rowMetricIds.length === metricIds.length
-    && rowMetricIds.every(Boolean)
-    && new Set(rowMetricIds).size === metricIds.length
+    rowMetricIds.length > 1
+    && rowMetricIds.some(Boolean)
+    && new Set(rowMetricIds.filter(Boolean)).size === rowMetricIds.filter(Boolean).length
   )
 
   if (canAlignRowOrder) {
@@ -4625,11 +4625,31 @@ function MyClub() {
         }
       })
 
+      const orderMap = new Map(allowedMetricIds.map((metricId, index) => [metricId, index]))
+      const sortedRows = [...nextRows].sort((a, b) => {
+        const getRowMetricId = (row) => {
+          const sourceMetrics = row?.metrics && typeof row.metrics === 'object' ? row.metrics : {}
+          const selectedMetricIds = allowedMetricIds.filter((metricId) => sourceMetrics[metricId] === true)
+          return selectedMetricIds.length === 1 ? selectedMetricIds[0] : ''
+        }
+
+        const aMetricId = getRowMetricId(a)
+        const bMetricId = getRowMetricId(b)
+        const aIndex = orderMap.has(aMetricId) ? orderMap.get(aMetricId) : Number.MAX_SAFE_INTEGER
+        const bIndex = orderMap.has(bMetricId) ? orderMap.get(bMetricId) : Number.MAX_SAFE_INTEGER
+        return aIndex - bIndex
+      })
+
+      const sameOrder = nextRows.every((row, index) => row === sortedRows[index])
+      if (!sameOrder) {
+        changed = true
+      }
+
       if (!changed) return prev
 
       return {
         ...prev,
-        topBlockRows: nextRows
+        topBlockRows: sortedRows
       }
     })
   }, [attendanceDisplayLoaded, displaySettingsMetrics])
