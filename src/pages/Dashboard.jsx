@@ -1,8 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { api } from '../api'
+
+const SPORT_LABELS = {
+  football: 'Futbal',
+  futsal: 'Futsal',
+  basketball: 'Basketbal',
+  volleyball: 'Volejbal',
+  handball: 'Hádzaná',
+  hockey: 'Hokej',
+  tennis: 'Tenis',
+  athletics: 'Atletika'
+}
+
+const formatSportLabel = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (!normalized) return 'Nezaradený šport'
+  if (SPORT_LABELS[normalized]) return SPORT_LABELS[normalized]
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
+}
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
+  const [clubs, setClubs] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -11,14 +30,57 @@ function Dashboard() {
 
   const loadStats = async () => {
     try {
-      const data = await api.getDashboardStats()
-      setStats(data)
+      const [dashboardStats, clubsData] = await Promise.all([
+        api.getDashboardStats(),
+        api.getClubs()
+      ])
+
+      setStats(dashboardStats)
+      setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
     } catch (error) {
       console.error('Chyba načítání statistik:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  const sportBlocks = useMemo(() => {
+    const grouped = new Map()
+
+    ;(Array.isArray(clubs) ? clubs : []).forEach((club) => {
+      const sportKey = String(club?.sport || '').trim().toLowerCase() || 'unassigned'
+      if (!grouped.has(sportKey)) {
+        grouped.set(sportKey, {
+          key: sportKey,
+          label: formatSportLabel(sportKey === 'unassigned' ? '' : sportKey),
+          clubCount: 0,
+          playerCount: 0,
+          countries: new Set()
+        })
+      }
+
+      const entry = grouped.get(sportKey)
+      entry.clubCount += 1
+
+      const rawPlayerCount = Number(club?.player_count ?? club?.playerCount ?? 0)
+      entry.playerCount += Number.isFinite(rawPlayerCount) ? rawPlayerCount : 0
+
+      const country = String(club?.country || '').trim().toUpperCase()
+      if (country) {
+        entry.countries.add(country)
+      }
+    })
+
+    return Array.from(grouped.values())
+      .map((item) => ({
+        ...item,
+        registeredCountries: item.countries.size
+      }))
+      .sort((a, b) => {
+        if (b.clubCount !== a.clubCount) return b.clubCount - a.clubCount
+        return a.label.localeCompare(b.label, 'sk')
+      })
+  }, [clubs])
 
   if (loading) {
     return <div className="loading">Načítání...</div>
@@ -51,6 +113,39 @@ function Dashboard() {
           <h3>Nadcházející zápasy</h3>
           <div className="value">{stats?.upcomingMatches || 0}</div>
         </div>
+      </div>
+
+      <div className="card dashboard-sports-card">
+        <h3 style={{ marginBottom: '16px' }}>Bloky podľa druhu športu</h3>
+
+        {sportBlocks.length === 0 ? (
+          <p className="dashboard-empty-text">Zatiaľ nie sú dostupné kluby na vytvorenie športových blokov.</p>
+        ) : (
+          <div className="dashboard-sport-blocks">
+            {sportBlocks.map((block) => (
+              <section key={block.key} className="dashboard-sport-block" aria-label={`Športový blok ${block.label}`}>
+                <h4>{block.label}</h4>
+
+                <div className="dashboard-sport-cards">
+                  <article className="dashboard-sport-stat-card">
+                    <span>Počet klubov</span>
+                    <strong>{block.clubCount}</strong>
+                  </article>
+
+                  <article className="dashboard-sport-stat-card">
+                    <span>Počet hráčov</span>
+                    <strong>{block.playerCount}</strong>
+                  </article>
+
+                  <article className="dashboard-sport-stat-card">
+                    <span>Počet registrovaných krajín</span>
+                    <strong>{block.registeredCountries}</strong>
+                  </article>
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card">
