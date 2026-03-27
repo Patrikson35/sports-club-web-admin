@@ -1,11 +1,21 @@
-﻿import { useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import './Register.css'
 
+const DEFAULT_REGISTRATION_SPORTS = [
+  { key: 'football', label: 'Futbal' },
+  { key: 'hockey', label: 'Hokej' },
+  { key: 'basketball', label: 'Basketbal' },
+  { key: 'handball', label: 'Hadzana' },
+  { key: 'volleyball', label: 'Volejbal' },
+  { key: 'tennis', label: 'Tenis' }
+]
+
 function Register() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [sportsOptions, setSportsOptions] = useState(DEFAULT_REGISTRATION_SPORTS)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [verificationLink, setVerificationLink] = useState('')
@@ -19,6 +29,37 @@ function Register() {
     password: '',
     dob: ''
   })
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadSports = async () => {
+      try {
+        const response = await api.getRegistrationSports()
+        if (!isMounted) return
+
+        const normalized = (Array.isArray(response?.sports) ? response.sports : [])
+          .map((item) => ({
+            key: String(item?.key || '').trim(),
+            label: String(item?.label || '').trim()
+          }))
+          .filter((item) => item.key && item.label)
+
+        if (normalized.length > 0) {
+          setSportsOptions(normalized)
+        }
+      } catch {
+        if (!isMounted) return
+        setSportsOptions(DEFAULT_REGISTRATION_SPORTS)
+      }
+    }
+
+    loadSports()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const mapRegistrationTypeToRole = (registrationType) => {
     switch (registrationType) {
@@ -133,12 +174,9 @@ function Register() {
               required
             >
               <option value="">Výber šport</option>
-              <option value="football">Futbal</option>
-              <option value="hockey">Hokej</option>
-              <option value="basketball">Basketbal</option>
-              <option value="handball">Hádzaná</option>
-              <option value="volleyball">Volejbal</option>
-              <option value="tennis">Tenis</option>
+              {sportsOptions.map((sport) => (
+                <option key={`registration-sport-${sport.key}`} value={sport.key}>{sport.label}</option>
+              ))}
             </select>
           </div>
 

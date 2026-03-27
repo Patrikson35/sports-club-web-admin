@@ -22,6 +22,7 @@ import ClubPermissions from './pages/ClubPermissions'
 import SectionPlaceholder from './pages/SectionPlaceholder'
 import Evidence from './pages/Evidence'
 import Planner from './pages/Planner'
+import WebSettings from './pages/WebSettings'
 import './App.css'
 
 const normalizeRole = (role) => (role === 'club_admin' ? 'club' : role)
@@ -94,6 +95,10 @@ function AppContent() {
     ...(Array.isArray(currentUser?.effectivePermissions) ? currentUser.effectivePermissions : [])
   ].map((permission) => String(permission || '').trim()).filter(Boolean))
   const canOpenSettings = currentRole === 'club' || currentRole === 'admin' || currentUserPermissionSet.has('fields.manage')
+  const isAdmin = currentRole === 'admin'
+  const settingsRoute = isAdmin ? '/web-settings' : '/my-club'
+  const settingsLabel = isAdmin ? 'Nastavenie webu' : 'Nastavenia klubu'
+  const sidebarTitle = isAdmin ? 'Sports Club Web' : (currentUser?.clubName || 'Nazov klubu')
   const canUseRemoteSections = (
     (currentRole === 'assistant' && remoteVisibleRole === 'coach') ||
     remoteVisibleRole === currentRole
@@ -324,10 +329,10 @@ function AppContent() {
                       className="club-logo"
                     />
                   ) : (
-                    <span className="club-logo-fallback material-icons-round">stars</span>
+                    <span className="club-logo-fallback material-icons-round">{isAdmin ? 'admin_panel_settings' : 'stars'}</span>
                   )}
                   <div className="sidebar-brand-text">
-                    <h1 className="sidebar-brand-title">{currentUser?.clubName || 'Názov klubu'}</h1>
+                    <h1 className="sidebar-brand-title">{sidebarTitle}</h1>
                     <p className="user-info">{currentUser?.firstName} {currentUser?.lastName}</p>
                   </div>
                 </Link>
@@ -353,9 +358,9 @@ function AppContent() {
             <div className="sidebar-footer">
               {canOpenSettings && (
                 <>
-                  <Link to="/my-club" className="nav-link settings-link" onClick={closeSidebar}>
+                  <Link to={settingsRoute} className="nav-link settings-link" onClick={closeSidebar}>
                     <span className="icon material-icons-round">settings</span>
-                    Nastavenia
+                    {settingsLabel}
                   </Link>
                 </>
               )}
@@ -373,7 +378,8 @@ function AppContent() {
               <Route path="/complete-profile/player" element={<CompleteProfilePlayer />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/clubs" element={canAccessSection('clubs') ? <Clubs /> : <Navigate to="/" />} />
-              <Route path="/my-club" element={canOpenSettings ? <MyClub /> : <Navigate to="/" />} />
+              <Route path="/my-club" element={currentRole === 'admin' ? <Navigate to="/web-settings" /> : (canOpenSettings ? <MyClub /> : <Navigate to="/" />)} />
+              <Route path="/web-settings" element={currentRole === 'admin' ? <WebSettings /> : <Navigate to="/" />} />
               <Route path="/club-permissions" element={currentRole === 'club' ? <ClubPermissions /> : <Navigate to="/" />} />
               <Route path="/teams" element={canAccessSection('categories') ? <Teams /> : <Navigate to="/" />} />
               <Route path="/coaches" element={canAccessSection('coaches') ? <SectionPlaceholder title="Tréneri" description="Prehľad trénerov a asistentov" /> : <Navigate to="/" />} />

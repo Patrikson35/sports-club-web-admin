@@ -346,6 +346,49 @@ class APIClient {
     return this.request('/auth/registration-context');
   }
 
+  async getRegistrationSports() {
+    if (USE_MOCK_DATA) {
+      return {
+        total: 6,
+        sports: [
+          { key: 'football', label: 'Futbal', sortOrder: 1, isActive: true },
+          { key: 'hockey', label: 'Hokej', sortOrder: 2, isActive: true },
+          { key: 'basketball', label: 'Basketbal', sortOrder: 3, isActive: true },
+          { key: 'handball', label: 'Hadzana', sortOrder: 4, isActive: true },
+          { key: 'volleyball', label: 'Volejbal', sortOrder: 5, isActive: true },
+          { key: 'tennis', label: 'Tenis', sortOrder: 6, isActive: true }
+        ]
+      };
+    }
+
+    return this.request('/auth/registration-sports');
+  }
+
+  async getWebSettingsSports() {
+    if (USE_MOCK_DATA) {
+      return this.getRegistrationSports();
+    }
+
+    return this.request('/auth/web-settings/sports');
+  }
+
+  async updateWebSettingsSports(sports) {
+    if (USE_MOCK_DATA) {
+      return {
+        message: 'Web settings sports updated (mock)',
+        total: Array.isArray(sports) ? sports.length : 0,
+        sports: Array.isArray(sports) ? sports : []
+      };
+    }
+
+    return this.request('/auth/web-settings/sports', {
+      method: 'PUT',
+      body: JSON.stringify({
+        sports: Array.isArray(sports) ? sports : []
+      }),
+    });
+  }
+
   // Registration endpoints (new system)
   async registerClub(data) {
     if (USE_MOCK_DATA) {
@@ -1848,6 +1891,45 @@ class APIClient {
     }
 
     return this.request('/exercises/categories');
+  }
+
+  async createExerciseCategory(data) {
+    if (USE_MOCK_DATA) {
+      return {
+        id: Date.now(),
+        message: 'Exercise category created (mock)',
+        category: {
+          id: Date.now(),
+          name: String(data?.name || '').trim(),
+          isSystem: Boolean(data?.isSystem),
+          clubId: data?.clubId || null
+        }
+      };
+    }
+
+    return this.request('/exercises/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateExerciseCustomCategories(exerciseId, customLabels) {
+    if (USE_MOCK_DATA) {
+      return {
+        message: 'Exercise custom categories updated (mock)',
+        exercise: {
+          id: exerciseId,
+          customLabels: Array.isArray(customLabels) ? customLabels : []
+        }
+      };
+    }
+
+    return this.request(`/exercises/${exerciseId}/custom-categories`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        customLabels: Array.isArray(customLabels) ? customLabels : []
+      }),
+    });
   }
 
   async createExercise(data) {
