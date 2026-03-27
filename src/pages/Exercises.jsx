@@ -869,34 +869,38 @@ function Exercises({ webSettingsSection = '' }) {
             </select>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-level">Úroveň</label>
-            <select
-              id="exercise-list-filter-level"
-              value={exerciseListFilters.level}
-              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, level: event.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              <option value="1">1 hviezda</option>
-              <option value="2">2 hviezdy</option>
-              <option value="3">3 hviezdy</option>
-              <option value="4">4 hviezdy</option>
-              <option value="5">5 hviezd</option>
-            </select>
-          </div>
+          {!isEmbeddedWebSettingsView ? (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="exercise-list-filter-level">Úroveň</label>
+              <select
+                id="exercise-list-filter-level"
+                value={exerciseListFilters.level}
+                onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, level: event.target.value }))}
+              >
+                <option value="all">Všetky</option>
+                <option value="1">1 hviezda</option>
+                <option value="2">2 hviezdy</option>
+                <option value="3">3 hviezdy</option>
+                <option value="4">4 hviezdy</option>
+                <option value="5">5 hviezd</option>
+              </select>
+            </div>
+          ) : null}
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-favorite">Obľúbenosť</label>
-            <select
-              id="exercise-list-filter-favorite"
-              value={exerciseListFilters.favorite}
-              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, favorite: event.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              <option value="favorite">Obľúbené</option>
-              <option value="not-favorite">Neobľúbené</option>
-            </select>
-          </div>
+          {!isEmbeddedWebSettingsView ? (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="exercise-list-filter-favorite">Obľúbenosť</label>
+              <select
+                id="exercise-list-filter-favorite"
+                value={exerciseListFilters.favorite}
+                onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, favorite: event.target.value }))}
+              >
+                <option value="all">Všetky</option>
+                <option value="favorite">Obľúbené</option>
+                <option value="not-favorite">Neobľúbené</option>
+              </select>
+            </div>
+          ) : null}
 
           <button
             type="button"

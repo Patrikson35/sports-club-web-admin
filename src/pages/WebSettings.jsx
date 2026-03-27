@@ -551,8 +551,8 @@ function WebSettings() {
           ) : null}
         </>
       ) : (
-        <div className="form-section settings-layout members-layout" style={{ marginTop: '24px' }}>
-          <aside className="card settings-sidebar-card" aria-label="Databáza cvičení - navigácia sekcií">
+        <div className="form-section settings-layout members-layout web-settings-exercise-layout" style={{ marginTop: '24px' }}>
+          <aside className="card settings-sidebar-card web-settings-exercise-sidebar" aria-label="Databáza cvičení - navigácia sekcií">
             <nav className="settings-submenu" aria-label="Subsidebar databáza cvičení">
               <a
                 href="#"
@@ -593,7 +593,7 @@ function WebSettings() {
             </nav>
           </aside>
 
-          <div className="settings-main">
+          <div className="settings-main web-settings-exercise-main">
             <Exercises webSettingsSection={activeExerciseSection} />
           </div>
         </div>

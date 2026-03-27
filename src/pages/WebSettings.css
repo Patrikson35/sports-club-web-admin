@@ -2,6 +2,19 @@
   margin-top: 0.25rem;
 }
 
+.web-settings-exercise-layout {
+  align-items: flex-start;
+}
+
+.web-settings-exercise-sidebar {
+  min-width: 280px;
+  align-self: flex-start;
+}
+
+.web-settings-exercise-main {
+  min-width: 0;
+}
+
 .web-settings-create-btn:not(.category-form-toggle-cancel) {
   background: linear-gradient(135deg, #f97316, #ea580c);
   border-color: rgba(249, 115, 22, 0.75);
@@ -25,6 +38,11 @@
 }
 
 @media (max-width: 920px) {
+  .web-settings-exercise-sidebar {
+    min-width: 0;
+    width: 100%;
+  }
+
   .web-settings-metrics-wrap .metrics-table {
     grid-template-columns: 1fr;
     gap: 0.35rem;
