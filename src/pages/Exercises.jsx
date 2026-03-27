@@ -1444,28 +1444,30 @@ function Exercises({ webSettingsSection = '' }) {
                     ))}
                   </span>
                 </div>
-                <div className="exercise-detail-meta-row" style={{ alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ margin: 0, width: '100%' }}>
-                    <label htmlFor="exercise-custom-labels-input">Vlastné kategórie / delenie</label>
-                    <input
-                      id="exercise-custom-labels-input"
-                      type="text"
-                      value={customLabelDraft}
-                      onChange={(event) => setCustomLabelDraft(event.target.value)}
-                      placeholder="Napr. U14, prechod, technika"
-                    />
+                {!isEmbeddedWebSettingsView ? (
+                  <div className="exercise-detail-meta-row" style={{ alignItems: 'flex-end' }}>
+                    <div className="form-group" style={{ margin: 0, width: '100%' }}>
+                      <label htmlFor="exercise-custom-labels-input">Vlastné kategórie / delenie</label>
+                      <input
+                        id="exercise-custom-labels-input"
+                        type="text"
+                        value={customLabelDraft}
+                        onChange={(event) => setCustomLabelDraft(event.target.value)}
+                        placeholder="Napr. U14, prechod, technika"
+                      />
+                    </div>
+                    {(currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach'))) ? (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={isSavingCustomLabels}
+                        onClick={() => saveExerciseCustomLabels(openedExerciseDetailItem.id)}
+                      >
+                        {isSavingCustomLabels ? 'Ukladám...' : 'Uložiť delenie'}
+                      </button>
+                    ) : null}
                   </div>
-                  {(currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach'))) ? (
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      disabled={isSavingCustomLabels}
-                      onClick={() => saveExerciseCustomLabels(openedExerciseDetailItem.id)}
-                    >
-                      {isSavingCustomLabels ? 'Ukladám...' : 'Uložiť delenie'}
-                    </button>
-                  ) : null}
-                </div>
+                ) : null}
                 {openedExerciseDetailItem.description ? (
                   <p>{openedExerciseDetailItem.description}</p>
                 ) : (
@@ -1476,7 +1478,7 @@ function Exercises({ webSettingsSection = '' }) {
                   <div className="exercise-detail-actions-row">
                     <button
                       type="button"
-                      className="btn-secondary"
+                      className="btn-edit exercise-detail-edit-btn"
                       onClick={startEditOpenedExercise}
                       disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
                     >
@@ -1484,7 +1486,7 @@ function Exercises({ webSettingsSection = '' }) {
                     </button>
                     <button
                       type="button"
-                      className="btn-secondary exercise-detail-delete-btn"
+                      className="exercise-detail-delete-btn"
                       onClick={deleteOpenedExercise}
                       disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
                     >
