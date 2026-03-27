@@ -38,7 +38,7 @@ function WebSettings() {
   const isGlobalSettingsTabActive = activeSettingsTab === 'global'
   const isExerciseDatabaseTabActive = activeSettingsTab === 'exerciseDatabase'
   const requestedExerciseSection = String(searchParams.get('section') || '').trim()
-  const activeExerciseSection = ['exerciseList', 'createExercise', 'exerciseCategories'].includes(requestedExerciseSection)
+  const activeExerciseSection = ['exerciseList', 'createExercise'].includes(requestedExerciseSection)
     ? requestedExerciseSection
     : 'exerciseList'
   const [sports, setSports] = useState([])
@@ -577,18 +577,6 @@ function WebSettings() {
               >
                 <span className="material-icons-round" aria-hidden="true">add_circle</span>
                 <span>Vytvoriť cvičenie</span>
-              </a>
-              <a
-                href="#"
-                className={`settings-submenu-item ${activeExerciseSection === 'exerciseCategories' ? 'active' : ''}`}
-                onClick={(event) => {
-                  event.preventDefault()
-                  openExerciseSection('exerciseCategories')
-                }}
-                aria-current={activeExerciseSection === 'exerciseCategories' ? 'page' : undefined}
-              >
-                <span className="material-icons-round" aria-hidden="true">category</span>
-                <span>Kategórie cvičení</span>
               </a>
             </nav>
           </aside>
