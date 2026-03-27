@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import './MyClub.css'
+import './WebSettings.css'
 
 const DEFAULT_REGISTRATION_SPORTS = [
   { key: 'football', label: 'Futbal', sortOrder: 1, isActive: true },
@@ -170,13 +171,13 @@ function WebSettings() {
         </aside>
 
         <div className="settings-main">
-          <div className="card settings-placeholder-card metrics-section-card">
-            <div className="exercise-db-head-row" style={{ marginBottom: '0.8rem' }}>
+          <div className="card settings-placeholder-card metrics-section-card web-settings-card">
+            <div className="web-settings-toolbar">
               <div className="manager-role-heading">
                 <span className="material-icons-round section-icon" aria-hidden="true">sports</span>
                 <h3 className="manager-section-title">Sporty pre registracny formular</h3>
               </div>
-              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <div className="web-settings-actions">
                 <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={resetToDefaultSports}>
                   Obnovit default
                 </button>
@@ -189,67 +190,64 @@ function WebSettings() {
             {sortedSports.length === 0 ? (
               <p className="manager-empty-text">Zatial nie je pridany ziadny sport.</p>
             ) : (
-              <div className="exercise-db-filters" style={{ marginBottom: '0.8rem' }}>
+              <div className="web-settings-list">
                 {sortedSports.map((sport, index) => (
-                  <div key={`web-sport-${index}`} className="card settings-placeholder-card" style={{ padding: '0.9rem' }}>
-                    <div className="exercise-db-filters" style={{ marginBottom: 0 }}>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label htmlFor={`sport-label-${index}`}>Nazov sportu</label>
-                        <input
-                          id={`sport-label-${index}`}
-                          type="text"
-                          value={sport.label}
-                          onChange={(event) => updateSportRow(index, { label: event.target.value })}
-                          placeholder="Napr. Futbal"
-                        />
-                      </div>
+                  <div key={`web-sport-${index}`} className="web-settings-row">
+                    <div className="form-group">
+                      <label htmlFor={`sport-label-${index}`}>Nazov sportu</label>
+                      <input
+                        id={`sport-label-${index}`}
+                        type="text"
+                        value={sport.label}
+                        onChange={(event) => updateSportRow(index, { label: event.target.value })}
+                        placeholder="Napr. Futbal"
+                      />
+                    </div>
 
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label htmlFor={`sport-key-${index}`}>Kluc sportu</label>
-                        <input
-                          id={`sport-key-${index}`}
-                          type="text"
-                          value={sport.key}
-                          onChange={(event) => updateSportRow(index, { key: normalizeSportKey(event.target.value) })}
-                          placeholder="football"
-                        />
-                      </div>
+                    <div className="form-group">
+                      <label htmlFor={`sport-key-${index}`}>Kluc sportu</label>
+                      <input
+                        id={`sport-key-${index}`}
+                        type="text"
+                        value={sport.key}
+                        onChange={(event) => updateSportRow(index, { key: normalizeSportKey(event.target.value) })}
+                        placeholder="football"
+                      />
+                    </div>
 
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label htmlFor={`sport-order-${index}`}>Poradie</label>
-                        <input
-                          id={`sport-order-${index}`}
-                          type="number"
-                          min="1"
-                          value={sport.sortOrder}
-                          onChange={(event) => updateSportRow(index, { sortOrder: Number(event.target.value) || (index + 1) })}
-                        />
-                      </div>
+                    <div className="form-group">
+                      <label htmlFor={`sport-order-${index}`}>Poradie</label>
+                      <input
+                        id={`sport-order-${index}`}
+                        type="number"
+                        min="1"
+                        value={sport.sortOrder}
+                        onChange={(event) => updateSportRow(index, { sortOrder: Number(event.target.value) || (index + 1) })}
+                      />
+                    </div>
 
-                      <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0, alignSelf: 'end' }}>
+                    <label className="web-settings-active-toggle">
                         <input
                           type="checkbox"
                           checked={sport.isActive}
                           onChange={(event) => updateSportRow(index, { isActive: event.target.checked })}
                         />
                         <span>Aktivny</span>
-                      </label>
+                    </label>
 
-                      <button
-                        type="button"
-                        className="btn-secondary exercise-db-filter-reset-btn"
-                        onClick={() => removeSportRow(index)}
-                        style={{ alignSelf: 'end' }}
-                      >
-                        Odstranit
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary exercise-db-filter-reset-btn"
+                      onClick={() => removeSportRow(index)}
+                    >
+                      Odstranit
+                    </button>
                   </div>
                 ))}
               </div>
             )}
 
-            <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={saveSports} disabled={saving}>
+            <button type="button" className="btn-secondary exercise-db-filter-reset-btn web-settings-save-btn" onClick={saveSports} disabled={saving}>
               {saving ? 'Ukladam...' : 'Ulozit nastavenie webu'}
             </button>
           </div>
