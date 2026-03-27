@@ -17,6 +17,14 @@ const resolveMediaUrl = (value) => {
 }
 
 const EXERCISE_PLAYERS_COUNT_OPTIONS = Array.from({ length: 20 }, (_, index) => String(index + 1))
+const DEFAULT_SPORT_OPTIONS = [
+  { key: 'football', label: 'Futbal', sortOrder: 1, isActive: true },
+  { key: 'hockey', label: 'Hokej', sortOrder: 2, isActive: true },
+  { key: 'basketball', label: 'Basketbal', sortOrder: 3, isActive: true },
+  { key: 'handball', label: 'Hádzaná', sortOrder: 4, isActive: true },
+  { key: 'volleyball', label: 'Volejbal', sortOrder: 5, isActive: true },
+  { key: 'tennis', label: 'Tenis', sortOrder: 6, isActive: true }
+]
 
 const normalizeExercisePlayersCount = (value) => {
   const toList = Array.isArray(value)
@@ -205,7 +213,7 @@ function Exercises({ webSettingsSection = '' }) {
         .filter((item) => item.key && item.label && item.isActive)
         .sort((a, b) => a.sortOrder - b.sortOrder)
 
-      setSportOptions(normalizedSports)
+      setSportOptions(normalizedSports.length > 0 ? normalizedSports : DEFAULT_SPORT_OPTIONS)
 
       const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
       const normalizedCategories = categoriesRaw
@@ -453,7 +461,7 @@ function Exercises({ webSettingsSection = '' }) {
 
   const canCreateSystemExercise = currentRole === 'admin'
   const canManageExerciseCategories = currentRole === 'admin' || currentRole === 'club' || currentRole === 'coach'
-  const shouldRequireSportSelection = currentRole === 'admin'
+  const shouldRequireSportSelection = currentRole === 'admin' || isEmbeddedWebSettingsView
 
   const categoryOptionsForExercise = useMemo(() => {
     const selectedSportKey = String(createExerciseForm.sportKey || '').trim()
@@ -696,7 +704,7 @@ function Exercises({ webSettingsSection = '' }) {
               />
             </div>
 
-            {!shouldRequireSportSelection ? (
+            {!shouldRequireSportSelection && !isEmbeddedWebSettingsView ? (
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-category-parent">Nadradená kategória</label>
               <select
@@ -714,7 +722,7 @@ function Exercises({ webSettingsSection = '' }) {
             </div>
             ) : null}
 
-            {!shouldRequireSportSelection ? (
+            {!shouldRequireSportSelection && !isEmbeddedWebSettingsView ? (
               <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
                 <label htmlFor="create-category-description">Popis</label>
                 <input
