@@ -63,7 +63,7 @@ function WebSettings() {
       } catch (loadError) {
         if (!isMounted) return
         const message = String(loadError?.payload?.error || loadError?.payload?.message || loadError?.message || '').trim()
-        setError(message || 'Nastavenia sportov sa nepodarilo nacitat.')
+        setError(message || 'Nastavenia športov sa nepodarilo načítať.')
         setSports(DEFAULT_REGISTRATION_SPORTS)
       } finally {
         if (isMounted) setLoading(false)
@@ -141,12 +141,12 @@ function WebSettings() {
     const isActive = sportDraft.isActive !== false
 
     if (!label) {
-      setError('Nazov sportu je povinny.')
+      setError('Názov športu je povinný.')
       return
     }
 
     if (!key) {
-      setError('Kluc sportu je povinny.')
+      setError('Kľúč športu je povinný.')
       return
     }
 
@@ -170,14 +170,6 @@ function WebSettings() {
     resetSportDraft()
   }
 
-  const resetToDefaultSports = () => {
-    setSports(DEFAULT_REGISTRATION_SPORTS)
-    setShowSportForm(false)
-    resetSportDraft()
-    setSuccess('')
-    setError('')
-  }
-
   const saveSports = async () => {
     const normalized = sports
       .map((item, index) => {
@@ -193,7 +185,7 @@ function WebSettings() {
       .filter((item) => item.key && item.label)
 
     if (normalized.length === 0) {
-      setError('Pridaj aspon jeden sport pred ulozenim.')
+      setError('Pridaj aspoň jeden šport pred uložením.')
       return
     }
 
@@ -203,17 +195,17 @@ function WebSettings() {
     try {
       await api.updateWebSettingsSports(normalized)
       setSports(normalized)
-      setSuccess('Nastavenie webu bolo ulozene.')
+      setSuccess('Nastavenie webu bolo uložené.')
     } catch (saveError) {
       const message = String(saveError?.payload?.error || saveError?.payload?.message || saveError?.message || '').trim()
-      setError(message || 'Nastavenie webu sa nepodarilo ulozit.')
+      setError(message || 'Nastavenie webu sa nepodarilo uložiť.')
     } finally {
       setSaving(false)
     }
   }
 
   if (loading) {
-    return <div className="loading">Nacitanie nastaveni webu...</div>
+    return <div className="loading">Načítanie nastavení webu...</div>
   }
 
   return (
@@ -226,7 +218,7 @@ function WebSettings() {
 
       <div className="club-tabs" role="navigation" aria-label="Sekcie nastavenia webu">
         <button type="button" className="club-tab active" aria-current="page">
-          Sporty
+          Športy
         </button>
       </div>
 
@@ -243,7 +235,7 @@ function WebSettings() {
               aria-current="page"
             >
               <span className="material-icons-round" aria-hidden="true">sports</span>
-              <span>Sporty</span>
+              <span>Športy</span>
             </a>
           </nav>
         </aside>
@@ -256,20 +248,20 @@ function WebSettings() {
               </div>
               <h3 style={{ marginBottom: '6px' }}>
                 <span className="section-icon material-icons-round">sports</span>
-                Pocet sportov
+                Počet športov
               </h3>
-              <div className="members-count">{sports.length} <span>sportov</span></div>
+              <div className="members-count">{sports.length} <span>športov</span></div>
             </div>
 
             <div className="card members-card members-categories-list-card">
-              <h3 style={{ marginBottom: '10px' }}>Zoznam sportov</h3>
+              <h3 style={{ marginBottom: '10px' }}>Zoznam športov</h3>
 
               {sports.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)' }}>Zatial neexistuju ziadne sporty</p>
+                <p style={{ color: 'var(--text-secondary)' }}>Zatiaľ neexistujú žiadne športy</p>
               ) : (
-                <div className="metrics-table-wrap web-settings-metrics-wrap" role="region" aria-label="Tabulka sportov">
+                <div className="metrics-table-wrap web-settings-metrics-wrap" role="region" aria-label="Tabuľka športov">
                   <div className="metrics-table metrics-table-head web-settings-metrics-table" role="row">
-                    <div>Nazov sportu</div>
+                    <div>Názov športu</div>
                     <div className="metrics-col-center">Status</div>
                     <div className="metrics-col-right manager-table-actions-head">Akcie</div>
                   </div>
@@ -285,7 +277,7 @@ function WebSettings() {
                       </div>
 
                       <div className="metrics-col-center">
-                        <label className="metrics-switch" title="Zapnut alebo vypnut sport v registracii">
+                        <label className="metrics-switch" title="Zapnúť alebo vypnúť šport v registrácii">
                           <input
                             type="checkbox"
                             checked={sport.isActive !== false}
@@ -302,8 +294,8 @@ function WebSettings() {
                           className="role-action-btn role-action-edit"
                           onClick={() => openEditSportForm(index)}
                           disabled={loading}
-                          aria-label={`Upravit sport ${sport.label}`}
-                          title="Upravit sport"
+                          aria-label={`Upraviť šport ${sport.label}`}
+                          title="Upraviť šport"
                         >
                           <span className="material-icons-round" aria-hidden="true">edit</span>
                         </button>
@@ -312,8 +304,8 @@ function WebSettings() {
                           className="role-action-btn role-action-delete"
                           onClick={() => removeSportRow(index)}
                           disabled={loading}
-                          aria-label={`Odstranit sport ${sport.label}`}
-                          title="Odstranit sport"
+                          aria-label={`Odstrániť šport ${sport.label}`}
+                          title="Odstrániť šport"
                         >
                           <span className="material-icons-round" aria-hidden="true">delete</span>
                         </button>
@@ -327,7 +319,7 @@ function WebSettings() {
             <div className="members-categories-actions" style={{ gap: '0.6rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                className={`manager-add-btn ${showSportForm ? 'category-form-toggle-cancel' : ''}`}
+                className={`manager-add-btn web-settings-create-btn ${showSportForm ? 'category-form-toggle-cancel' : ''}`}
                 onClick={() => {
                   if (showSportForm) {
                     setShowSportForm(false)
@@ -338,23 +330,23 @@ function WebSettings() {
                 }}
                 disabled={loading}
               >
-                {showSportForm ? 'Zrusit formular' : 'Vytvorit sport'}
+                {showSportForm ? 'Zrušiť formulár' : 'Vytvoriť šport'}
               </button>
 
               <button
                 type="button"
-                className="btn-secondary exercise-db-filter-reset-btn"
-                onClick={resetToDefaultSports}
-                disabled={loading}
+                className="manager-add-btn"
+                onClick={saveSports}
+                disabled={saving}
               >
-                Obnovit default
+                {saving ? 'Ukladám...' : 'Uložiť nastavenie webu'}
               </button>
             </div>
 
             {showSportForm ? (
               <div className="card members-category-form-card">
                 <div className="form-group">
-                  <label htmlFor="web-settings-sport-name">Nazov sportu</label>
+                  <label htmlFor="web-settings-sport-name">Názov športu</label>
                   <input
                     id="web-settings-sport-name"
                     type="text"
@@ -365,7 +357,7 @@ function WebSettings() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="web-settings-sport-key">Kluc sportu</label>
+                  <label htmlFor="web-settings-sport-key">Kľúč športu</label>
                   <input
                     id="web-settings-sport-key"
                     type="text"
@@ -381,7 +373,7 @@ function WebSettings() {
                     checked={sportDraft.isActive}
                     onChange={(event) => setSportDraft((prev) => ({ ...prev, isActive: event.target.checked }))}
                   />
-                  <span>Aktivny sport</span>
+                  <span>Aktívny šport</span>
                 </label>
 
                 <div className="form-actions">
@@ -391,17 +383,11 @@ function WebSettings() {
                     onClick={saveSportDraftLocally}
                     disabled={loading}
                   >
-                    {editingSportIndex >= 0 ? 'Ulozit upravy' : 'Ulozit'}
+                    {editingSportIndex >= 0 ? 'Uložiť úpravy' : 'Uložiť'}
                   </button>
                 </div>
               </div>
             ) : null}
-
-            <div className="members-categories-actions">
-              <button type="button" className="manager-add-btn" onClick={saveSports} disabled={saving}>
-                {saving ? 'Ukladam...' : 'Ulozit nastavenie webu'}
-              </button>
-            </div>
           </div>
         </div>
       </div>
