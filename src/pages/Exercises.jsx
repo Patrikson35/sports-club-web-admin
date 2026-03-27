@@ -122,7 +122,7 @@ function Exercises({ webSettingsSection = '' }) {
   const showCreateExerciseSection = !isEmbeddedWebSettingsView || webSettingsSection === 'createExercise'
   const showExerciseCategoriesSection = !isEmbeddedWebSettingsView || webSettingsSection === 'exerciseCategories'
   const [currentRole, setCurrentRole] = useState('')
-  const [sportOptions, setSportOptions] = useState([])
+  const [sportOptions, setSportOptions] = useState(DEFAULT_SPORT_OPTIONS)
   const [exerciseCategories, setExerciseCategories] = useState([])
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -244,6 +244,7 @@ function Exercises({ webSettingsSection = '' }) {
       } catch {
         if (!isMounted) return
         setCurrentRole('')
+        setSportOptions(DEFAULT_SPORT_OPTIONS)
         setExerciseCategories([])
         setExerciseDatabaseItems([])
       }
