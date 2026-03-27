@@ -831,32 +831,36 @@ function Exercises({ webSettingsSection = '' }) {
               </div>
             ) : null}
 
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="create-exercise-difficulty">Náročnosť</label>
-              <select
-                id="create-exercise-difficulty"
-                value={createExerciseForm.difficulty}
-                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, difficulty: event.target.value }))}
-              >
-                <option value="">Neuvedené</option>
-                <option value="Nízka">Nízka</option>
-                <option value="Stredná">Stredná</option>
-                <option value="Vysoká">Vysoká</option>
-                <option value="Maximálna">Maximálna</option>
-              </select>
-            </div>
+            {!isEmbeddedWebSettingsView ? (
+              <>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="create-exercise-difficulty">Náročnosť</label>
+                  <select
+                    id="create-exercise-difficulty"
+                    value={createExerciseForm.difficulty}
+                    onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, difficulty: event.target.value }))}
+                  >
+                    <option value="">Neuvedené</option>
+                    <option value="Nízka">Nízka</option>
+                    <option value="Stredná">Stredná</option>
+                    <option value="Vysoká">Vysoká</option>
+                    <option value="Maximálna">Maximálna</option>
+                  </select>
+                </div>
 
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="create-exercise-duration">Trvanie (min)</label>
-              <input
-                id="create-exercise-duration"
-                type="number"
-                min="1"
-                value={createExerciseForm.duration}
-                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, duration: event.target.value }))}
-                placeholder="10"
-              />
-            </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="create-exercise-duration">Trvanie (min)</label>
+                  <input
+                    id="create-exercise-duration"
+                    type="number"
+                    min="1"
+                    value={createExerciseForm.duration}
+                    onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, duration: event.target.value }))}
+                    placeholder="10"
+                  />
+                </div>
+              </>
+            ) : null}
 
             <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
               <label htmlFor="create-exercise-description">Popis</label>
@@ -869,27 +873,31 @@ function Exercises({ webSettingsSection = '' }) {
               />
             </div>
 
-            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-              <label htmlFor="create-exercise-equipment">Pomôcky</label>
-              <input
-                id="create-exercise-equipment"
-                type="text"
-                value={createExerciseForm.equipment}
-                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, equipment: event.target.value }))}
-                placeholder="Kužele, lopty"
-              />
-            </div>
+            {!isEmbeddedWebSettingsView ? (
+              <>
+                <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                  <label htmlFor="create-exercise-equipment">Pomôcky</label>
+                  <input
+                    id="create-exercise-equipment"
+                    type="text"
+                    value={createExerciseForm.equipment}
+                    onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, equipment: event.target.value }))}
+                    placeholder="Kužele, lopty"
+                  />
+                </div>
 
-            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-              <label htmlFor="create-exercise-custom-labels">Vlastné delenie (čiarkou)</label>
-              <input
-                id="create-exercise-custom-labels"
-                type="text"
-                value={createExerciseForm.customLabels}
-                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, customLabels: event.target.value }))}
-                placeholder="Napr. U12, pressing, obrana"
-              />
-            </div>
+                <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                  <label htmlFor="create-exercise-custom-labels">Vlastné delenie (čiarkou)</label>
+                  <input
+                    id="create-exercise-custom-labels"
+                    type="text"
+                    value={createExerciseForm.customLabels}
+                    onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, customLabels: event.target.value }))}
+                    placeholder="Napr. U12, pressing, obrana"
+                  />
+                </div>
+              </>
+            ) : null}
 
             {canCreateSystemExercise ? (
               <label className="planner-stitch-checkbox-option" style={{ gridColumn: '1 / -1' }}>
