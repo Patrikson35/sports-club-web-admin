@@ -153,6 +153,7 @@ function Exercises({ webSettingsSection = '' }) {
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
   const [isSavingCustomLabels, setIsSavingCustomLabels] = useState(false)
   const [createExerciseError, setCreateExerciseError] = useState('')
+  const [createExerciseSuccess, setCreateExerciseSuccess] = useState('')
   const [createCategoryError, setCreateCategoryError] = useState('')
   const [customLabelDraft, setCustomLabelDraft] = useState('')
   const [createExerciseForm, setCreateExerciseForm] = useState({
@@ -496,6 +497,7 @@ function Exercises({ webSettingsSection = '' }) {
 
   const openCreateExerciseInMyClub = () => {
     setCreateExerciseError('')
+    setCreateExerciseSuccess('')
     setShowCreateForm((prev) => !prev)
   }
 
@@ -635,16 +637,19 @@ function Exercises({ webSettingsSection = '' }) {
     const normalizedSportKey = String(createExerciseForm.sportKey || '').trim()
     if (!title) {
       setCreateExerciseError('Názov cvičenia je povinný.')
+      setCreateExerciseSuccess('')
       return
     }
 
     if (shouldRequireSportSelection && !normalizedSportKey) {
       setCreateExerciseError('Výber športu je povinný.')
+      setCreateExerciseSuccess('')
       return
     }
 
     setIsCreatingExercise(true)
     setCreateExerciseError('')
+    setCreateExerciseSuccess('')
     try {
       const payload = {
         title,
@@ -678,10 +683,11 @@ function Exercises({ webSettingsSection = '' }) {
         isSystem: false,
         customLabels: ''
       })
-      setShowCreateForm(false)
+      setCreateExerciseSuccess('Cvičenie bolo úspešne uložené.')
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
       setCreateExerciseError(message || 'Cvičenie sa nepodarilo vytvoriť.')
+      setCreateExerciseSuccess('')
     } finally {
       setIsCreatingExercise(false)
     }
@@ -968,6 +974,10 @@ function Exercises({ webSettingsSection = '' }) {
 
             {createExerciseError ? (
               <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0 }}>{createExerciseError}</p>
+            ) : null}
+
+            {createExerciseSuccess ? (
+              <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0, color: '#4ade80' }}>{createExerciseSuccess}</p>
             ) : null}
 
             <button
