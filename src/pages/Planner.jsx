@@ -367,6 +367,7 @@ function Planner() {
   const [editingEventId, setEditingEventId] = useState('')
   const [isPlannerTimeClockOpen, setIsPlannerTimeClockOpen] = useState(false)
   const [plannerTimeClockTarget, setPlannerTimeClockTarget] = useState('timeFrom')
+  const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState(false)
   const currentRole = normalizeRole(readCurrentUser()?.role)
   const isClubRole = currentRole === 'club'
   const sidebarRef = useRef(null)
@@ -1698,11 +1699,21 @@ function Planner() {
       ? selectedTrainingGroups.join(', ')
       : `${selectedTrainingGroups.length} skupiny vybraté`)
 
-  const handleDeleteEditingEvent = useCallback(async () => {
+  const handleDeleteEditingEvent = useCallback(() => {
     if (!editingEventId) return
 
-    const shouldDelete = window.confirm('Naozaj chceš odstrániť tento tréning?')
-    if (!shouldDelete) return
+    setDeleteEventConfirmOpen(true)
+  }, [editingEventId])
+
+  const closeDeleteEditingEventConfirm = useCallback(() => {
+    if (isSubmittingEvent) return
+    setDeleteEventConfirmOpen(false)
+  }, [isSubmittingEvent])
+
+  const confirmDeleteEditingEvent = useCallback(async () => {
+    if (!editingEventId) return
+
+    setDeleteEventConfirmOpen(false)
 
     try {
       setIsSubmittingEvent(true)
@@ -1716,6 +1727,19 @@ function Planner() {
       setIsSubmittingEvent(false)
     }
   }, [editingEventId, eventForm.teamId, resetEventForm])
+
+  useEffect(() => {
+    if (!deleteEventConfirmOpen) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !isSubmittingEvent) {
+        closeDeleteEditingEventConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteEventConfirmOpen, isSubmittingEvent, closeDeleteEditingEventConfirm])
 
   return (
     <div className="planner-stitch-page" style={plannerColorStyle}>
@@ -2331,6 +2355,40 @@ function Planner() {
         }}
         ariaLabel="Výber času"
       />
+
+      {deleteEventConfirmOpen ? (
+        <div
+          className="planner-confirm-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Potvrdenie odstránenia tréningu"
+          onClick={closeDeleteEditingEventConfirm}
+        >
+          <div className="planner-confirm-modal-card" onClick={(event) => event.stopPropagation()}>
+            <h3>Odstrániť tréning</h3>
+            <p>Naozaj chceš odstrániť tento tréning?</p>
+
+            <div className="planner-confirm-modal-actions">
+              <button
+                type="button"
+                className="planner-stitch-form-cancel"
+                onClick={closeDeleteEditingEventConfirm}
+                disabled={isSubmittingEvent}
+              >
+                Zrušiť
+              </button>
+              <button
+                type="button"
+                className="planner-stitch-primary-btn planner-confirm-delete-btn"
+                onClick={confirmDeleteEditingEvent}
+                disabled={isSubmittingEvent}
+              >
+                {isSubmittingEvent ? 'Odstraňujem...' : 'Odstrániť'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       </div>
     </div>
   )

@@ -41,6 +41,19 @@ function TimeClockPickerModal({ isOpen, value, onClose, onApply, ariaLabel = 'VÃ
     setDraftMinute(parsedValue.minute)
   }, [isOpen, parsedValue.hour, parsedValue.minute])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose?.()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   const handleSelectHour = (hourValue) => {

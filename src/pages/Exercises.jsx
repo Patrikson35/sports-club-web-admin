@@ -159,6 +159,7 @@ function Exercises({ webSettingsSection = '' }) {
   const [isEditingExerciseDetail, setIsEditingExerciseDetail] = useState(false)
   const [isUpdatingExerciseDetail, setIsUpdatingExerciseDetail] = useState(false)
   const [isDeletingExerciseDetail, setIsDeletingExerciseDetail] = useState(false)
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState({ open: false, id: '', name: '' })
   const [editExerciseDraft, setEditExerciseDraft] = useState({ title: '', youtubeUrl: '', description: '' })
   const [createCategoryError, setCreateCategoryError] = useState('')
   const [customLabelDraft, setCustomLabelDraft] = useState('')
@@ -438,6 +439,7 @@ function Exercises({ webSettingsSection = '' }) {
   const closeExerciseDetailItem = () => {
     setIsExerciseDetailVideoPlaying(false)
     setIsEditingExerciseDetail(false)
+    setDeleteConfirmDialog({ open: false, id: '', name: '' })
     setDetailActionError('')
     setDetailActionSuccess('')
     setOpenedExerciseDetailItem(null)
@@ -780,16 +782,43 @@ function Exercises({ webSettingsSection = '' }) {
     }
   }
 
-  const deleteOpenedExercise = async () => {
+  const openDeleteExerciseConfirm = () => {
     if (!openedExerciseDetailItem || !canManageOpenedExercise || isDeletingExerciseDetail) return
-    if (!window.confirm(`Naozaj chceš odstrániť cvičenie "${openedExerciseDetailItem.name}"?`)) return
+    setDeleteConfirmDialog({
+      open: true,
+      id: String(openedExerciseDetailItem.id || ''),
+      name: String(openedExerciseDetailItem.name || 'cvičenie')
+    })
+  }
+
+  const closeDeleteExerciseConfirm = () => {
+    if (isDeletingExerciseDetail) return
+    setDeleteConfirmDialog({ open: false, id: '', name: '' })
+  }
+
+  useEffect(() => {
+    if (!deleteConfirmDialog.open) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !isDeletingExerciseDetail) {
+        closeDeleteExerciseConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [deleteConfirmDialog.open, isDeletingExerciseDetail])
+
+  const deleteOpenedExercise = async () => {
+    if (!deleteConfirmDialog.open || !deleteConfirmDialog.id || isDeletingExerciseDetail) return
 
     setIsDeletingExerciseDetail(true)
     setDetailActionError('')
     setDetailActionSuccess('')
     try {
-      await api.deleteExercise(openedExerciseDetailItem.id)
+      await api.deleteExercise(deleteConfirmDialog.id)
       await reloadExerciseLibrary()
+      setDeleteConfirmDialog({ open: false, id: '', name: '' })
       closeExerciseDetailItem()
       setCreateExerciseSuccess('Cvičenie bolo úspešne odstránené.')
       setCreateExerciseError('')
@@ -1232,6 +1261,7 @@ function Exercises({ webSettingsSection = '' }) {
                   setOpenedExerciseDetailItem(item)
                   setIsExerciseDetailVideoPlaying(false)
                   setIsEditingExerciseDetail(false)
+                  setDeleteConfirmDialog({ open: false, id: '', name: '' })
                   setDetailActionError('')
                   setDetailActionSuccess('')
                 }}
@@ -1241,6 +1271,7 @@ function Exercises({ webSettingsSection = '' }) {
                     setOpenedExerciseDetailItem(item)
                     setIsExerciseDetailVideoPlaying(false)
                     setIsEditingExerciseDetail(false)
+                    setDeleteConfirmDialog({ open: false, id: '', name: '' })
                     setDetailActionError('')
                     setDetailActionSuccess('')
                   }
@@ -1403,31 +1434,22 @@ function Exercises({ webSettingsSection = '' }) {
                 <div className="exercise-detail-top-row">
                   {!isEmbeddedWebSettingsView ? (
                     <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
-                  ) : <span />}
-
-                  <div className="exercise-detail-status-row" aria-label="Stav cvičenia">
-                    <button
-                      type="button"
-                      className={`exercise-detail-favorite-badge ${normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'active' : ''}`}
-                      onClick={() => toggleExerciseFavorite(openedExerciseDetailItem.id)}
-                      aria-label={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Odobrať z obľúbených' : 'Pridať medzi obľúbené'}
-                      title={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené cvičenie' : 'Označiť ako obľúbené'}
-                    >
-                      <span className="material-icons-round" aria-hidden="true">
-                        {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'favorite' : 'favorite_border'}
-                      </span>
-                      {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené' : 'Neobľúbené'}
-                    </button>
-                  </div>
+                  ) : null}
                 </div>
 
-                <div className="exercise-detail-meta-row">
-                  {openedExerciseCategorySummary ? (
-                    <div className="exercise-detail-categories">
-                      <strong>Kategórie:</strong>
-                      <span>{openedExerciseCategorySummary}</span>
-                    </div>
-                  ) : null}
+                <div className="exercise-detail-preferences-row" aria-label="Obľúbenosť a hodnotenie cvičenia">
+                  <button
+                    type="button"
+                    className={`exercise-detail-favorite-badge ${normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'active' : ''}`}
+                    onClick={() => toggleExerciseFavorite(openedExerciseDetailItem.id)}
+                    aria-label={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Odobrať z obľúbených' : 'Pridať medzi obľúbené'}
+                    title={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené cvičenie' : 'Označiť ako obľúbené'}
+                  >
+                    <span className="material-icons-round" aria-hidden="true">
+                      {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'favorite' : 'favorite_border'}
+                    </span>
+                    {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené' : 'Neobľúbené'}
+                  </button>
 
                   <span className="exercise-detail-rating-inline" role="group" aria-label="Úroveň cvičenia">
                     {[1, 2, 3, 4, 5].map((starValue) => (
@@ -1445,6 +1467,15 @@ function Exercises({ webSettingsSection = '' }) {
                       </button>
                     ))}
                   </span>
+                </div>
+
+                <div className="exercise-detail-meta-row">
+                  {openedExerciseCategorySummary ? (
+                    <div className="exercise-detail-categories">
+                      <strong>Kategórie:</strong>
+                      <span>{openedExerciseCategorySummary}</span>
+                    </div>
+                  ) : null}
                 </div>
                 {!isEmbeddedWebSettingsView ? (
                   <div className="exercise-detail-meta-row" style={{ alignItems: 'flex-end' }}>
@@ -1489,7 +1520,7 @@ function Exercises({ webSettingsSection = '' }) {
                     <button
                       type="button"
                       className="exercise-detail-delete-btn"
-                      onClick={deleteOpenedExercise}
+                      onClick={openDeleteExerciseConfirm}
                       disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
                     >
                       {isDeletingExerciseDetail ? 'Odstraňujem...' : 'Odstrániť cvičenie'}
@@ -1555,6 +1586,40 @@ function Exercises({ webSettingsSection = '' }) {
                 {detailActionSuccess ? (
                   <p className="success-message" style={{ margin: 0 }}>{detailActionSuccess}</p>
                 ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {deleteConfirmDialog.open ? (
+          <div
+            className="confirm-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Potvrdenie odstránenia cvičenia"
+            onClick={closeDeleteExerciseConfirm}
+          >
+            <div className="confirm-modal-card" onClick={(event) => event.stopPropagation()}>
+              <h3>Odstrániť cvičenie</h3>
+              <p>Naozaj chceš odstrániť cvičenie "{deleteConfirmDialog.name}"?</p>
+
+              <div className="confirm-modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={closeDeleteExerciseConfirm}
+                  disabled={isDeletingExerciseDetail}
+                >
+                  Zrušiť
+                </button>
+                <button
+                  type="button"
+                  className="exercise-detail-delete-btn"
+                  onClick={deleteOpenedExercise}
+                  disabled={isDeletingExerciseDetail}
+                >
+                  {isDeletingExerciseDetail ? 'Odstraňujem...' : 'Odstrániť'}
+                </button>
               </div>
             </div>
           </div>

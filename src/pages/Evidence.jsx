@@ -2557,6 +2557,19 @@ function Evidence() {
     })
   }
 
+  useEffect(() => {
+    if (!evidenceConfirmDialog.open) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !loading) {
+        closeEvidenceConfirmDialog()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [evidenceConfirmDialog.open, loading])
+
   const performRemoveEvidenceSession = () => {
     if (!resolvedEvidenceCategoryId || !selectedCalendarDateKey || !activeEvidenceSessionId || !activeEvidenceMetricId) return
 
@@ -3707,8 +3720,14 @@ function Evidence() {
       </div>
 
       {evidenceConfirmDialog.open ? (
-        <div className="evidence-confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie akcie evidencie">
-          <div className="evidence-confirm-modal-card">
+        <div
+          className="evidence-confirm-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Potvrdenie akcie evidencie"
+          onClick={closeEvidenceConfirmDialog}
+        >
+          <div className="evidence-confirm-modal-card" onClick={(event) => event.stopPropagation()}>
             <h3>{evidenceConfirmDialog.title}</h3>
             <p>{evidenceConfirmDialog.message}</p>
 

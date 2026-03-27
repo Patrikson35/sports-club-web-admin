@@ -5,6 +5,8 @@ import './RegistrationApprovals.css'
 function RegistrationApprovals() {
   const [pendingUsers, setPendingUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [actionInProgress, setActionInProgress] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, userId: '', action: '', fullName: '' })
 
   useEffect(() => {
     loadPendingUsers()
@@ -22,29 +24,64 @@ function RegistrationApprovals() {
     }
   }
 
-  const handleApprove = async (userId) => {
-    if (!confirm('Schváliť túto registráciu?')) return
-
-    try {
-      await api.approveRegistration(userId)
-      alert('Registrácia schválená!')
-      loadPendingUsers()
-    } catch (error) {
-      console.error('Chyba schvaľovania:', error)
-      alert('Nepodarilo sa schváliť registráciu')
-    }
+  const openRegistrationConfirm = (userId, action, fullName) => {
+    setConfirmDialog({
+      open: true,
+      userId: String(userId || ''),
+      action: String(action || ''),
+      fullName: String(fullName || '').trim()
+    })
   }
 
-  const handleReject = async (userId) => {
-    if (!confirm('Zamietnuť túto registráciu? Užívateľ bude vymazaný.')) return
+  const closeRegistrationConfirm = () => {
+    if (actionInProgress) return
+    setConfirmDialog({ open: false, userId: '', action: '', fullName: '' })
+  }
+
+  useEffect(() => {
+    if (!confirmDialog.open) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !actionInProgress) {
+        closeRegistrationConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [confirmDialog.open, actionInProgress])
+
+  const handleApprove = (userId, fullName) => {
+    openRegistrationConfirm(userId, 'approve', fullName)
+  }
+
+  const handleReject = (userId, fullName) => {
+    openRegistrationConfirm(userId, 'reject', fullName)
+  }
+
+  const confirmRegistrationAction = async () => {
+    if (!confirmDialog.userId || !confirmDialog.action) return
+
+    const userId = confirmDialog.userId
+    const action = confirmDialog.action
 
     try {
-      await api.rejectRegistration(userId)
-      alert('Registrácia zamietnutá')
+      setActionInProgress(true)
+      if (action === 'approve') {
+        await api.approveRegistration(userId)
+        alert('Registrácia schválená!')
+      } else {
+        await api.rejectRegistration(userId)
+        alert('Registrácia zamietnutá')
+      }
+
+      setConfirmDialog({ open: false, userId: '', action: '', fullName: '' })
       loadPendingUsers()
     } catch (error) {
-      console.error('Chyba zamietania:', error)
-      alert('Nepodarilo sa zamietnuť registráciu')
+      console.error(action === 'approve' ? 'Chyba schvaľovania:' : 'Chyba zamietania:', error)
+      alert(action === 'approve' ? 'Nepodarilo sa schváliť registráciu' : 'Nepodarilo sa zamietnuť registráciu')
+    } finally {
+      setActionInProgress(false)
     }
   }
 
@@ -109,13 +146,13 @@ function RegistrationApprovals() {
               <div className="approval-actions">
                 <button 
                   className="btn btn-approve"
-                  onClick={() => handleApprove(user.id)}
+                  onClick={() => handleApprove(user.id, `${user.first_name || ''} ${user.last_name || ''}`)}
                 >
                   ✓ Schváliť
                 </button>
                 <button 
                   className="btn btn-reject"
-                  onClick={() => handleReject(user.id)}
+                  onClick={() => handleReject(user.id, `${user.first_name || ''} ${user.last_name || ''}`)}
                 >
                   ✕ Zamietnuť
                 </button>
@@ -124,6 +161,46 @@ function RegistrationApprovals() {
           ))}
         </div>
       )}
+
+      {confirmDialog.open ? (
+        <div
+          className="registration-confirm-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Potvrdenie registrácie"
+          onClick={closeRegistrationConfirm}
+        >
+          <div className="registration-confirm-modal-card" onClick={(event) => event.stopPropagation()}>
+            <h3>{confirmDialog.action === 'approve' ? 'Schváliť registráciu' : 'Zamietnuť registráciu'}</h3>
+            <p>
+              {confirmDialog.action === 'approve'
+                ? `Naozaj chceš schváliť registráciu používateľa „${confirmDialog.fullName || 'používateľ'}“?`
+                : `Naozaj chceš zamietnuť registráciu používateľa „${confirmDialog.fullName || 'používateľ'}“? Používateľ bude vymazaný.`}
+            </p>
+
+            <div className="registration-confirm-modal-actions">
+              <button
+                type="button"
+                className="btn btn-cancel"
+                onClick={closeRegistrationConfirm}
+                disabled={actionInProgress}
+              >
+                Zrušiť
+              </button>
+              <button
+                type="button"
+                className={`btn ${confirmDialog.action === 'approve' ? 'btn-approve' : 'btn-reject'}`}
+                onClick={confirmRegistrationAction}
+                disabled={actionInProgress}
+              >
+                {actionInProgress
+                  ? (confirmDialog.action === 'approve' ? 'Schvaľujem...' : 'Zamietam...')
+                  : (confirmDialog.action === 'approve' ? 'Schváliť' : 'Zamietnuť')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

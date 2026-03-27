@@ -146,6 +146,19 @@ function WebSettings() {
     setConfirmDialog({ open: false, index: -1, label: '' })
   }
 
+  useEffect(() => {
+    if (!confirmDialog.open) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !loading) {
+        closeRemoveSportConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [confirmDialog.open, loading])
+
   const confirmRemoveSport = () => {
     if (confirmDialog.index < 0) return
 
@@ -523,8 +536,14 @@ function WebSettings() {
           </div>
 
           {confirmDialog.open ? (
-            <div className="confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie odstránenia športu">
-              <div className="confirm-modal-card">
+            <div
+              className="confirm-modal-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Potvrdenie odstránenia športu"
+              onClick={closeRemoveSportConfirm}
+            >
+              <div className="confirm-modal-card" onClick={(event) => event.stopPropagation()}>
                 <h3>Odstrániť šport</h3>
                 <p>Naozaj chceš odstrániť šport "{confirmDialog.label}"?</p>
 

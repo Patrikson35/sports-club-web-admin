@@ -1542,10 +1542,17 @@
   flex-shrink: 0;
 }
 
+.exercise-detail-preferences-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .exercise-detail-meta-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  justify-content: flex-start;
 }
 
 .exercise-detail-meta-row .exercise-detail-rating-inline {

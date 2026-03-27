@@ -3838,6 +3838,19 @@ function MyClub() {
     setConfirmDialog({ open: false, type: null, payload: null })
   }
 
+  useEffect(() => {
+    if (!confirmDialog.open) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !loading) {
+        closeRemovalConfirm()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [confirmDialog.open, loading])
+
   const confirmRemoval = async () => {
     const payload = confirmDialog.payload
     const type = confirmDialog.type
@@ -8895,8 +8908,14 @@ function MyClub() {
       )}
 
       {confirmDialog.open ? (
-        <div className="confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie odstránenia">
-          <div className="confirm-modal-card">
+        <div
+          className="confirm-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Potvrdenie odstránenia"
+          onClick={closeRemovalConfirm}
+        >
+          <div className="confirm-modal-card" onClick={(event) => event.stopPropagation()}>
             <h3>
               {confirmDialogConfig.title}
             </h3>
