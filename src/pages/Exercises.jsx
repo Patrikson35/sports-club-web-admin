@@ -546,7 +546,12 @@ function Exercises({ webSettingsSection = '' }) {
       setShowCategoryCreateForm(false)
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
-      setCreateCategoryError(message || 'Kategóriu sa nepodarilo vytvoriť.')
+      const isEndpointMissing = api.isEndpointNotFound(error)
+      setCreateCategoryError(
+        isEndpointMissing
+          ? 'Uloženie kategórie momentálne nie je dostupné na API serveri.'
+          : (message || 'Kategóriu sa nepodarilo vytvoriť.')
+      )
     } finally {
       setIsCreatingCategory(false)
     }
