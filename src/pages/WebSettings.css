@@ -3,11 +3,7 @@
 }
 
 .web-settings-metrics-wrap .metrics-table {
-  grid-template-columns: 96px minmax(250px, 1fr) 120px 120px;
-}
-
-.web-settings-metrics-wrap .metrics-type-icon-text {
-  letter-spacing: 0.01em;
+  grid-template-columns: minmax(250px, 1fr) 120px 120px;
 }
 
 @media (max-width: 920px) {

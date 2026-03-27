@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
 import './MyClub.css'
 import './WebSettings.css'
@@ -28,20 +28,6 @@ const normalizeSportKey = (value) => String(value || '')
   .replace(/[\s-]+/g, '_')
   .replace(/^_+|_+$/g, '')
 
-const getSportShortcut = (sport) => {
-  const raw = String(sport?.key || sport?.label || '').trim()
-  if (!raw) return '--'
-
-  const normalized = raw.replace(/[_-]+/g, ' ')
-  const words = normalized.split(/\s+/).filter(Boolean)
-
-  if (words.length >= 2) {
-    return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase()
-  }
-
-  return normalized.replace(/\s+/g, '').slice(0, 4).toUpperCase()
-}
-
 function WebSettings() {
   const [sports, setSports] = useState([])
   const [loading, setLoading] = useState(true)
@@ -51,10 +37,6 @@ function WebSettings() {
   const [sportDraft, setSportDraft] = useState(createEmptySportRow(0))
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  const sortedSports = useMemo(() => {
-    return [...sports].sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0))
-  }, [sports])
 
   useEffect(() => {
     let isMounted = true
@@ -74,6 +56,7 @@ function WebSettings() {
             isActive: item?.isActive !== false
           }))
           .filter((item) => item.key || item.label)
+          .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0))
 
         setSports(normalized.length > 0 ? normalized : DEFAULT_REGISTRATION_SPORTS)
         setError('')
@@ -95,7 +78,7 @@ function WebSettings() {
   }, [])
 
   const resetSportDraft = () => {
-    setSportDraft(createEmptySportRow(sortedSports.length))
+    setSportDraft(createEmptySportRow(sports.length))
     setEditingSportIndex(-1)
   }
 
@@ -105,13 +88,12 @@ function WebSettings() {
   }
 
   const openEditSportForm = (index) => {
-    const source = sortedSports[index]
+    const source = sports[index]
     if (!source) return
 
     setSportDraft({
       key: String(source.key || '').trim(),
       label: String(source.label || '').trim(),
-      sortOrder: Number.isFinite(Number(source.sortOrder)) ? Number(source.sortOrder) : (index + 1),
       isActive: source.isActive !== false
     })
     setEditingSportIndex(index)
@@ -135,7 +117,7 @@ function WebSettings() {
   }
 
   const toggleSportStatus = (index, nextChecked) => {
-    const target = sortedSports[index]
+    const target = sports[index]
     if (!target) return
 
     setSports((prev) => prev.map((item) => {
@@ -156,7 +138,6 @@ function WebSettings() {
   const saveSportDraftLocally = () => {
     const label = String(sportDraft.label || '').trim()
     const key = normalizeSportKey(sportDraft.key || label)
-    const sortOrder = Number.isFinite(Number(sportDraft.sortOrder)) ? Number(sportDraft.sortOrder) : (sortedSports.length + 1)
     const isActive = sportDraft.isActive !== false
 
     if (!label) {
@@ -174,7 +155,7 @@ function WebSettings() {
 
     setSports((prev) => {
       const next = [...prev]
-      const payload = { key, label, sortOrder, isActive }
+      const payload = { key, label, isActive }
 
       if (editingSportIndex >= 0 && editingSportIndex < next.length) {
         next[editingSportIndex] = payload
@@ -198,14 +179,14 @@ function WebSettings() {
   }
 
   const saveSports = async () => {
-    const normalized = sortedSports
+    const normalized = sports
       .map((item, index) => {
         const label = String(item?.label || '').trim()
         const key = normalizeSportKey(item?.key || label)
         return {
           key,
           label,
-          sortOrder: Number.isFinite(Number(item?.sortOrder)) ? Number(item.sortOrder) : (index + 1),
+          sortOrder: index + 1,
           isActive: item?.isActive !== false
         }
       })
@@ -277,36 +258,29 @@ function WebSettings() {
                 <span className="section-icon material-icons-round">sports</span>
                 Pocet sportov
               </h3>
-              <div className="members-count">{sortedSports.length} <span>sportov</span></div>
+              <div className="members-count">{sports.length} <span>sportov</span></div>
             </div>
 
             <div className="card members-card members-categories-list-card">
               <h3 style={{ marginBottom: '10px' }}>Zoznam sportov</h3>
 
-              {sortedSports.length === 0 ? (
+              {sports.length === 0 ? (
                 <p style={{ color: 'var(--text-secondary)' }}>Zatial neexistuju ziadne sporty</p>
               ) : (
                 <div className="metrics-table-wrap web-settings-metrics-wrap" role="region" aria-label="Tabulka sportov">
                   <div className="metrics-table metrics-table-head web-settings-metrics-table" role="row">
-                    <div className="metrics-col-right">Skratky</div>
                     <div>Nazov sportu</div>
                     <div className="metrics-col-center">Status</div>
                     <div className="metrics-col-right manager-table-actions-head">Akcie</div>
                   </div>
 
-                  {sortedSports.map((sport, index) => (
+                  {sports.map((sport, index) => (
                     <div key={`web-sport-row-${sport.key}-${index}`} className="metrics-table metrics-table-row web-settings-metrics-table" role="row">
-                      <div className="metrics-drag-cell">
-                        <span className="material-icons-round metrics-drag-handle" aria-hidden="true">drag_indicator</span>
-                        <div className="metrics-type-icon" title={`Skratka: ${getSportShortcut(sport)}`}>
-                          <span className="metrics-type-icon-text">{getSportShortcut(sport)}</span>
-                        </div>
-                      </div>
-
                       <div className="metrics-name-cell">
+                        <span className="material-icons-round metrics-drag-handle" aria-hidden="true">drag_indicator</span>
                         <div>
                           <strong>{sport.label}</strong>
-                          <div className="member-category-meta">{sport.key} | poradie: {sport.sortOrder}</div>
+                          <div className="member-category-meta">{sport.key}</div>
                         </div>
                       </div>
 
@@ -398,17 +372,6 @@ function WebSettings() {
                     value={sportDraft.key}
                     onChange={(event) => setSportDraft((prev) => ({ ...prev, key: normalizeSportKey(event.target.value) }))}
                     placeholder="football"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="web-settings-sport-order">Poradie</label>
-                  <input
-                    id="web-settings-sport-order"
-                    type="number"
-                    min="1"
-                    value={sportDraft.sortOrder}
-                    onChange={(event) => setSportDraft((prev) => ({ ...prev, sortOrder: Number(event.target.value) || 1 }))}
                   />
                 </div>
 
