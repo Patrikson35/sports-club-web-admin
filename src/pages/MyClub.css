@@ -1109,6 +1109,18 @@
   white-space: nowrap;
 }
 
+.exercise-db-below-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 1rem;
+}
+
+.exercise-db-below-card-btn {
+  min-height: 40px;
+  min-width: 190px;
+  border-radius: 12px;
+}
+
 .exercise-db-card {
   border: 1px solid rgba(38, 41, 50, 0.95);
   border-radius: 12px;
@@ -3858,6 +3870,10 @@
 
   .exercise-db-filter-reset-btn {
     width: fit-content;
+  }
+
+  .exercise-db-below-card-actions {
+    justify-content: flex-start;
   }
 
   .exercise-db-card-stats {
