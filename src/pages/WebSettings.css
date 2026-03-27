@@ -3,11 +3,14 @@
 }
 
 .web-settings-exercise-layout {
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 1rem;
   align-items: flex-start;
 }
 
 .web-settings-exercise-sidebar {
-  min-width: 280px;
+  min-width: 0;
+  width: 100%;
   align-self: flex-start;
 }
 
@@ -53,8 +56,11 @@
 }
 
 @media (max-width: 920px) {
+  .web-settings-exercise-layout {
+    grid-template-columns: 1fr;
+  }
+
   .web-settings-exercise-sidebar {
-    min-width: 0;
     width: 100%;
   }
 
