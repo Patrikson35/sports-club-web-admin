@@ -135,6 +135,7 @@ function Exercises({ webSettingsSection = '' }) {
   const [customLabelDraft, setCustomLabelDraft] = useState('')
   const [createExerciseForm, setCreateExerciseForm] = useState({
     title: '',
+    youtubeUrl: '',
     description: '',
     sportKey: '',
     categoryId: '',
@@ -606,6 +607,7 @@ function Exercises({ webSettingsSection = '' }) {
     try {
       const payload = {
         title,
+        youtubeUrl: String(createExerciseForm.youtubeUrl || '').trim() || null,
         description: String(createExerciseForm.description || '').trim(),
         sportKey: normalizedSportKey || null,
         categoryId: createExerciseForm.categoryId ? Number(createExerciseForm.categoryId) : null,
@@ -625,6 +627,7 @@ function Exercises({ webSettingsSection = '' }) {
       await reloadExerciseLibrary()
       setCreateExerciseForm({
         title: '',
+        youtubeUrl: '',
         description: '',
         sportKey: '',
         categoryId: '',
@@ -783,18 +786,7 @@ function Exercises({ webSettingsSection = '' }) {
 
       {(showCreateForm && showCreateExerciseSection) ? (
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
-          <form className="exercise-db-filters" onSubmit={handleCreateExercise}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="create-exercise-title">Názov</label>
-              <input
-                id="create-exercise-title"
-                type="text"
-                value={createExerciseForm.title}
-                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, title: event.target.value }))}
-                placeholder="Napr. Dynamické rozcvičenie"
-                required
-              />
-            </div>
+          <form className={`exercise-db-filters${isEmbeddedWebSettingsView ? ' exercise-db-filters--single-column' : ''}`} onSubmit={handleCreateExercise}>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-exercise-sport">Výber športu</label>
@@ -811,6 +803,29 @@ function Exercises({ webSettingsSection = '' }) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-exercise-title">Názov</label>
+              <input
+                id="create-exercise-title"
+                type="text"
+                value={createExerciseForm.title}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Napr. Dynamické rozcvičenie"
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+              <label htmlFor="create-exercise-youtube">Link na video (YouTube)</label>
+              <input
+                id="create-exercise-youtube"
+                type="url"
+                value={createExerciseForm.youtubeUrl}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, youtubeUrl: event.target.value }))}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
             </div>
 
             {!isEmbeddedWebSettingsView ? (
