@@ -64,6 +64,7 @@ const normalizeExerciseItems = (value) => {
         id: String(item?.id || '').trim(),
         name: String(item?.name || '').trim(),
         description: String(item?.description || '').trim(),
+        sportKey: String(item?.sportKey || '').trim(),
         intensity: String(item?.intensity || 'Stredná').trim(),
         rating: normalizeExerciseRating(item?.rating),
         isFavorite: normalizeExerciseFavorite(item?.isFavorite),
@@ -113,6 +114,7 @@ function Exercises({ webSettingsSection = '' }) {
   const showCreateExerciseSection = !isEmbeddedWebSettingsView || webSettingsSection === 'createExercise'
   const showExerciseCategoriesSection = !isEmbeddedWebSettingsView || webSettingsSection === 'exerciseCategories'
   const [currentRole, setCurrentRole] = useState('')
+  const [sportOptions, setSportOptions] = useState([])
   const [exerciseCategories, setExerciseCategories] = useState([])
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -126,6 +128,7 @@ function Exercises({ webSettingsSection = '' }) {
   const [createExerciseForm, setCreateExerciseForm] = useState({
     title: '',
     description: '',
+    sportKey: '',
     categoryId: '',
     difficulty: '',
     duration: '',
@@ -136,6 +139,7 @@ function Exercises({ webSettingsSection = '' }) {
   const [createCategoryForm, setCreateCategoryForm] = useState({
     name: '',
     description: '',
+    sportKey: '',
     parentId: '',
     isSystem: false
   })
@@ -157,6 +161,7 @@ function Exercises({ webSettingsSection = '' }) {
       id: String(item?.id || '').trim(),
       name: String(item?.title || item?.name || '').trim(),
       description: String(item?.description || '').trim(),
+      sportKey: String(item?.sportKey || '').trim(),
       intensity: String(item?.difficulty || '').trim() || 'Stredná',
       playersCount: [],
       selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
@@ -174,14 +179,28 @@ function Exercises({ webSettingsSection = '' }) {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
       const normalizedRole = String(user?.role || '').trim().toLowerCase()
       const role = normalizedRole === 'club_admin' ? 'club' : normalizedRole
-      const [categoryResponse, exerciseResponse] = await Promise.all([
+      const [categoryResponse, exerciseResponse, sportsResponse] = await Promise.all([
         api.getExerciseCategories(),
-        api.getExercises()
+        api.getExercises(),
+        api.getWebSettingsSports().catch(() => ({ sports: [] }))
       ])
 
       if (!isMounted) return
 
       setCurrentRole(role)
+
+      const sportsRaw = Array.isArray(sportsResponse?.sports) ? sportsResponse.sports : []
+      const normalizedSports = sportsRaw
+        .map((item) => ({
+          key: String(item?.key || '').trim(),
+          label: String(item?.label || '').trim(),
+          isActive: item?.isActive !== false,
+          sortOrder: Number(item?.sortOrder || 0)
+        }))
+        .filter((item) => item.key && item.label && item.isActive)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+
+      setSportOptions(normalizedSports)
 
       const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
       const normalizedCategories = categoriesRaw
@@ -194,7 +213,8 @@ function Exercises({ webSettingsSection = '' }) {
                 .filter(Boolean)
             : [],
           isSystem: Boolean(item?.isSystem),
-          clubId: item?.clubId || null
+          clubId: item?.clubId || null,
+          sportKey: String(item?.sportKey || '').trim(),
         }))
         .filter((item) => item.id && item.name)
 
@@ -428,6 +448,16 @@ function Exercises({ webSettingsSection = '' }) {
 
   const canCreateSystemExercise = currentRole === 'admin'
   const canManageExerciseCategories = currentRole === 'admin' || currentRole === 'club' || currentRole === 'coach'
+  const shouldRequireSportSelection = currentRole === 'admin'
+
+  const categoryOptionsForExercise = useMemo(() => {
+    const selectedSportKey = String(createExerciseForm.sportKey || '').trim()
+    if (!selectedSportKey) return exerciseCategories
+    return exerciseCategories.filter((category) => {
+      const categorySportKey = String(category?.sportKey || '').trim()
+      return !categorySportKey || categorySportKey === selectedSportKey
+    })
+  }, [exerciseCategories, createExerciseForm.sportKey])
 
   const reloadExerciseLibrary = async () => {
     const [categoryResponse, exerciseResponse] = await Promise.all([
@@ -455,6 +485,7 @@ function Exercises({ webSettingsSection = '' }) {
       id: String(item?.id || '').trim(),
       name: String(item?.title || item?.name || '').trim(),
       description: String(item?.description || '').trim(),
+      sportKey: String(item?.sportKey || '').trim(),
       intensity: String(item?.difficulty || '').trim() || 'Stredná',
       playersCount: [],
       selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
@@ -475,8 +506,14 @@ function Exercises({ webSettingsSection = '' }) {
   const handleCreateCategory = async (event) => {
     event.preventDefault()
     const normalizedName = String(createCategoryForm.name || '').trim()
+    const normalizedSportKey = String(createCategoryForm.sportKey || '').trim()
     if (!normalizedName) {
       setCreateCategoryError('Názov kategórie je povinný.')
+      return
+    }
+
+    if (shouldRequireSportSelection && !normalizedSportKey) {
+      setCreateCategoryError('Výber športu je povinný.')
       return
     }
 
@@ -486,11 +523,12 @@ function Exercises({ webSettingsSection = '' }) {
       await api.createExerciseCategory({
         name: normalizedName,
         description: String(createCategoryForm.description || '').trim(),
+        sportKey: normalizedSportKey || null,
         parentId: createCategoryForm.parentId ? Number(createCategoryForm.parentId) : null,
         isSystem: canCreateSystemExercise && createCategoryForm.isSystem
       })
       await reloadExerciseLibrary()
-      setCreateCategoryForm({ name: '', description: '', parentId: '', isSystem: false })
+      setCreateCategoryForm({ name: '', description: '', sportKey: '', parentId: '', isSystem: false })
       setShowCategoryCreateForm(false)
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
@@ -533,8 +571,14 @@ function Exercises({ webSettingsSection = '' }) {
   const handleCreateExercise = async (event) => {
     event.preventDefault()
     const title = String(createExerciseForm.title || '').trim()
+    const normalizedSportKey = String(createExerciseForm.sportKey || '').trim()
     if (!title) {
       setCreateExerciseError('Názov cvičenia je povinný.')
+      return
+    }
+
+    if (shouldRequireSportSelection && !normalizedSportKey) {
+      setCreateExerciseError('Výber športu je povinný.')
       return
     }
 
@@ -544,6 +588,7 @@ function Exercises({ webSettingsSection = '' }) {
       const payload = {
         title,
         description: String(createExerciseForm.description || '').trim(),
+        sportKey: normalizedSportKey || null,
         categoryId: createExerciseForm.categoryId ? Number(createExerciseForm.categoryId) : null,
         difficulty: String(createExerciseForm.difficulty || '').trim() || null,
         duration: createExerciseForm.duration ? Number(createExerciseForm.duration) : null,
@@ -562,6 +607,7 @@ function Exercises({ webSettingsSection = '' }) {
       setCreateExerciseForm({
         title: '',
         description: '',
+        sportKey: '',
         categoryId: '',
         difficulty: '',
         duration: '',
@@ -629,6 +675,24 @@ function Exercises({ webSettingsSection = '' }) {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-category-sport">Výber športu</label>
+              <select
+                id="create-category-sport"
+                value={createCategoryForm.sportKey}
+                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, sportKey: event.target.value }))}
+                required={shouldRequireSportSelection}
+              >
+                <option value="">Vyber šport</option>
+                {sportOptions.map((sport) => (
+                  <option key={`create-category-sport-${sport.key}`} value={sport.key}>
+                    {sport.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!shouldRequireSportSelection ? (
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-category-parent">Nadradená kategória</label>
               <select
                 id="create-category-parent"
@@ -643,6 +707,7 @@ function Exercises({ webSettingsSection = '' }) {
                 ))}
               </select>
             </div>
+            ) : null}
 
             <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
               <label htmlFor="create-category-description">Popis</label>
@@ -693,6 +758,23 @@ function Exercises({ webSettingsSection = '' }) {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-exercise-sport">Výber športu</label>
+              <select
+                id="create-exercise-sport"
+                value={createExerciseForm.sportKey}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, sportKey: event.target.value, categoryId: '' }))}
+                required={shouldRequireSportSelection}
+              >
+                <option value="">Vyber šport</option>
+                {sportOptions.map((sport) => (
+                  <option key={`create-exercise-sport-${sport.key}`} value={sport.key}>
+                    {sport.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-exercise-category">Kategória</label>
               <select
                 id="create-exercise-category"
@@ -700,7 +782,7 @@ function Exercises({ webSettingsSection = '' }) {
                 onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, categoryId: event.target.value }))}
               >
                 <option value="">Bez kategórie</option>
-                {exerciseCategories.map((category) => (
+                {categoryOptionsForExercise.map((category) => (
                   <option key={`create-exercise-category-${category.id}`} value={String(category.id)}>
                     {String(category.name || 'Kategória')}
                   </option>
