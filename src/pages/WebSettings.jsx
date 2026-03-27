@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import './MyClub.css'
-import './WebSettings.css'
 
 const DEFAULT_REGISTRATION_SPORTS = [
   { key: 'football', label: 'Futbal', sortOrder: 1, isActive: true },
@@ -32,6 +31,9 @@ function WebSettings() {
   const [sports, setSports] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showSportForm, setShowSportForm] = useState(false)
+  const [editingSportIndex, setEditingSportIndex] = useState(-1)
+  const [sportDraft, setSportDraft] = useState(createEmptySportRow(0))
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -77,25 +79,86 @@ function WebSettings() {
     }
   }, [])
 
-  const updateSportRow = (index, patch) => {
-    setSports((prev) => prev.map((item, itemIndex) => (
-      itemIndex === index ? { ...item, ...patch } : item
-    )))
-    setSuccess('')
+  const resetSportDraft = () => {
+    setSportDraft(createEmptySportRow(sortedSports.length))
+    setEditingSportIndex(-1)
+  }
+
+  const openCreateSportForm = () => {
+    resetSportDraft()
+    setShowSportForm(true)
+  }
+
+  const openEditSportForm = (index) => {
+    const source = sortedSports[index]
+    if (!source) return
+
+    setSportDraft({
+      key: String(source.key || '').trim(),
+      label: String(source.label || '').trim(),
+      sortOrder: Number.isFinite(Number(source.sortOrder)) ? Number(source.sortOrder) : (index + 1),
+      isActive: source.isActive !== false
+    })
+    setEditingSportIndex(index)
+    setShowSportForm(true)
   }
 
   const removeSportRow = (index) => {
-    setSports((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+    setSports((prev) => {
+      const next = prev.filter((_, itemIndex) => itemIndex !== index)
+      return next.map((item, itemIndex) => ({
+        ...item,
+        sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : (itemIndex + 1)
+      }))
+    })
     setSuccess('')
+
+    if (editingSportIndex === index) {
+      setShowSportForm(false)
+      resetSportDraft()
+    }
   }
 
-  const addSportRow = () => {
-    setSports((prev) => ([...prev, createEmptySportRow(prev.length)]))
+  const saveSportDraftLocally = () => {
+    const label = String(sportDraft.label || '').trim()
+    const key = normalizeSportKey(sportDraft.key || label)
+    const sortOrder = Number.isFinite(Number(sportDraft.sortOrder)) ? Number(sportDraft.sortOrder) : (sortedSports.length + 1)
+    const isActive = sportDraft.isActive !== false
+
+    if (!label) {
+      setError('Nazov sportu je povinny.')
+      return
+    }
+
+    if (!key) {
+      setError('Kluc sportu je povinny.')
+      return
+    }
+
+    setError('')
     setSuccess('')
+
+    setSports((prev) => {
+      const next = [...prev]
+      const payload = { key, label, sortOrder, isActive }
+
+      if (editingSportIndex >= 0 && editingSportIndex < next.length) {
+        next[editingSportIndex] = payload
+      } else {
+        next.push(payload)
+      }
+
+      return next
+    })
+
+    setShowSportForm(false)
+    resetSportDraft()
   }
 
   const resetToDefaultSports = () => {
     setSports(DEFAULT_REGISTRATION_SPORTS)
+    setShowSportForm(false)
+    resetSportDraft()
     setSuccess('')
     setError('')
   }
@@ -171,85 +234,150 @@ function WebSettings() {
         </aside>
 
         <div className="settings-main">
-          <div className="card settings-placeholder-card metrics-section-card web-settings-card">
-            <div className="web-settings-toolbar">
-              <div className="manager-role-heading">
-                <span className="material-icons-round section-icon" aria-hidden="true">sports</span>
-                <h3 className="manager-section-title">Sporty pre registracny formular</h3>
+          <div className="members-categories-stack">
+            <div className="card members-card members-count-card">
+              <div className="members-card-bg">
+                <span className="material-icons-round">sports</span>
               </div>
-              <div className="web-settings-actions">
-                <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={resetToDefaultSports}>
-                  Obnovit default
-                </button>
-                <button type="button" className="manager-add-btn" onClick={addSportRow}>
-                  Pridat sport
-                </button>
-              </div>
+              <h3 style={{ marginBottom: '6px' }}>
+                <span className="section-icon material-icons-round">sports</span>
+                Pocet sportov
+              </h3>
+              <div className="members-count">{sortedSports.length} <span>sportov</span></div>
             </div>
 
-            {sortedSports.length === 0 ? (
-              <p className="manager-empty-text">Zatial nie je pridany ziadny sport.</p>
-            ) : (
-              <div className="web-settings-list">
-                {sortedSports.map((sport, index) => (
-                  <div key={`web-sport-${index}`} className="web-settings-row">
-                    <div className="form-group">
-                      <label htmlFor={`sport-label-${index}`}>Nazov sportu</label>
-                      <input
-                        id={`sport-label-${index}`}
-                        type="text"
-                        value={sport.label}
-                        onChange={(event) => updateSportRow(index, { label: event.target.value })}
-                        placeholder="Napr. Futbal"
-                      />
+            <div className="card members-card members-categories-list-card">
+              <h3 style={{ marginBottom: '10px' }}>Zoznam sportov</h3>
+
+              {sortedSports.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>Zatial neexistuju ziadne sporty</p>
+              ) : (
+                sortedSports.map((sport, index) => (
+                  <div key={`web-sport-row-${sport.key}-${index}`} className="member-category-row">
+                    <div className="member-category-main">
+                      <span className="material-icons-round member-category-drag-icon" aria-hidden="true">drag_indicator</span>
+                      <div>
+                        <strong>{sport.label}</strong>
+                        <div className="member-category-meta">{sport.key} | poradie: {sport.sortOrder} | {sport.isActive ? 'aktivny' : 'neaktivny'}</div>
+                      </div>
                     </div>
 
-                    <div className="form-group">
-                      <label htmlFor={`sport-key-${index}`}>Kluc sportu</label>
-                      <input
-                        id={`sport-key-${index}`}
-                        type="text"
-                        value={sport.key}
-                        onChange={(event) => updateSportRow(index, { key: normalizeSportKey(event.target.value) })}
-                        placeholder="football"
-                      />
+                    <div className="member-category-actions">
+                      <button
+                        type="button"
+                        className="role-action-btn role-action-edit"
+                        onClick={() => openEditSportForm(index)}
+                        disabled={loading}
+                        aria-label={`Upravit sport ${sport.label}`}
+                        title="Upravit sport"
+                      >
+                        <span className="material-icons-round" aria-hidden="true">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="role-action-btn role-action-delete"
+                        onClick={() => removeSportRow(index)}
+                        disabled={loading}
+                        aria-label={`Odstranit sport ${sport.label}`}
+                        title="Odstranit sport"
+                      >
+                        <span className="material-icons-round" aria-hidden="true">delete</span>
+                      </button>
                     </div>
-
-                    <div className="form-group">
-                      <label htmlFor={`sport-order-${index}`}>Poradie</label>
-                      <input
-                        id={`sport-order-${index}`}
-                        type="number"
-                        min="1"
-                        value={sport.sortOrder}
-                        onChange={(event) => updateSportRow(index, { sortOrder: Number(event.target.value) || (index + 1) })}
-                      />
-                    </div>
-
-                    <label className="web-settings-active-toggle">
-                        <input
-                          type="checkbox"
-                          checked={sport.isActive}
-                          onChange={(event) => updateSportRow(index, { isActive: event.target.checked })}
-                        />
-                        <span>Aktivny</span>
-                    </label>
-
-                    <button
-                      type="button"
-                      className="btn-secondary exercise-db-filter-reset-btn"
-                      onClick={() => removeSportRow(index)}
-                    >
-                      Odstranit
-                    </button>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
 
-            <button type="button" className="btn-secondary exercise-db-filter-reset-btn web-settings-save-btn" onClick={saveSports} disabled={saving}>
-              {saving ? 'Ukladam...' : 'Ulozit nastavenie webu'}
-            </button>
+            <div className="members-categories-actions" style={{ gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`manager-add-btn ${showSportForm ? 'category-form-toggle-cancel' : ''}`}
+                onClick={() => {
+                  if (showSportForm) {
+                    setShowSportForm(false)
+                    resetSportDraft()
+                    return
+                  }
+                  openCreateSportForm()
+                }}
+                disabled={loading}
+              >
+                {showSportForm ? 'Zrusit formular' : 'Vytvorit sport'}
+              </button>
+
+              <button
+                type="button"
+                className="btn-secondary exercise-db-filter-reset-btn"
+                onClick={resetToDefaultSports}
+                disabled={loading}
+              >
+                Obnovit default
+              </button>
+            </div>
+
+            {showSportForm ? (
+              <div className="card members-category-form-card">
+                <div className="form-group">
+                  <label htmlFor="web-settings-sport-name">Nazov sportu</label>
+                  <input
+                    id="web-settings-sport-name"
+                    type="text"
+                    value={sportDraft.label}
+                    onChange={(event) => setSportDraft((prev) => ({ ...prev, label: event.target.value }))}
+                    placeholder="Napr. Futbal"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="web-settings-sport-key">Kluc sportu</label>
+                  <input
+                    id="web-settings-sport-key"
+                    type="text"
+                    value={sportDraft.key}
+                    onChange={(event) => setSportDraft((prev) => ({ ...prev, key: normalizeSportKey(event.target.value) }))}
+                    placeholder="football"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="web-settings-sport-order">Poradie</label>
+                  <input
+                    id="web-settings-sport-order"
+                    type="number"
+                    min="1"
+                    value={sportDraft.sortOrder}
+                    onChange={(event) => setSportDraft((prev) => ({ ...prev, sortOrder: Number(event.target.value) || 1 }))}
+                  />
+                </div>
+
+                <label className="planner-stitch-checkbox-option">
+                  <input
+                    type="checkbox"
+                    checked={sportDraft.isActive}
+                    onChange={(event) => setSportDraft((prev) => ({ ...prev, isActive: event.target.checked }))}
+                  />
+                  <span>Aktivny sport</span>
+                </label>
+
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="manager-add-btn"
+                    onClick={saveSportDraftLocally}
+                    disabled={loading}
+                  >
+                    {editingSportIndex >= 0 ? 'Ulozit upravy' : 'Ulozit'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="members-categories-actions">
+              <button type="button" className="manager-add-btn" onClick={saveSports} disabled={saving}>
+                {saving ? 'Ukladam...' : 'Ulozit nastavenie webu'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
