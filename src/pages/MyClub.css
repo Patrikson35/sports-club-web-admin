@@ -1614,6 +1614,32 @@
   color: #fcd34d;
 }
 
+.exercise-detail-actions-row {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.exercise-detail-delete-btn {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.28);
+}
+
+.exercise-detail-delete-btn:hover:not(:disabled) {
+  border-color: rgba(252, 165, 165, 0.7);
+  color: #fee2e2;
+}
+
+.exercise-detail-edit-box {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.32);
+  background: rgba(30, 41, 59, 0.28);
+}
+
 .exercise-detail-categories {
   display: flex;
   align-items: baseline;

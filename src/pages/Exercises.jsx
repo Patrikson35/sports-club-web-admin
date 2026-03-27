@@ -154,6 +154,12 @@ function Exercises({ webSettingsSection = '' }) {
   const [isSavingCustomLabels, setIsSavingCustomLabels] = useState(false)
   const [createExerciseError, setCreateExerciseError] = useState('')
   const [createExerciseSuccess, setCreateExerciseSuccess] = useState('')
+  const [detailActionError, setDetailActionError] = useState('')
+  const [detailActionSuccess, setDetailActionSuccess] = useState('')
+  const [isEditingExerciseDetail, setIsEditingExerciseDetail] = useState(false)
+  const [isUpdatingExerciseDetail, setIsUpdatingExerciseDetail] = useState(false)
+  const [isDeletingExerciseDetail, setIsDeletingExerciseDetail] = useState(false)
+  const [editExerciseDraft, setEditExerciseDraft] = useState({ title: '', youtubeUrl: '', description: '' })
   const [createCategoryError, setCreateCategoryError] = useState('')
   const [customLabelDraft, setCustomLabelDraft] = useState('')
   const [createExerciseForm, setCreateExerciseForm] = useState({
@@ -431,6 +437,9 @@ function Exercises({ webSettingsSection = '' }) {
 
   const closeExerciseDetailItem = () => {
     setIsExerciseDetailVideoPlaying(false)
+    setIsEditingExerciseDetail(false)
+    setDetailActionError('')
+    setDetailActionSuccess('')
     setOpenedExerciseDetailItem(null)
   }
 
@@ -707,6 +716,91 @@ function Exercises({ webSettingsSection = '' }) {
       : []).join(', '))
   }, [openedExerciseDetailItem])
 
+  useEffect(() => {
+    if (!openedExerciseDetailItem) {
+      setEditExerciseDraft({ title: '', youtubeUrl: '', description: '' })
+      return
+    }
+
+    setEditExerciseDraft({
+      title: String(openedExerciseDetailItem?.name || openedExerciseDetailItem?.title || '').trim(),
+      youtubeUrl: String(openedExerciseDetailItem?.youtube?.url || '').trim(),
+      description: String(openedExerciseDetailItem?.description || '').trim()
+    })
+  }, [openedExerciseDetailItem])
+
+  const canManageOpenedExercise = openedExerciseDetailItem
+    ? (currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach')))
+    : false
+
+  const startEditOpenedExercise = () => {
+    if (!openedExerciseDetailItem || !canManageOpenedExercise) return
+    setDetailActionError('')
+    setDetailActionSuccess('')
+    setIsEditingExerciseDetail(true)
+  }
+
+  const cancelEditOpenedExercise = () => {
+    if (!openedExerciseDetailItem) return
+    setEditExerciseDraft({
+      title: String(openedExerciseDetailItem?.name || openedExerciseDetailItem?.title || '').trim(),
+      youtubeUrl: String(openedExerciseDetailItem?.youtube?.url || '').trim(),
+      description: String(openedExerciseDetailItem?.description || '').trim()
+    })
+    setDetailActionError('')
+    setIsEditingExerciseDetail(false)
+  }
+
+  const saveOpenedExerciseChanges = async () => {
+    if (!openedExerciseDetailItem || !canManageOpenedExercise || isUpdatingExerciseDetail) return
+
+    const title = String(editExerciseDraft.title || '').trim()
+    if (!title) {
+      setDetailActionError('Názov cvičenia je povinný.')
+      return
+    }
+
+    setIsUpdatingExerciseDetail(true)
+    setDetailActionError('')
+    setDetailActionSuccess('')
+    try {
+      await api.updateExercise(openedExerciseDetailItem.id, {
+        title,
+        youtubeUrl: String(editExerciseDraft.youtubeUrl || '').trim() || null,
+        description: String(editExerciseDraft.description || '').trim() || null
+      })
+      await reloadExerciseLibrary()
+      setDetailActionSuccess('Cvičenie bolo upravené.')
+      setIsEditingExerciseDetail(false)
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setDetailActionError(message || 'Cvičenie sa nepodarilo upraviť.')
+    } finally {
+      setIsUpdatingExerciseDetail(false)
+    }
+  }
+
+  const deleteOpenedExercise = async () => {
+    if (!openedExerciseDetailItem || !canManageOpenedExercise || isDeletingExerciseDetail) return
+    if (!window.confirm(`Naozaj chceš odstrániť cvičenie "${openedExerciseDetailItem.name}"?`)) return
+
+    setIsDeletingExerciseDetail(true)
+    setDetailActionError('')
+    setDetailActionSuccess('')
+    try {
+      await api.deleteExercise(openedExerciseDetailItem.id)
+      await reloadExerciseLibrary()
+      closeExerciseDetailItem()
+      setCreateExerciseSuccess('Cvičenie bolo úspešne odstránené.')
+      setCreateExerciseError('')
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setDetailActionError(message || 'Cvičenie sa nepodarilo odstrániť.')
+    } finally {
+      setIsDeletingExerciseDetail(false)
+    }
+  }
+
   return (
     <div className="members-categories-stack">
       {!isEmbeddedWebSettingsView ? (
@@ -832,6 +926,10 @@ function Exercises({ webSettingsSection = '' }) {
       ) : null}
 
       {(showCreateForm && showCreateExerciseSection) ? (
+        <>
+        {createExerciseSuccess ? (
+          <div className="success-message" style={{ marginBottom: '0.75rem' }}>{createExerciseSuccess}</div>
+        ) : null}
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
           <form className={`exercise-db-filters${isEmbeddedWebSettingsView ? ' exercise-db-filters--single-column' : ''}`} onSubmit={handleCreateExercise}>
 
@@ -976,10 +1074,6 @@ function Exercises({ webSettingsSection = '' }) {
               <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0 }}>{createExerciseError}</p>
             ) : null}
 
-            {createExerciseSuccess ? (
-              <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0, color: '#4ade80' }}>{createExerciseSuccess}</p>
-            ) : null}
-
             <button
               type="submit"
               className="btn-secondary exercise-db-filter-reset-btn"
@@ -989,6 +1083,7 @@ function Exercises({ webSettingsSection = '' }) {
             </button>
           </form>
         </div>
+        </>
       ) : null}
 
       {showExerciseListSection ? (
@@ -1136,12 +1231,18 @@ function Exercises({ webSettingsSection = '' }) {
                 onClick={() => {
                   setOpenedExerciseDetailItem(item)
                   setIsExerciseDetailVideoPlaying(false)
+                  setIsEditingExerciseDetail(false)
+                  setDetailActionError('')
+                  setDetailActionSuccess('')
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
                     setOpenedExerciseDetailItem(item)
                     setIsExerciseDetailVideoPlaying(false)
+                    setIsEditingExerciseDetail(false)
+                    setDetailActionError('')
+                    setDetailActionSuccess('')
                   }
                 }}
                 aria-label={`Otvoriť detail cvičenia ${item.name}`}
@@ -1370,6 +1471,86 @@ function Exercises({ webSettingsSection = '' }) {
                 ) : (
                   <p className="manager-empty-text" style={{ margin: 0 }}>Cvičenie zatiaľ nemá popis.</p>
                 )}
+
+                {canManageOpenedExercise ? (
+                  <div className="exercise-detail-actions-row">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={startEditOpenedExercise}
+                      disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
+                    >
+                      Upraviť cvičenie
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary exercise-detail-delete-btn"
+                      onClick={deleteOpenedExercise}
+                      disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
+                    >
+                      {isDeletingExerciseDetail ? 'Odstraňujem...' : 'Odstrániť cvičenie'}
+                    </button>
+                  </div>
+                ) : null}
+
+                {isEditingExerciseDetail ? (
+                  <div className="exercise-detail-edit-box">
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-title">Názov</label>
+                      <input
+                        id="exercise-edit-title"
+                        type="text"
+                        value={editExerciseDraft.title}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, title: event.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-youtube">Link na video (YouTube)</label>
+                      <input
+                        id="exercise-edit-youtube"
+                        type="url"
+                        value={editExerciseDraft.youtubeUrl}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, youtubeUrl: event.target.value }))}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-description">Popis</label>
+                      <textarea
+                        id="exercise-edit-description"
+                        rows={3}
+                        value={editExerciseDraft.description}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, description: event.target.value }))}
+                      />
+                    </div>
+                    <div className="exercise-detail-actions-row">
+                      <button
+                        type="button"
+                        className="btn-edit"
+                        onClick={saveOpenedExerciseChanges}
+                        disabled={isUpdatingExerciseDetail}
+                      >
+                        {isUpdatingExerciseDetail ? 'Ukladám...' : 'Uložiť zmeny'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={cancelEditOpenedExercise}
+                        disabled={isUpdatingExerciseDetail}
+                      >
+                        Zrušiť
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {detailActionError ? (
+                  <p className="manager-empty-text" style={{ margin: 0 }}>{detailActionError}</p>
+                ) : null}
+
+                {detailActionSuccess ? (
+                  <p className="success-message" style={{ margin: 0 }}>{detailActionSuccess}</p>
+                ) : null}
               </div>
             </div>
           </div>

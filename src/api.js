@@ -1952,6 +1952,33 @@ class APIClient {
     });
   }
 
+  async updateExercise(exerciseId, data) {
+    if (USE_MOCK_DATA) {
+      return {
+        message: 'Exercise updated (mock)',
+        exercise: {
+          id: exerciseId,
+          ...data
+        }
+      };
+    }
+
+    return this.request(`/exercises/${exerciseId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data && typeof data === 'object' ? data : {}),
+    });
+  }
+
+  async deleteExercise(exerciseId) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Exercise deleted (mock)', id: exerciseId };
+    }
+
+    return this.request(`/exercises/${exerciseId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Dashboard Stats
   async getDashboardStats() {
     if (USE_MOCK_DATA) {
