@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import './MyClub.css'
+import './WebSettings.css'
 
 const DEFAULT_REGISTRATION_SPORTS = [
   { key: 'football', label: 'Futbal', sortOrder: 1, isActive: true },
@@ -26,6 +27,20 @@ const normalizeSportKey = (value) => String(value || '')
   .replace(/[^a-z0-9\s_-]/g, '')
   .replace(/[\s-]+/g, '_')
   .replace(/^_+|_+$/g, '')
+
+const getSportShortcut = (sport) => {
+  const raw = String(sport?.key || sport?.label || '').trim()
+  if (!raw) return '--'
+
+  const normalized = raw.replace(/[_-]+/g, ' ')
+  const words = normalized.split(/\s+/).filter(Boolean)
+
+  if (words.length >= 2) {
+    return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase()
+  }
+
+  return normalized.replace(/\s+/g, '').slice(0, 4).toUpperCase()
+}
 
 function WebSettings() {
   const [sports, setSports] = useState([])
@@ -117,6 +132,25 @@ function WebSettings() {
       setShowSportForm(false)
       resetSportDraft()
     }
+  }
+
+  const toggleSportStatus = (index, nextChecked) => {
+    const target = sortedSports[index]
+    if (!target) return
+
+    setSports((prev) => prev.map((item) => {
+      if (item === target) {
+        return { ...item, isActive: Boolean(nextChecked) }
+      }
+      return item
+    }))
+
+    if (editingSportIndex === index) {
+      setSportDraft((prev) => ({ ...prev, isActive: Boolean(nextChecked) }))
+    }
+
+    setSuccess('')
+    setError('')
   }
 
   const saveSportDraftLocally = () => {
@@ -252,40 +286,67 @@ function WebSettings() {
               {sortedSports.length === 0 ? (
                 <p style={{ color: 'var(--text-secondary)' }}>Zatial neexistuju ziadne sporty</p>
               ) : (
-                sortedSports.map((sport, index) => (
-                  <div key={`web-sport-row-${sport.key}-${index}`} className="member-category-row">
-                    <div className="member-category-main">
-                      <span className="material-icons-round member-category-drag-icon" aria-hidden="true">drag_indicator</span>
-                      <div>
-                        <strong>{sport.label}</strong>
-                        <div className="member-category-meta">{sport.key} | poradie: {sport.sortOrder} | {sport.isActive ? 'aktivny' : 'neaktivny'}</div>
+                <div className="metrics-table-wrap web-settings-metrics-wrap" role="region" aria-label="Tabulka sportov">
+                  <div className="metrics-table metrics-table-head web-settings-metrics-table" role="row">
+                    <div className="metrics-col-right">Skratky</div>
+                    <div>Nazov sportu</div>
+                    <div className="metrics-col-center">Status</div>
+                    <div className="metrics-col-right manager-table-actions-head">Akcie</div>
+                  </div>
+
+                  {sortedSports.map((sport, index) => (
+                    <div key={`web-sport-row-${sport.key}-${index}`} className="metrics-table metrics-table-row web-settings-metrics-table" role="row">
+                      <div className="metrics-drag-cell">
+                        <span className="material-icons-round metrics-drag-handle" aria-hidden="true">drag_indicator</span>
+                        <div className="metrics-type-icon" title={`Skratka: ${getSportShortcut(sport)}`}>
+                          <span className="metrics-type-icon-text">{getSportShortcut(sport)}</span>
+                        </div>
+                      </div>
+
+                      <div className="metrics-name-cell">
+                        <div>
+                          <strong>{sport.label}</strong>
+                          <div className="member-category-meta">{sport.key} | poradie: {sport.sortOrder}</div>
+                        </div>
+                      </div>
+
+                      <div className="metrics-col-center">
+                        <label className="metrics-switch" title="Zapnut alebo vypnut sport v registracii">
+                          <input
+                            type="checkbox"
+                            checked={sport.isActive !== false}
+                            onChange={(event) => toggleSportStatus(index, event.target.checked)}
+                            disabled={loading}
+                          />
+                          <span className="metrics-switch-track" aria-hidden="true" />
+                        </label>
+                      </div>
+
+                      <div className="metrics-col-right metrics-actions">
+                        <button
+                          type="button"
+                          className="role-action-btn role-action-edit"
+                          onClick={() => openEditSportForm(index)}
+                          disabled={loading}
+                          aria-label={`Upravit sport ${sport.label}`}
+                          title="Upravit sport"
+                        >
+                          <span className="material-icons-round" aria-hidden="true">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="role-action-btn role-action-delete"
+                          onClick={() => removeSportRow(index)}
+                          disabled={loading}
+                          aria-label={`Odstranit sport ${sport.label}`}
+                          title="Odstranit sport"
+                        >
+                          <span className="material-icons-round" aria-hidden="true">delete</span>
+                        </button>
                       </div>
                     </div>
-
-                    <div className="member-category-actions">
-                      <button
-                        type="button"
-                        className="role-action-btn role-action-edit"
-                        onClick={() => openEditSportForm(index)}
-                        disabled={loading}
-                        aria-label={`Upravit sport ${sport.label}`}
-                        title="Upravit sport"
-                      >
-                        <span className="material-icons-round" aria-hidden="true">edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="role-action-btn role-action-delete"
-                        onClick={() => removeSportRow(index)}
-                        disabled={loading}
-                        aria-label={`Odstranit sport ${sport.label}`}
-                        title="Odstranit sport"
-                      >
-                        <span className="material-icons-round" aria-hidden="true">delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
 
