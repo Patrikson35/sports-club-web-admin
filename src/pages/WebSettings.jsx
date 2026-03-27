@@ -116,6 +116,16 @@ function WebSettings() {
     }
   }
 
+  const confirmAndRemoveSportRow = (index) => {
+    const sport = sports[index]
+    if (!sport) return
+
+    const confirmed = window.confirm(`Naozaj chceš odstrániť šport "${sport.label}"?`)
+    if (!confirmed) return
+
+    removeSportRow(index)
+  }
+
   const toggleSportStatus = (index, nextChecked) => {
     const target = sports[index]
     if (!target) return
@@ -302,7 +312,7 @@ function WebSettings() {
                         <button
                           type="button"
                           className="role-action-btn role-action-delete"
-                          onClick={() => removeSportRow(index)}
+                          onClick={() => confirmAndRemoveSportRow(index)}
                           disabled={loading}
                           aria-label={`Odstrániť šport ${sport.label}`}
                           title="Odstrániť šport"
