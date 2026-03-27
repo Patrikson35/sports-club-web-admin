@@ -35,6 +35,7 @@ function WebSettings() {
   const [showSportForm, setShowSportForm] = useState(false)
   const [editingSportIndex, setEditingSportIndex] = useState(-1)
   const [sportDraft, setSportDraft] = useState(createEmptySportRow(0))
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, index: -1, label: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -116,14 +117,26 @@ function WebSettings() {
     }
   }
 
-  const confirmAndRemoveSportRow = (index) => {
+  const openRemoveSportConfirm = (index) => {
     const sport = sports[index]
     if (!sport) return
 
-    const confirmed = window.confirm(`Naozaj chceš odstrániť šport "${sport.label}"?`)
-    if (!confirmed) return
+    setConfirmDialog({
+      open: true,
+      index,
+      label: sport.label
+    })
+  }
 
-    removeSportRow(index)
+  const closeRemoveSportConfirm = () => {
+    setConfirmDialog({ open: false, index: -1, label: '' })
+  }
+
+  const confirmRemoveSport = () => {
+    if (confirmDialog.index < 0) return
+
+    removeSportRow(confirmDialog.index)
+    closeRemoveSportConfirm()
   }
 
   const toggleSportStatus = (index, nextChecked) => {
@@ -312,7 +325,7 @@ function WebSettings() {
                         <button
                           type="button"
                           className="role-action-btn role-action-delete"
-                          onClick={() => confirmAndRemoveSportRow(index)}
+                          onClick={() => openRemoveSportConfirm(index)}
                           disabled={loading}
                           aria-label={`Odstrániť šport ${sport.label}`}
                           title="Odstrániť šport"
@@ -401,6 +414,34 @@ function WebSettings() {
           </div>
         </div>
       </div>
+
+      {confirmDialog.open ? (
+        <div className="confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie odstránenia športu">
+          <div className="confirm-modal-card">
+            <h3>Odstrániť šport</h3>
+            <p>Naozaj chceš odstrániť šport "{confirmDialog.label}"?</p>
+
+            <div className="confirm-modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={closeRemoveSportConfirm}
+                disabled={loading}
+              >
+                Zrušiť
+              </button>
+              <button
+                type="button"
+                className="manager-add-btn category-form-toggle-cancel"
+                onClick={confirmRemoveSport}
+                disabled={loading}
+              >
+                Odstrániť
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
