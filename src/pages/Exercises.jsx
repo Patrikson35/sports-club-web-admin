@@ -45,6 +45,15 @@ const normalizeExerciseRating = (value) => {
 
 const normalizeExerciseFavorite = (value) => value === true || String(value || '').trim().toLowerCase() === 'true'
 
+const normalizeCustomLabels = (value) => {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(
+    value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+  ))
+}
+
 const normalizeExerciseItems = (value) => {
   const parsed = Array.isArray(value) ? value : []
 
@@ -69,6 +78,7 @@ const normalizeExerciseItems = (value) => {
           url: String(youtube?.url || '').trim(),
           videoId: String(youtube?.videoId || '').trim()
         },
+        customLabels: normalizeCustomLabels(item?.customLabels),
         createdAt: String(item?.createdAt || '').trim(),
         updatedAt: String(item?.updatedAt || '').trim()
       }
@@ -97,13 +107,18 @@ const resolveSelectedExerciseCategoryIds = (selectedCategoryIds, categorySelecti
   return Array.from(new Set([...selectedFromIds, ...selectedFromSelections]))
 }
 
-function Exercises() {
+function Exercises({ webSettingsSection = '' }) {
   const [currentRole, setCurrentRole] = useState('')
   const [exerciseCategories, setExerciseCategories] = useState([])
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showCategoryCreateForm, setShowCategoryCreateForm] = useState(false)
   const [isCreatingExercise, setIsCreatingExercise] = useState(false)
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [isSavingCustomLabels, setIsSavingCustomLabels] = useState(false)
   const [createExerciseError, setCreateExerciseError] = useState('')
+  const [createCategoryError, setCreateCategoryError] = useState('')
+  const [customLabelDraft, setCustomLabelDraft] = useState('')
   const [createExerciseForm, setCreateExerciseForm] = useState({
     title: '',
     description: '',
@@ -111,6 +126,13 @@ function Exercises() {
     difficulty: '',
     duration: '',
     equipment: '',
+    isSystem: false,
+    customLabels: ''
+  })
+  const [createCategoryForm, setCreateCategoryForm] = useState({
+    name: '',
+    description: '',
+    parentId: '',
     isSystem: false
   })
   const [openedExerciseDetailItem, setOpenedExerciseDetailItem] = useState(null)
@@ -127,51 +149,61 @@ function Exercises() {
   useEffect(() => {
     let isMounted = true
 
+    const mapApiExerciseItem = (item) => ({
+      id: String(item?.id || '').trim(),
+      name: String(item?.title || item?.name || '').trim(),
+      description: String(item?.description || '').trim(),
+      intensity: String(item?.difficulty || '').trim() || 'Stredná',
+      playersCount: [],
+      selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
+      categorySelections: {},
+      youtube: { url: '', videoId: '' },
+      rating: 0,
+      isFavorite: false,
+      isSystem: Boolean(item?.isSystem),
+      clubId: item?.clubId || null,
+      categoryName: String(item?.category?.name || '').trim(),
+      customLabels: normalizeCustomLabels(item?.customLabels)
+    })
+
+    const loadExerciseLibrary = async () => {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      const normalizedRole = String(user?.role || '').trim().toLowerCase()
+      const role = normalizedRole === 'club_admin' ? 'club' : normalizedRole
+      const [categoryResponse, exerciseResponse] = await Promise.all([
+        api.getExerciseCategories(),
+        api.getExercises()
+      ])
+
+      if (!isMounted) return
+
+      setCurrentRole(role)
+
+      const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
+      const normalizedCategories = categoriesRaw
+        .map((item) => ({
+          id: String(item?.id || '').trim(),
+          name: String(item?.name || '').trim(),
+          subcategories: Array.isArray(item?.subcategories)
+            ? item.subcategories
+                .map((subcategory) => String(subcategory?.name || '').trim())
+                .filter(Boolean)
+            : [],
+          isSystem: Boolean(item?.isSystem),
+          clubId: item?.clubId || null
+        }))
+        .filter((item) => item.id && item.name)
+
+      const exercisesRaw = Array.isArray(exerciseResponse?.exercises) ? exerciseResponse.exercises : []
+      const normalizedExercises = normalizeExerciseItems(exercisesRaw.map(mapApiExerciseItem))
+
+      setExerciseCategories(normalizedCategories)
+      setExerciseDatabaseItems(normalizedExercises)
+    }
+
     const loadFromApi = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}')
-        const normalizedRole = String(user?.role || '').trim().toLowerCase()
-        const role = normalizedRole === 'club_admin' ? 'club' : normalizedRole
-        const [categoryResponse, exerciseResponse] = await Promise.all([
-          api.getExerciseCategories(),
-          api.getExercises()
-        ])
-        if (!isMounted) return
-
-        setCurrentRole(role)
-
-        const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
-        const normalizedCategories = categoriesRaw
-          .map((item) => ({
-            id: String(item?.id || '').trim(),
-            name: String(item?.name || '').trim(),
-            subcategories: Array.isArray(item?.subcategories)
-              ? item.subcategories
-                  .map((subcategory) => String(subcategory?.name || '').trim())
-                  .filter(Boolean)
-              : []
-          }))
-          .filter((item) => item.id && item.name)
-
-        const exercisesRaw = Array.isArray(exerciseResponse?.exercises) ? exerciseResponse.exercises : []
-        const normalizedExercises = normalizeExerciseItems(exercisesRaw.map((item) => ({
-          id: String(item?.id || '').trim(),
-          name: String(item?.title || item?.name || '').trim(),
-          description: String(item?.description || '').trim(),
-          intensity: String(item?.difficulty || '').trim() || 'Stredná',
-          playersCount: [],
-          selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
-          categorySelections: {},
-          youtube: { url: '', videoId: '' },
-          rating: 0,
-          isFavorite: false,
-          isSystem: Boolean(item?.isSystem),
-          clubId: item?.clubId || null,
-          categoryName: String(item?.category?.name || '').trim()
-        })))
-
-        setExerciseCategories(normalizedCategories)
-        setExerciseDatabaseItems(normalizedExercises)
+        await loadExerciseLibrary()
       } catch {
         if (!isMounted) return
         setCurrentRole('')
@@ -185,6 +217,25 @@ function Exercises() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!webSettingsSection) return
+
+    if (webSettingsSection === 'createExercise') {
+      setShowCreateForm(true)
+      setShowCategoryCreateForm(false)
+      return
+    }
+
+    if (webSettingsSection === 'exerciseCategories') {
+      setShowCreateForm(false)
+      setShowCategoryCreateForm(true)
+      return
+    }
+
+    setShowCreateForm(false)
+    setShowCategoryCreateForm(false)
+  }, [webSettingsSection])
 
   const exerciseListSubcategoryOptions = useMemo(() => {
     const selectedCategoryId = String(exerciseListFilters?.categoryId || 'all')
@@ -372,6 +423,108 @@ function Exercises() {
   }
 
   const canCreateSystemExercise = currentRole === 'admin'
+  const canManageExerciseCategories = currentRole === 'admin' || currentRole === 'club' || currentRole === 'coach'
+
+  const reloadExerciseLibrary = async () => {
+    const [categoryResponse, exerciseResponse] = await Promise.all([
+      api.getExerciseCategories(),
+      api.getExercises()
+    ])
+
+    const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
+    const normalizedCategories = categoriesRaw
+      .map((item) => ({
+        id: String(item?.id || '').trim(),
+        name: String(item?.name || '').trim(),
+        subcategories: Array.isArray(item?.subcategories)
+          ? item.subcategories
+              .map((subcategory) => String(subcategory?.name || '').trim())
+              .filter(Boolean)
+          : [],
+        isSystem: Boolean(item?.isSystem),
+        clubId: item?.clubId || null
+      }))
+      .filter((item) => item.id && item.name)
+
+    const exercisesRaw = Array.isArray(exerciseResponse?.exercises) ? exerciseResponse.exercises : []
+    const normalizedExercises = normalizeExerciseItems(exercisesRaw.map((item) => ({
+      id: String(item?.id || '').trim(),
+      name: String(item?.title || item?.name || '').trim(),
+      description: String(item?.description || '').trim(),
+      intensity: String(item?.difficulty || '').trim() || 'Stredná',
+      playersCount: [],
+      selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
+      categorySelections: {},
+      youtube: { url: '', videoId: '' },
+      rating: 0,
+      isFavorite: false,
+      isSystem: Boolean(item?.isSystem),
+      clubId: item?.clubId || null,
+      categoryName: String(item?.category?.name || '').trim(),
+      customLabels: normalizeCustomLabels(item?.customLabels)
+    })))
+
+    setExerciseCategories(normalizedCategories)
+    setExerciseDatabaseItems(normalizedExercises)
+  }
+
+  const handleCreateCategory = async (event) => {
+    event.preventDefault()
+    const normalizedName = String(createCategoryForm.name || '').trim()
+    if (!normalizedName) {
+      setCreateCategoryError('Názov kategórie je povinný.')
+      return
+    }
+
+    setCreateCategoryError('')
+    setIsCreatingCategory(true)
+    try {
+      await api.createExerciseCategory({
+        name: normalizedName,
+        description: String(createCategoryForm.description || '').trim(),
+        parentId: createCategoryForm.parentId ? Number(createCategoryForm.parentId) : null,
+        isSystem: canCreateSystemExercise && createCategoryForm.isSystem
+      })
+      await reloadExerciseLibrary()
+      setCreateCategoryForm({ name: '', description: '', parentId: '', isSystem: false })
+      setShowCategoryCreateForm(false)
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setCreateCategoryError(message || 'Kategóriu sa nepodarilo vytvoriť.')
+    } finally {
+      setIsCreatingCategory(false)
+    }
+  }
+
+  const saveExerciseCustomLabels = async (exerciseId) => {
+    const parsedLabels = normalizeCustomLabels(String(customLabelDraft || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean))
+
+    setIsSavingCustomLabels(true)
+    try {
+      await api.updateExerciseCustomCategories(exerciseId, parsedLabels)
+      setExerciseDatabaseItems((prev) => (Array.isArray(prev) ? prev.map((entry) => {
+        if (String(entry?.id || '') !== String(exerciseId)) return entry
+        return {
+          ...entry,
+          customLabels: parsedLabels,
+          updatedAt: new Date().toISOString()
+        }
+      }) : []))
+      setOpenedExerciseDetailItem((prev) => {
+        if (!prev || String(prev?.id || '') !== String(exerciseId)) return prev
+        return {
+          ...prev,
+          customLabels: parsedLabels,
+          updatedAt: new Date().toISOString()
+        }
+      })
+    } finally {
+      setIsSavingCustomLabels(false)
+    }
+  }
 
   const handleCreateExercise = async (event) => {
     event.preventDefault()
@@ -391,29 +544,17 @@ function Exercises() {
         difficulty: String(createExerciseForm.difficulty || '').trim() || null,
         duration: createExerciseForm.duration ? Number(createExerciseForm.duration) : null,
         equipment: String(createExerciseForm.equipment || '').trim() || null,
-        isSystem: canCreateSystemExercise && createExerciseForm.isSystem
+        isSystem: canCreateSystemExercise && createExerciseForm.isSystem,
+        customLabels: normalizeCustomLabels(
+          String(createExerciseForm.customLabels || '')
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+        )
       }
 
       await api.createExercise(payload)
-      const response = await api.getExercises()
-      const exercisesRaw = Array.isArray(response?.exercises) ? response.exercises : []
-      const normalizedExercises = normalizeExerciseItems(exercisesRaw.map((item) => ({
-        id: String(item?.id || '').trim(),
-        name: String(item?.title || item?.name || '').trim(),
-        description: String(item?.description || '').trim(),
-        intensity: String(item?.difficulty || '').trim() || 'Stredná',
-        playersCount: [],
-        selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
-        categorySelections: {},
-        youtube: { url: '', videoId: '' },
-        rating: 0,
-        isFavorite: false,
-        isSystem: Boolean(item?.isSystem),
-        clubId: item?.clubId || null,
-        categoryName: String(item?.category?.name || '').trim()
-      })))
-
-      setExerciseDatabaseItems(normalizedExercises)
+      await reloadExerciseLibrary()
       setCreateExerciseForm({
         title: '',
         description: '',
@@ -421,7 +562,8 @@ function Exercises() {
         difficulty: '',
         duration: '',
         equipment: '',
-        isSystem: false
+        isSystem: false,
+        customLabels: ''
       })
       setShowCreateForm(false)
     } catch (error) {
@@ -436,6 +578,16 @@ function Exercises() {
     ? getExerciseCategorySummary(openedExerciseDetailItem)
     : ''
 
+  useEffect(() => {
+    if (!openedExerciseDetailItem) {
+      setCustomLabelDraft('')
+      return
+    }
+    setCustomLabelDraft((Array.isArray(openedExerciseDetailItem?.customLabels)
+      ? openedExerciseDetailItem.customLabels
+      : []).join(', '))
+  }, [openedExerciseDetailItem])
+
   return (
     <div className="members-categories-stack">
       <div className="exercise-library-head">
@@ -444,6 +596,78 @@ function Exercises() {
           {showCreateForm ? 'Zavrieť formulár' : 'Vytvoriť cvičenie'}
         </button>
       </div>
+
+      {canManageExerciseCategories ? (
+        <div className="exercise-library-head" style={{ marginTop: '-0.5rem' }}>
+          <button type="button" className="btn-secondary" onClick={() => setShowCategoryCreateForm((prev) => !prev)}>
+            {showCategoryCreateForm ? 'Zavrieť kategórie' : 'Vytvoriť kategóriu'}
+          </button>
+        </div>
+      ) : null}
+
+      {showCategoryCreateForm ? (
+        <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
+          <form className="exercise-db-filters" onSubmit={handleCreateCategory}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-category-name">Názov kategórie</label>
+              <input
+                id="create-category-name"
+                type="text"
+                value={createCategoryForm.name}
+                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Napr. Prechod do útoku"
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-category-parent">Nadradená kategória</label>
+              <select
+                id="create-category-parent"
+                value={createCategoryForm.parentId}
+                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, parentId: event.target.value }))}
+              >
+                <option value="">Bez nadradenej kategórie</option>
+                {exerciseCategories.map((category) => (
+                  <option key={`create-category-parent-${category.id}`} value={String(category.id)}>
+                    {String(category.name || 'Kategória')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+              <label htmlFor="create-category-description">Popis</label>
+              <input
+                id="create-category-description"
+                type="text"
+                value={createCategoryForm.description}
+                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Voliteľný popis"
+              />
+            </div>
+
+            {canCreateSystemExercise ? (
+              <label className="planner-stitch-checkbox-option" style={{ gridColumn: '1 / -1' }}>
+                <input
+                  type="checkbox"
+                  checked={createCategoryForm.isSystem}
+                  onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, isSystem: event.target.checked }))}
+                />
+                <span>Základná (systémová) kategória pre všetky kluby</span>
+              </label>
+            ) : null}
+
+            {createCategoryError ? (
+              <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0 }}>{createCategoryError}</p>
+            ) : null}
+
+            <button type="submit" className="btn-secondary exercise-db-filter-reset-btn" disabled={isCreatingCategory}>
+              {isCreatingCategory ? 'Ukladám...' : 'Uložiť kategóriu'}
+            </button>
+          </form>
+        </div>
+      ) : null}
 
       {showCreateForm ? (
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
@@ -522,6 +746,17 @@ function Exercises() {
                 value={createExerciseForm.equipment}
                 onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, equipment: event.target.value }))}
                 placeholder="Kužele, lopty"
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+              <label htmlFor="create-exercise-custom-labels">Vlastné delenie (čiarkou)</label>
+              <input
+                id="create-exercise-custom-labels"
+                type="text"
+                value={createExerciseForm.customLabels}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, customLabels: event.target.value }))}
+                placeholder="Napr. U12, pressing, obrana"
               />
             </div>
 
@@ -737,6 +972,9 @@ function Exercises() {
                 {getExerciseCategorySummary(item) ? (
                   <div className="exercise-db-card-category-note">{getExerciseCategorySummary(item)}</div>
                 ) : null}
+                {Array.isArray(item?.customLabels) && item.customLabels.length > 0 ? (
+                  <div className="exercise-db-card-category-note">Vlastné: {item.customLabels.join(', ')}</div>
+                ) : null}
                 <p className="exercise-db-card-description">{item.description || 'Bez popisu cvičenia.'}</p>
 
                 <div className="exercise-db-card-stats">
@@ -893,6 +1131,28 @@ function Exercises() {
                       </button>
                     ))}
                   </span>
+                </div>
+                <div className="exercise-detail-meta-row" style={{ alignItems: 'flex-end' }}>
+                  <div className="form-group" style={{ margin: 0, width: '100%' }}>
+                    <label htmlFor="exercise-custom-labels-input">Vlastné kategórie / delenie</label>
+                    <input
+                      id="exercise-custom-labels-input"
+                      type="text"
+                      value={customLabelDraft}
+                      onChange={(event) => setCustomLabelDraft(event.target.value)}
+                      placeholder="Napr. U14, prechod, technika"
+                    />
+                  </div>
+                  {(currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach'))) ? (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      disabled={isSavingCustomLabels}
+                      onClick={() => saveExerciseCustomLabels(openedExerciseDetailItem.id)}
+                    >
+                      {isSavingCustomLabels ? 'Ukladám...' : 'Uložiť delenie'}
+                    </button>
+                  ) : null}
                 </div>
                 {openedExerciseDetailItem.description ? (
                   <p>{openedExerciseDetailItem.description}</p>

@@ -37,6 +37,10 @@ function WebSettings() {
     : 'global'
   const isGlobalSettingsTabActive = activeSettingsTab === 'global'
   const isExerciseDatabaseTabActive = activeSettingsTab === 'exerciseDatabase'
+  const requestedExerciseSection = String(searchParams.get('section') || '').trim()
+  const activeExerciseSection = ['exerciseList', 'createExercise', 'exerciseCategories'].includes(requestedExerciseSection)
+    ? requestedExerciseSection
+    : 'exerciseList'
   const [sports, setSports] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -296,10 +300,14 @@ function WebSettings() {
 
   const openSettingsTab = (tabKey) => {
     if (tabKey === 'exerciseDatabase') {
-      setSearchParams({ tab: 'exerciseDatabase' })
+      setSearchParams({ tab: 'exerciseDatabase', section: activeExerciseSection })
       return
     }
     setSearchParams({})
+  }
+
+  const openExerciseSection = (sectionKey) => {
+    setSearchParams({ tab: 'exerciseDatabase', section: sectionKey })
   }
 
   if (loading && isGlobalSettingsTabActive) {
@@ -543,8 +551,51 @@ function WebSettings() {
           ) : null}
         </>
       ) : (
-        <div style={{ marginTop: '24px' }}>
-          <Exercises />
+        <div className="form-section settings-layout members-layout" style={{ marginTop: '24px' }}>
+          <aside className="card settings-sidebar-card" aria-label="Databáza cvičení - navigácia sekcií">
+            <nav className="settings-submenu" aria-label="Subsidebar databáza cvičení">
+              <a
+                href="#"
+                className={`settings-submenu-item ${activeExerciseSection === 'exerciseList' ? 'active' : ''}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  openExerciseSection('exerciseList')
+                }}
+                aria-current={activeExerciseSection === 'exerciseList' ? 'page' : undefined}
+              >
+                <span className="material-icons-round" aria-hidden="true">list</span>
+                <span>Zoznam cvičení</span>
+              </a>
+              <a
+                href="#"
+                className={`settings-submenu-item ${activeExerciseSection === 'createExercise' ? 'active' : ''}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  openExerciseSection('createExercise')
+                }}
+                aria-current={activeExerciseSection === 'createExercise' ? 'page' : undefined}
+              >
+                <span className="material-icons-round" aria-hidden="true">add_circle</span>
+                <span>Vytvoriť cvičenie</span>
+              </a>
+              <a
+                href="#"
+                className={`settings-submenu-item ${activeExerciseSection === 'exerciseCategories' ? 'active' : ''}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  openExerciseSection('exerciseCategories')
+                }}
+                aria-current={activeExerciseSection === 'exerciseCategories' ? 'page' : undefined}
+              >
+                <span className="material-icons-round" aria-hidden="true">swords</span>
+                <span>Kategórie cvičení</span>
+              </a>
+            </nav>
+          </aside>
+
+          <div className="settings-main">
+            <Exercises webSettingsSection={activeExerciseSection} />
+          </div>
         </div>
       )}
     </div>
