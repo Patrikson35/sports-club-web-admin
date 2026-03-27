@@ -187,9 +187,10 @@ function Exercises({ webSettingsSection = '' }) {
     const loadExerciseLibrary = async () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
       const normalizedRole = String(user?.role || '').trim().toLowerCase()
-      const role = ['admin', 'system_admin', 'super_admin', 'founder'].includes(normalizedRole)
+      const normalizedRoleKey = normalizedRole.replace(/[\s-]+/g, '_')
+      const role = ['admin', 'system_admin', 'super_admin', 'founder'].includes(normalizedRoleKey)
         ? 'admin'
-        : (normalizedRole === 'club_admin' ? 'club' : normalizedRole)
+        : (normalizedRoleKey === 'club_admin' ? 'club' : normalizedRoleKey)
       const [categoryResponse, exerciseResponse, sportsResponsePrimary, sportsResponseFallback] = await Promise.all([
         api.getExerciseCategories(),
         api.getExercises(),
@@ -614,7 +615,7 @@ function Exercises({ webSettingsSection = '' }) {
         difficulty: String(createExerciseForm.difficulty || '').trim() || null,
         duration: createExerciseForm.duration ? Number(createExerciseForm.duration) : null,
         equipment: String(createExerciseForm.equipment || '').trim() || null,
-        isSystem: canCreateSystemExercise && createExerciseForm.isSystem,
+        isSystem: isEmbeddedWebSettingsView || (canCreateSystemExercise && createExerciseForm.isSystem),
         customLabels: normalizeCustomLabels(
           String(createExerciseForm.customLabels || '')
             .split(',')
@@ -914,7 +915,7 @@ function Exercises({ webSettingsSection = '' }) {
               </>
             ) : null}
 
-            {canCreateSystemExercise ? (
+            {canCreateSystemExercise && !isEmbeddedWebSettingsView ? (
               <label className="planner-stitch-checkbox-option" style={{ gridColumn: '1 / -1' }}>
                 <input
                   type="checkbox"
