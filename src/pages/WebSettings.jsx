@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
+import Exercises from './Exercises'
 import './MyClub.css'
 import './WebSettings.css'
 
@@ -30,12 +31,12 @@ const normalizeSportKey = (value) => String(value || '')
   .replace(/^_+|_+$/g, '')
 
 function WebSettings() {
-  const location = useLocation()
-  const isGlobalSettingsTabActive = location.pathname.startsWith('/web-settings')
-  const isExerciseDatabaseTabActive = (
-    location.pathname === '/my-club' &&
-    String(new URLSearchParams(location.search).get('tab') || '').trim() === 'exerciseDatabase'
-  )
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeSettingsTab = String(searchParams.get('tab') || '').trim() === 'exerciseDatabase'
+    ? 'exerciseDatabase'
+    : 'global'
+  const isGlobalSettingsTabActive = activeSettingsTab === 'global'
+  const isExerciseDatabaseTabActive = activeSettingsTab === 'exerciseDatabase'
   const [sports, setSports] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -293,7 +294,15 @@ function WebSettings() {
     }
   }
 
-  if (loading) {
+  const openSettingsTab = (tabKey) => {
+    if (tabKey === 'exerciseDatabase') {
+      setSearchParams({ tab: 'exerciseDatabase' })
+      return
+    }
+    setSearchParams({})
+  }
+
+  if (loading && isGlobalSettingsTabActive) {
     return <div className="loading">Načítanie nastavení webu...</div>
   }
 
@@ -306,52 +315,56 @@ function WebSettings() {
       </div>
 
       <div className="club-tabs" role="navigation" aria-label="Sekcie nastavenia webu">
-        <Link
-          to="/web-settings"
+        <button
+          type="button"
           className={`club-tab ${isGlobalSettingsTabActive ? 'active' : ''}`}
           aria-current={isGlobalSettingsTabActive ? 'page' : undefined}
+          onClick={() => openSettingsTab('global')}
         >
           Globálne nastavenia
-        </Link>
-        <Link
-          to="/my-club?tab=exerciseDatabase&section=exerciseCategories"
+        </button>
+        <button
+          type="button"
           className={`club-tab ${isExerciseDatabaseTabActive ? 'active' : ''}`}
           aria-current={isExerciseDatabaseTabActive ? 'page' : undefined}
+          onClick={() => openSettingsTab('exerciseDatabase')}
         >
           Databáza cvičení
-        </Link>
+        </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {isGlobalSettingsTabActive ? (
+        <>
+          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">{success}</div>}
 
-      <div className="form-section settings-layout members-layout" style={{ marginTop: '24px' }}>
-        <aside className="card settings-sidebar-card" aria-label="Nastavenie webu - navigacia sekcii">
-          <nav className="settings-submenu" aria-label="Submenu nastavenia webu">
-            <a
-              href="#"
-              className="settings-submenu-item active"
-              onClick={(event) => event.preventDefault()}
-              aria-current="page"
-            >
-              <span className="material-icons-round" aria-hidden="true">sports</span>
-              <span>Športy</span>
-            </a>
-          </nav>
-        </aside>
+          <div className="form-section settings-layout members-layout" style={{ marginTop: '24px' }}>
+            <aside className="card settings-sidebar-card" aria-label="Nastavenie webu - navigacia sekcii">
+              <nav className="settings-submenu" aria-label="Submenu nastavenia webu">
+                <a
+                  href="#"
+                  className="settings-submenu-item active"
+                  onClick={(event) => event.preventDefault()}
+                  aria-current="page"
+                >
+                  <span className="material-icons-round" aria-hidden="true">sports</span>
+                  <span>Športy</span>
+                </a>
+              </nav>
+            </aside>
 
-        <div className="settings-main">
-          <div className="members-categories-stack">
-            <div className="card members-card members-count-card">
-              <div className="members-card-bg">
-                <span className="material-icons-round">sports</span>
-              </div>
-              <h3 style={{ marginBottom: '6px' }}>
-                <span className="section-icon material-icons-round">sports</span>
-                Počet športov
-              </h3>
-              <div className="members-count">{sports.length} <span>športov</span></div>
-            </div>
+            <div className="settings-main">
+              <div className="members-categories-stack">
+                <div className="card members-card members-count-card">
+                  <div className="members-card-bg">
+                    <span className="material-icons-round">sports</span>
+                  </div>
+                  <h3 style={{ marginBottom: '6px' }}>
+                    <span className="section-icon material-icons-round">sports</span>
+                    Počet športov
+                  </h3>
+                  <div className="members-count">{sports.length} <span>športov</span></div>
+                </div>
 
             <div className="card members-card members-categories-list-card">
               <h3 style={{ marginBottom: '10px' }}>Zoznam športov</h3>
@@ -497,37 +510,43 @@ function WebSettings() {
                 </div>
               </div>
             ) : null}
-          </div>
-        </div>
-      </div>
-
-      {confirmDialog.open ? (
-        <div className="confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie odstránenia športu">
-          <div className="confirm-modal-card">
-            <h3>Odstrániť šport</h3>
-            <p>Naozaj chceš odstrániť šport "{confirmDialog.label}"?</p>
-
-            <div className="confirm-modal-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeRemoveSportConfirm}
-                disabled={loading}
-              >
-                Zrušiť
-              </button>
-              <button
-                type="button"
-                className="manager-add-btn category-form-toggle-cancel"
-                onClick={confirmRemoveSport}
-                disabled={loading}
-              >
-                Odstrániť
-              </button>
+              </div>
             </div>
           </div>
+
+          {confirmDialog.open ? (
+            <div className="confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie odstránenia športu">
+              <div className="confirm-modal-card">
+                <h3>Odstrániť šport</h3>
+                <p>Naozaj chceš odstrániť šport "{confirmDialog.label}"?</p>
+
+                <div className="confirm-modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={closeRemoveSportConfirm}
+                    disabled={loading}
+                  >
+                    Zrušiť
+                  </button>
+                  <button
+                    type="button"
+                    className="manager-add-btn category-form-toggle-cancel"
+                    onClick={confirmRemoveSport}
+                    disabled={loading}
+                  >
+                    Odstrániť
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div style={{ marginTop: '24px' }}>
+          <Exercises />
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
