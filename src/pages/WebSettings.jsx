@@ -29,7 +29,6 @@ const normalizeSportKey = (value) => String(value || '')
 
 function WebSettings() {
   const [sports, setSports] = useState([])
-  const [activeSection, setActiveSection] = useState('sports')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -139,152 +138,121 @@ function WebSettings() {
   }
 
   return (
-    <div className="members-categories-stack">
-      <div className="exercise-library-head">
-        <h2>Nastavenie webu</h2>
+    <div className="my-club-container">
+      <div className="club-header">
+        <div>
+          <h1>Nastavenie webu</h1>
+        </div>
       </div>
 
-      <div className="form-section settings-layout" style={{ marginTop: '24px' }}>
-        <div className="card settings-placeholder-card">
+      <div className="club-tabs" role="navigation" aria-label="Sekcie nastavenia webu">
+        <button type="button" className="club-tab active" aria-current="page">
+          Sporty
+        </button>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
+
+      <div className="form-section settings-layout members-layout" style={{ marginTop: '24px' }}>
+        <aside className="card settings-sidebar-card" aria-label="Nastavenie webu - navigacia sekcii">
           <nav className="settings-submenu" aria-label="Submenu nastavenia webu">
-            <button
-              type="button"
-              className={`settings-submenu-item ${activeSection === 'sports' ? 'active' : ''}`}
-              onClick={() => setActiveSection('sports')}
-              aria-current={activeSection === 'sports' ? 'page' : undefined}
+            <a
+              href="#"
+              className="settings-submenu-item active"
+              onClick={(event) => event.preventDefault()}
+              aria-current="page"
             >
               <span className="material-icons-round" aria-hidden="true">sports</span>
-              <span>Sporty registracie</span>
-            </button>
-            <button
-              type="button"
-              className={`settings-submenu-item ${activeSection === 'preview' ? 'active' : ''}`}
-              onClick={() => setActiveSection('preview')}
-              aria-current={activeSection === 'preview' ? 'page' : undefined}
-            >
-              <span className="material-icons-round" aria-hidden="true">visibility</span>
-              <span>Nahlad formulara</span>
-            </button>
+              <span>Sporty</span>
+            </a>
           </nav>
-        </div>
+        </aside>
 
-        <div>
-          {activeSection === 'sports' && (
-            <div className="card settings-placeholder-card metrics-section-card">
-              <div className="exercise-db-head-row" style={{ marginBottom: '0.8rem' }}>
-                <div className="manager-role-heading">
-                  <span className="material-icons-round section-icon" aria-hidden="true">sports</span>
-                  <h3 className="manager-section-title">Sporty pre registracny formular</h3>
-                </div>
-                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={resetToDefaultSports}>
-                    Obnovit default
-                  </button>
-                  <button type="button" className="manager-add-btn" onClick={addSportRow}>
-                    Pridat sport
-                  </button>
-                </div>
+        <div className="settings-main">
+          <div className="card settings-placeholder-card metrics-section-card">
+            <div className="exercise-db-head-row" style={{ marginBottom: '0.8rem' }}>
+              <div className="manager-role-heading">
+                <span className="material-icons-round section-icon" aria-hidden="true">sports</span>
+                <h3 className="manager-section-title">Sporty pre registracny formular</h3>
               </div>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={resetToDefaultSports}>
+                  Obnovit default
+                </button>
+                <button type="button" className="manager-add-btn" onClick={addSportRow}>
+                  Pridat sport
+                </button>
+              </div>
+            </div>
 
-              {error ? (
-                <p className="manager-empty-text" style={{ color: '#ef4444' }}>{error}</p>
-              ) : null}
-
-              {success ? (
-                <p className="manager-empty-text" style={{ color: '#22c55e' }}>{success}</p>
-              ) : null}
-
-              {sortedSports.length === 0 ? (
-                <p className="manager-empty-text">Zatial nie je pridany ziadny sport.</p>
-              ) : (
-                <div className="exercise-db-filters" style={{ marginBottom: '0.8rem' }}>
-                  {sortedSports.map((sport, index) => (
-                    <div key={`web-sport-${index}`} className="card settings-placeholder-card" style={{ padding: '0.9rem' }}>
-                      <div className="exercise-db-filters" style={{ marginBottom: 0 }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label htmlFor={`sport-label-${index}`}>Nazov sportu</label>
-                          <input
-                            id={`sport-label-${index}`}
-                            type="text"
-                            value={sport.label}
-                            onChange={(event) => updateSportRow(index, { label: event.target.value })}
-                            placeholder="Napr. Futbal"
-                          />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label htmlFor={`sport-key-${index}`}>Kluc sportu</label>
-                          <input
-                            id={`sport-key-${index}`}
-                            type="text"
-                            value={sport.key}
-                            onChange={(event) => updateSportRow(index, { key: normalizeSportKey(event.target.value) })}
-                            placeholder="football"
-                          />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label htmlFor={`sport-order-${index}`}>Poradie</label>
-                          <input
-                            id={`sport-order-${index}`}
-                            type="number"
-                            min="1"
-                            value={sport.sortOrder}
-                            onChange={(event) => updateSportRow(index, { sortOrder: Number(event.target.value) || (index + 1) })}
-                          />
-                        </div>
-
-                        <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0, alignSelf: 'end' }}>
-                          <input
-                            type="checkbox"
-                            checked={sport.isActive}
-                            onChange={(event) => updateSportRow(index, { isActive: event.target.checked })}
-                          />
-                          <span>Aktivny</span>
-                        </label>
-
-                        <button
-                          type="button"
-                          className="btn-secondary exercise-db-filter-reset-btn"
-                          onClick={() => removeSportRow(index)}
-                          style={{ alignSelf: 'end' }}
-                        >
-                          Odstranit
-                        </button>
+            {sortedSports.length === 0 ? (
+              <p className="manager-empty-text">Zatial nie je pridany ziadny sport.</p>
+            ) : (
+              <div className="exercise-db-filters" style={{ marginBottom: '0.8rem' }}>
+                {sortedSports.map((sport, index) => (
+                  <div key={`web-sport-${index}`} className="card settings-placeholder-card" style={{ padding: '0.9rem' }}>
+                    <div className="exercise-db-filters" style={{ marginBottom: 0 }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor={`sport-label-${index}`}>Nazov sportu</label>
+                        <input
+                          id={`sport-label-${index}`}
+                          type="text"
+                          value={sport.label}
+                          onChange={(event) => updateSportRow(index, { label: event.target.value })}
+                          placeholder="Napr. Futbal"
+                        />
                       </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor={`sport-key-${index}`}>Kluc sportu</label>
+                        <input
+                          id={`sport-key-${index}`}
+                          type="text"
+                          value={sport.key}
+                          onChange={(event) => updateSportRow(index, { key: normalizeSportKey(event.target.value) })}
+                          placeholder="football"
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor={`sport-order-${index}`}>Poradie</label>
+                        <input
+                          id={`sport-order-${index}`}
+                          type="number"
+                          min="1"
+                          value={sport.sortOrder}
+                          onChange={(event) => updateSportRow(index, { sortOrder: Number(event.target.value) || (index + 1) })}
+                        />
+                      </div>
+
+                      <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0, alignSelf: 'end' }}>
+                        <input
+                          type="checkbox"
+                          checked={sport.isActive}
+                          onChange={(event) => updateSportRow(index, { isActive: event.target.checked })}
+                        />
+                        <span>Aktivny</span>
+                      </label>
+
+                      <button
+                        type="button"
+                        className="btn-secondary exercise-db-filter-reset-btn"
+                        onClick={() => removeSportRow(index)}
+                        style={{ alignSelf: 'end' }}
+                      >
+                        Odstranit
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={saveSports} disabled={saving}>
-                {saving ? 'Ukladam...' : 'Ulozit nastavenie webu'}
-              </button>
-            </div>
-          )}
-
-          {activeSection === 'preview' && (
-            <div className="card settings-placeholder-card metrics-section-card">
-              <div className="manager-role-heading" style={{ marginBottom: '0.8rem' }}>
-                <span className="material-icons-round section-icon" aria-hidden="true">preview</span>
-                <h3 className="manager-section-title">Nahlad sportov vo formulari registracie</h3>
+                  </div>
+                ))}
               </div>
+            )}
 
-              <div className="exercise-db-cards" style={{ marginTop: 0 }}>
-                {sortedSports
-                  .filter((sport) => sport.isActive !== false)
-                  .map((sport) => (
-                    <article key={`preview-sport-${sport.key}`} className="exercise-db-card" style={{ cursor: 'default' }}>
-                      <div className="exercise-db-card-title-row">
-                        <div className="exercise-db-card-title">{sport.label}</div>
-                      </div>
-                      <div className="exercise-db-card-category-note">Kluc: {sport.key}</div>
-                      <p className="exercise-db-card-description">Tento sport bude dostupny vo verejnom registracnom formulari.</p>
-                    </article>
-                  ))}
-              </div>
-            </div>
-          )}
+            <button type="button" className="btn-secondary exercise-db-filter-reset-btn" onClick={saveSports} disabled={saving}>
+              {saving ? 'Ukladam...' : 'Ulozit nastavenie webu'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
