@@ -108,6 +108,10 @@ const resolveSelectedExerciseCategoryIds = (selectedCategoryIds, categorySelecti
 }
 
 function Exercises({ webSettingsSection = '' }) {
+  const isEmbeddedWebSettingsView = Boolean(String(webSettingsSection || '').trim())
+  const showExerciseListSection = !isEmbeddedWebSettingsView || webSettingsSection === 'exerciseList'
+  const showCreateExerciseSection = !isEmbeddedWebSettingsView || webSettingsSection === 'createExercise'
+  const showExerciseCategoriesSection = !isEmbeddedWebSettingsView || webSettingsSection === 'exerciseCategories'
   const [currentRole, setCurrentRole] = useState('')
   const [exerciseCategories, setExerciseCategories] = useState([])
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
@@ -590,22 +594,26 @@ function Exercises({ webSettingsSection = '' }) {
 
   return (
     <div className="members-categories-stack">
-      <div className="exercise-library-head">
-        <h2>Knižnica cvičení</h2>
-        <button type="button" className="manager-add-btn" onClick={openCreateExerciseInMyClub}>
-          {showCreateForm ? 'Zavrieť formulár' : 'Vytvoriť cvičenie'}
-        </button>
-      </div>
+      {!isEmbeddedWebSettingsView ? (
+        <>
+          <div className="exercise-library-head">
+            <h2>Knižnica cvičení</h2>
+            <button type="button" className="manager-add-btn" onClick={openCreateExerciseInMyClub}>
+              {showCreateForm ? 'Zavrieť formulár' : 'Vytvoriť cvičenie'}
+            </button>
+          </div>
 
-      {canManageExerciseCategories ? (
-        <div className="exercise-library-head" style={{ marginTop: '-0.5rem' }}>
-          <button type="button" className="btn-secondary" onClick={() => setShowCategoryCreateForm((prev) => !prev)}>
-            {showCategoryCreateForm ? 'Zavrieť kategórie' : 'Vytvoriť kategóriu'}
-          </button>
-        </div>
+          {canManageExerciseCategories ? (
+            <div className="exercise-library-head" style={{ marginTop: '-0.5rem' }}>
+              <button type="button" className="btn-secondary" onClick={() => setShowCategoryCreateForm((prev) => !prev)}>
+                {showCategoryCreateForm ? 'Zavrieť kategórie' : 'Vytvoriť kategóriu'}
+              </button>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
-      {showCategoryCreateForm ? (
+      {(showCategoryCreateForm && showExerciseCategoriesSection) ? (
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
           <form className="exercise-db-filters" onSubmit={handleCreateCategory}>
             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -669,7 +677,7 @@ function Exercises({ webSettingsSection = '' }) {
         </div>
       ) : null}
 
-      {showCreateForm ? (
+      {(showCreateForm && showCreateExerciseSection) ? (
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
           <form className="exercise-db-filters" onSubmit={handleCreateExercise}>
             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -786,6 +794,8 @@ function Exercises({ webSettingsSection = '' }) {
         </div>
       ) : null}
 
+      {showExerciseListSection ? (
+      <>
       <div className="card settings-placeholder-card metrics-section-card exercise-db-filters-card">
         <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1164,6 +1174,8 @@ function Exercises({ webSettingsSection = '' }) {
           </div>
         ) : null}
       </div>
+      </>
+      ) : null}
     </div>
   )
 }
