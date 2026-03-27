@@ -330,7 +330,7 @@ function WebSettings() {
               aria-current="page"
             >
               <span className="material-icons-round" aria-hidden="true">sports</span>
-              <span>Globálne nastavenia</span>
+              <span>Športy</span>
             </a>
           </nav>
         </aside>
