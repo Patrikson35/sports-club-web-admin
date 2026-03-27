@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import './MyClub.css'
 import './WebSettings.css'
@@ -29,6 +30,7 @@ const normalizeSportKey = (value) => String(value || '')
   .replace(/^_+|_+$/g, '')
 
 function WebSettings() {
+  const location = useLocation()
   const [sports, setSports] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -299,9 +301,20 @@ function WebSettings() {
       </div>
 
       <div className="club-tabs" role="navigation" aria-label="Sekcie nastavenia webu">
-        <button type="button" className="club-tab active" aria-current="page">
-          Športy
-        </button>
+        <Link
+          to="/web-settings"
+          className={`club-tab ${location.pathname.startsWith('/web-settings') ? 'active' : ''}`}
+          aria-current={location.pathname.startsWith('/web-settings') ? 'page' : undefined}
+        >
+          Globálne nastavenia
+        </Link>
+        <Link
+          to="/exercises"
+          className={`club-tab ${location.pathname.startsWith('/exercises') ? 'active' : ''}`}
+          aria-current={location.pathname.startsWith('/exercises') ? 'page' : undefined}
+        >
+          Databáza cvičení
+        </Link>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -317,7 +330,7 @@ function WebSettings() {
               aria-current="page"
             >
               <span className="material-icons-round" aria-hidden="true">sports</span>
-              <span>Športy</span>
+              <span>Globálne nastavenia</span>
             </a>
           </nav>
         </aside>
