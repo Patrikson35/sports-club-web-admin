@@ -1401,7 +1401,9 @@ function Exercises({ webSettingsSection = '' }) {
 
               <div className="exercise-detail-body">
                 <div className="exercise-detail-top-row">
-                  <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
+                  {!isEmbeddedWebSettingsView ? (
+                    <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
+                  ) : <span />}
 
                   <div className="exercise-detail-status-row" aria-label="Stav cvičenia">
                     <button

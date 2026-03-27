@@ -1620,6 +1620,13 @@
   flex-wrap: wrap;
 }
 
+.exercise-detail-actions-row .btn-edit,
+.exercise-detail-actions-row .btn-secondary,
+.exercise-detail-actions-row .exercise-detail-delete-btn {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
 .exercise-detail-edit-btn {
   box-shadow: 0 10px 22px rgba(59, 130, 246, 0.24);
 }
