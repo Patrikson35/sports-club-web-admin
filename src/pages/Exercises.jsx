@@ -267,7 +267,7 @@ function Exercises({ webSettingsSection = '' }) {
 
     if (webSettingsSection === 'exerciseCategories') {
       setShowCreateForm(false)
-      setShowCategoryCreateForm(true)
+      setShowCategoryCreateForm(false)
       return
     }
 
@@ -678,7 +678,7 @@ function Exercises({ webSettingsSection = '' }) {
         </>
       ) : null}
 
-      {(showCategoryCreateForm && showExerciseCategoriesSection) ? (
+      {(showCategoryCreateForm && showExerciseCategoriesSection && !isEmbeddedWebSettingsView) ? (
         <>
           <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '0.65rem' }}>
             <form id="create-category-form" className="exercise-db-filters exercise-db-filters--category-create" onSubmit={handleCreateCategory}>
@@ -773,6 +773,14 @@ function Exercises({ webSettingsSection = '' }) {
         </>
       ) : null}
 
+      {(showExerciseCategoriesSection && isEmbeddedWebSettingsView) ? (
+        <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
+          <p className="manager-empty-text" style={{ margin: 0 }}>
+            Kategórie cvičení sa vo web-admine nevytvárajú. Kategórie pre svoje cvičenia vytvárajú kluby a tréneri vo svojej časti systému.
+          </p>
+        </div>
+      ) : null}
+
       {(showCreateForm && showCreateExerciseSection) ? (
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
           <form className="exercise-db-filters" onSubmit={handleCreateExercise}>
@@ -805,21 +813,23 @@ function Exercises({ webSettingsSection = '' }) {
               </select>
             </div>
 
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="create-exercise-category">Kategória</label>
-              <select
-                id="create-exercise-category"
-                value={createExerciseForm.categoryId}
-                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, categoryId: event.target.value }))}
-              >
-                <option value="">Bez kategórie</option>
-                {categoryOptionsForExercise.map((category) => (
-                  <option key={`create-exercise-category-${category.id}`} value={String(category.id)}>
-                    {String(category.name || 'Kategória')}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isEmbeddedWebSettingsView ? (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-exercise-category">Kategória</label>
+                <select
+                  id="create-exercise-category"
+                  value={createExerciseForm.categoryId}
+                  onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+                >
+                  <option value="">Bez kategórie</option>
+                  {categoryOptionsForExercise.map((category) => (
+                    <option key={`create-exercise-category-${category.id}`} value={String(category.id)}>
+                      {String(category.name || 'Kategória')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
 
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-exercise-difficulty">Náročnosť</label>
