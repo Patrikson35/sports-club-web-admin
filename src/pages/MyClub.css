@@ -1111,14 +1111,31 @@
 
 .exercise-db-below-card-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin: 0 0 1rem;
 }
 
 .exercise-db-below-card-btn {
   min-height: 40px;
   min-width: 190px;
+  border: none;
   border-radius: 12px;
+  background: linear-gradient(135deg, #4f8eff 0%, #3b79f0 100%);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 10px 22px rgba(59, 130, 246, 0.24);
+}
+
+.exercise-db-below-card-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.exercise-db-below-card-btn:disabled {
+  background: #5a6478;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .exercise-db-card {
@@ -3870,10 +3887,6 @@
 
   .exercise-db-filter-reset-btn {
     width: fit-content;
-  }
-
-  .exercise-db-below-card-actions {
-    justify-content: flex-start;
   }
 
   .exercise-db-card-stats {
