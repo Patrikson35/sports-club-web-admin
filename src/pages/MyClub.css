@@ -1618,13 +1618,7 @@
   display: flex;
   gap: 0.55rem;
   flex-wrap: wrap;
-}
-
-.exercise-detail-actions-row .btn-edit,
-.exercise-detail-actions-row .btn-secondary,
-.exercise-detail-actions-row .exercise-detail-delete-btn {
-  padding-top: 0.85rem;
-  padding-bottom: 0.85rem;
+  margin-top: 0.95rem;
 }
 
 .exercise-detail-edit-btn {
