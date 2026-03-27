@@ -353,12 +353,14 @@ function Planner() {
     teamId: '',
     fieldId: '',
     fieldParts: '0',
-    selectedFieldParts: []
+    selectedFieldParts: [],
+    selectedExerciseIds: []
   })
   const [teamFilters, setTeamFilters] = useState([{ id: 'all', label: 'Všetky' }])
   const [availableIndicatorCodes, setAvailableIndicatorCodes] = useState([...DEFAULT_PLANNER_INDICATOR_CODES])
   const [activeIndicatorCodes, setActiveIndicatorCodes] = useState(DEFAULT_PLANNER_INDICATOR_CODES)
   const [trainingDivisionGroupOptions, setTrainingDivisionGroupOptions] = useState([])
+  const [availableExercises, setAvailableExercises] = useState([])
   const [clubFields, setClubFields] = useState([])
   const [plannerSessions, setPlannerSessions] = useState([])
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false)
@@ -382,6 +384,35 @@ function Planner() {
       .then((res) => { if (isMounted) setClubFields(Array.isArray(res?.fields) ? res.fields : []) })
       .catch(() => { if (isMounted) setClubFields([]) })
     return () => { isMounted = false }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadExercises = async () => {
+      try {
+        const response = await api.getExercises()
+        if (!isMounted) return
+
+        const mapped = (Array.isArray(response?.exercises) ? response.exercises : [])
+          .map((item) => ({
+            id: String(item?.id || '').trim(),
+            title: String(item?.title || item?.name || '').trim(),
+            isSystem: Boolean(item?.isSystem)
+          }))
+          .filter((item) => item.id && item.title)
+
+        setAvailableExercises(mapped)
+      } catch {
+        if (isMounted) setAvailableExercises([])
+      }
+    }
+
+    loadExercises()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   useEffect(() => {
@@ -1373,7 +1404,8 @@ function Planner() {
       teamId: activeFilter !== 'all' ? String(activeFilter) : '',
       fieldId: fieldOptions[0]?.id || '',
       fieldParts: '0',
-      selectedFieldParts: []
+      selectedFieldParts: [],
+      selectedExerciseIds: []
     })
   }, [availableIndicatorCodes, activeFilter, fieldOptions])
 
@@ -1430,7 +1462,8 @@ function Planner() {
       teamId: String(event?.teamId || ''),
       fieldId: resolvedFieldId,
       fieldParts: String(clampedSelectedParts.length),
-      selectedFieldParts: clampedSelectedParts
+      selectedFieldParts: clampedSelectedParts,
+      selectedExerciseIds: []
     }))
   }, [availableIndicatorCodes, fieldOptions])
 
@@ -1521,7 +1554,16 @@ function Planner() {
           fieldId: selectedFieldMeta?.id || '',
           fieldName: selectedFieldMeta?.name || '',
           selectedFieldParts: safeFieldParts,
-        })
+        }),
+        exercises: (Array.isArray(eventForm.selectedExerciseIds) ? eventForm.selectedExerciseIds : [])
+          .map((exerciseId) => String(exerciseId || '').trim())
+          .filter(Boolean)
+          .map((exerciseId) => ({
+            exerciseId: Number(exerciseId),
+            duration: null,
+            notes: null
+          }))
+          .filter((item) => Number.isFinite(item.exerciseId) && item.exerciseId > 0)
       }
     }).filter(Boolean)
 
@@ -2114,6 +2156,52 @@ function Planner() {
                 <option key={t.id} value={t.id}>{t.label}</option>
               ))}
             </select>
+          </div>
+
+          <div className="planner-stitch-form-row">
+            <label>Cvičenia (verejná + klubová knižnica)</label>
+            <details className="planner-stitch-checkbox-dropdown">
+              <summary>
+                {Array.isArray(eventForm.selectedExerciseIds) && eventForm.selectedExerciseIds.length > 0
+                  ? `${eventForm.selectedExerciseIds.length} cvičení vybratých`
+                  : 'Vyber cvičenia'}
+              </summary>
+              <div className="planner-stitch-checkbox-dropdown-menu" role="group" aria-label="Výber cvičení">
+                {availableExercises.length === 0 ? (
+                  <div className="planner-stitch-checkbox-empty">Žiadne cvičenia v knižnici.</div>
+                ) : null}
+                {availableExercises.map((exercise) => {
+                  const exerciseId = String(exercise.id)
+                  const isSelected = Array.isArray(eventForm.selectedExerciseIds)
+                    ? eventForm.selectedExerciseIds.includes(exerciseId)
+                    : false
+
+                  return (
+                    <label key={`planner-exercise-${exerciseId}`} className="planner-stitch-checkbox-option">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setEventForm((prev) => {
+                            const current = Array.isArray(prev.selectedExerciseIds) ? prev.selectedExerciseIds : []
+                            const exists = current.includes(exerciseId)
+                            const next = exists
+                              ? current.filter((item) => item !== exerciseId)
+                              : [...current, exerciseId]
+
+                            return {
+                              ...prev,
+                              selectedExerciseIds: next
+                            }
+                          })
+                        }}
+                      />
+                      <span>{exercise.title} ({exercise.isSystem ? 'verejné' : 'klubové'})</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </details>
           </div>
 
           <div className="planner-stitch-form-row planner-stitch-form-row--half">

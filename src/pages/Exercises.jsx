@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import './MyClub.css'
 
@@ -99,11 +98,21 @@ const resolveSelectedExerciseCategoryIds = (selectedCategoryIds, categorySelecti
 }
 
 function Exercises() {
-  const navigate = useNavigate()
-  const [clubId, setClubId] = useState(null)
+  const [currentRole, setCurrentRole] = useState('')
   const [exerciseCategories, setExerciseCategories] = useState([])
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
-  const [exerciseItemsStorageKey, setExerciseItemsStorageKey] = useState('exerciseDatabaseItems:global')
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreatingExercise, setIsCreatingExercise] = useState(false)
+  const [createExerciseError, setCreateExerciseError] = useState('')
+  const [createExerciseForm, setCreateExerciseForm] = useState({
+    title: '',
+    description: '',
+    categoryId: '',
+    difficulty: '',
+    duration: '',
+    equipment: '',
+    isSystem: false
+  })
   const [openedExerciseDetailItem, setOpenedExerciseDetailItem] = useState(null)
   const [isExerciseDetailVideoPlaying, setIsExerciseDetailVideoPlaying] = useState(false)
   const [exerciseListFilters, setExerciseListFilters] = useState({
@@ -118,119 +127,64 @@ function Exercises() {
   useEffect(() => {
     let isMounted = true
 
-    const loadClubId = async () => {
-      let resolved = ''
-
+    const loadFromApi = async () => {
       try {
-        const data = await api.getMyClub()
-        resolved = String(data?.id || data?.clubId || '').trim()
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        const normalizedRole = String(user?.role || '').trim().toLowerCase()
+        const role = normalizedRole === 'club_admin' ? 'club' : normalizedRole
+        const [categoryResponse, exerciseResponse] = await Promise.all([
+          api.getExerciseCategories(),
+          api.getExercises()
+        ])
+        if (!isMounted) return
+
+        setCurrentRole(role)
+
+        const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
+        const normalizedCategories = categoriesRaw
+          .map((item) => ({
+            id: String(item?.id || '').trim(),
+            name: String(item?.name || '').trim(),
+            subcategories: Array.isArray(item?.subcategories)
+              ? item.subcategories
+                  .map((subcategory) => String(subcategory?.name || '').trim())
+                  .filter(Boolean)
+              : []
+          }))
+          .filter((item) => item.id && item.name)
+
+        const exercisesRaw = Array.isArray(exerciseResponse?.exercises) ? exerciseResponse.exercises : []
+        const normalizedExercises = normalizeExerciseItems(exercisesRaw.map((item) => ({
+          id: String(item?.id || '').trim(),
+          name: String(item?.title || item?.name || '').trim(),
+          description: String(item?.description || '').trim(),
+          intensity: String(item?.difficulty || '').trim() || 'Stredná',
+          playersCount: [],
+          selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
+          categorySelections: {},
+          youtube: { url: '', videoId: '' },
+          rating: 0,
+          isFavorite: false,
+          isSystem: Boolean(item?.isSystem),
+          clubId: item?.clubId || null,
+          categoryName: String(item?.category?.name || '').trim()
+        })))
+
+        setExerciseCategories(normalizedCategories)
+        setExerciseDatabaseItems(normalizedExercises)
       } catch {
-        try {
-          const raw = localStorage.getItem('user')
-          const parsed = raw ? JSON.parse(raw) : null
-          resolved = String(parsed?.clubId || parsed?.club_id || parsed?.club?.id || '').trim()
-        } catch {
-          resolved = ''
-        }
-      }
-
-      if (!isMounted) return
-      setClubId(resolved || null)
-    }
-
-    loadClubId()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  useEffect(() => {
-    const readFromStorage = () => {
-      const preferredKey = `exerciseCategories:${clubId || 'global'}`
-      const fallbackKey = 'exerciseCategories:global'
-      const sourceRaw = localStorage.getItem(preferredKey) || localStorage.getItem(fallbackKey)
-
-      try {
-        const parsed = sourceRaw ? JSON.parse(sourceRaw) : []
-        const normalized = Array.isArray(parsed)
-          ? parsed
-              .map((item) => ({
-                id: String(item?.id || '').trim(),
-                name: String(item?.name || '').trim(),
-                subcategories: Array.isArray(item?.subcategories)
-                  ? item.subcategories.map((name) => String(name || '').trim()).filter(Boolean)
-                  : []
-              }))
-              .filter((item) => item.id && item.name)
-          : []
-
-        setExerciseCategories(normalized)
-      } catch {
+        if (!isMounted) return
+        setCurrentRole('')
         setExerciseCategories([])
-      }
-    }
-
-    readFromStorage()
-    window.addEventListener('storage', readFromStorage)
-    return () => window.removeEventListener('storage', readFromStorage)
-  }, [clubId])
-
-  useEffect(() => {
-    const readFromStorage = () => {
-      const preferredKey = `exerciseDatabaseItems:${clubId || 'global'}`
-      const fallbackKey = 'exerciseDatabaseItems:global'
-      const hasPreferred = localStorage.getItem(preferredKey) !== null
-      const hasFallback = localStorage.getItem(fallbackKey) !== null
-      const sourceKey = hasPreferred ? preferredKey : (hasFallback ? fallbackKey : preferredKey)
-      const preferredRaw = localStorage.getItem(preferredKey)
-      const fallbackRaw = localStorage.getItem(fallbackKey)
-
-      try {
-        const preferredParsed = preferredRaw ? JSON.parse(preferredRaw) : []
-        const fallbackParsed = fallbackRaw ? JSON.parse(fallbackRaw) : []
-        const preferredItems = normalizeExerciseItems(preferredParsed)
-        const fallbackItems = normalizeExerciseItems(fallbackParsed)
-
-        let normalized = sourceKey === fallbackKey ? fallbackItems : preferredItems
-
-        if (preferredItems.length > 0 && fallbackItems.length > 0 && preferredKey !== fallbackKey) {
-          const mergedById = new Map()
-
-          fallbackItems.forEach((item) => {
-            mergedById.set(item.id, item)
-          })
-
-          preferredItems.forEach((item) => {
-            const existing = mergedById.get(item.id)
-            if (!existing) {
-              mergedById.set(item.id, item)
-              return
-            }
-
-            const existingUpdatedAt = Date.parse(String(existing?.updatedAt || existing?.createdAt || '')) || 0
-            const itemUpdatedAt = Date.parse(String(item?.updatedAt || item?.createdAt || '')) || 0
-
-            if (itemUpdatedAt >= existingUpdatedAt) {
-              mergedById.set(item.id, item)
-            }
-          })
-
-          normalized = Array.from(mergedById.values())
-        }
-
-        setExerciseItemsStorageKey(sourceKey)
-        setExerciseDatabaseItems(normalized)
-      } catch {
-        setExerciseItemsStorageKey(sourceKey)
         setExerciseDatabaseItems([])
       }
     }
 
-    readFromStorage()
-    window.addEventListener('storage', readFromStorage)
-    return () => window.removeEventListener('storage', readFromStorage)
-  }, [clubId])
+    loadFromApi()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const exerciseListSubcategoryOptions = useMemo(() => {
     const selectedCategoryId = String(exerciseListFilters?.categoryId || 'all')
@@ -311,6 +265,10 @@ function Exercises() {
   }
 
   const getExerciseCategorySummary = (item) => {
+    if (String(item?.categoryName || '').trim()) {
+      return String(item.categoryName).trim()
+    }
+
     const selectedCategoryIds = resolveSelectedExerciseCategoryIds(item?.selectedCategoryIds, item?.categorySelections)
 
     const summary = exerciseCategories
@@ -347,15 +305,7 @@ function Exercises() {
     setOpenedExerciseDetailItem(null)
   }
 
-  const persistExerciseItemsToStorage = (nextItems) => {
-    const preferredKey = `exerciseDatabaseItems:${clubId || 'global'}`
-    const fallbackKey = 'exerciseDatabaseItems:global'
-    const targetKeys = Array.from(new Set([exerciseItemsStorageKey, preferredKey, fallbackKey]))
-
-    targetKeys.forEach((key) => {
-      localStorage.setItem(key, JSON.stringify(nextItems))
-    })
-  }
+  const persistExerciseItemsOnline = async () => {}
 
   useEffect(() => {
     const openedId = String(openedExerciseDetailItem?.id || '').trim()
@@ -389,11 +339,7 @@ function Exercises() {
         }
       })
 
-      try {
-        persistExerciseItemsToStorage(nextItems)
-      } catch {
-        // Ignore write failures and keep in-memory state.
-      }
+      persistExerciseItemsOnline(nextItems).catch(() => {})
 
       return nextItems
     })
@@ -414,18 +360,76 @@ function Exercises() {
         }
       })
 
-      try {
-        persistExerciseItemsToStorage(nextItems)
-      } catch {
-        // Ignore write failures and keep in-memory state.
-      }
+      persistExerciseItemsOnline(nextItems).catch(() => {})
 
       return nextItems
     })
   }
 
   const openCreateExerciseInMyClub = () => {
-    navigate('/my-club?tab=exerciseDatabase&section=createExercise')
+    setCreateExerciseError('')
+    setShowCreateForm((prev) => !prev)
+  }
+
+  const canCreateSystemExercise = currentRole === 'admin'
+
+  const handleCreateExercise = async (event) => {
+    event.preventDefault()
+    const title = String(createExerciseForm.title || '').trim()
+    if (!title) {
+      setCreateExerciseError('Názov cvičenia je povinný.')
+      return
+    }
+
+    setIsCreatingExercise(true)
+    setCreateExerciseError('')
+    try {
+      const payload = {
+        title,
+        description: String(createExerciseForm.description || '').trim(),
+        categoryId: createExerciseForm.categoryId ? Number(createExerciseForm.categoryId) : null,
+        difficulty: String(createExerciseForm.difficulty || '').trim() || null,
+        duration: createExerciseForm.duration ? Number(createExerciseForm.duration) : null,
+        equipment: String(createExerciseForm.equipment || '').trim() || null,
+        isSystem: canCreateSystemExercise && createExerciseForm.isSystem
+      }
+
+      await api.createExercise(payload)
+      const response = await api.getExercises()
+      const exercisesRaw = Array.isArray(response?.exercises) ? response.exercises : []
+      const normalizedExercises = normalizeExerciseItems(exercisesRaw.map((item) => ({
+        id: String(item?.id || '').trim(),
+        name: String(item?.title || item?.name || '').trim(),
+        description: String(item?.description || '').trim(),
+        intensity: String(item?.difficulty || '').trim() || 'Stredná',
+        playersCount: [],
+        selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
+        categorySelections: {},
+        youtube: { url: '', videoId: '' },
+        rating: 0,
+        isFavorite: false,
+        isSystem: Boolean(item?.isSystem),
+        clubId: item?.clubId || null,
+        categoryName: String(item?.category?.name || '').trim()
+      })))
+
+      setExerciseDatabaseItems(normalizedExercises)
+      setCreateExerciseForm({
+        title: '',
+        description: '',
+        categoryId: '',
+        difficulty: '',
+        duration: '',
+        equipment: '',
+        isSystem: false
+      })
+      setShowCreateForm(false)
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setCreateExerciseError(message || 'Cvičenie sa nepodarilo vytvoriť.')
+    } finally {
+      setIsCreatingExercise(false)
+    }
   }
 
   const openedExerciseCategorySummary = openedExerciseDetailItem
@@ -437,9 +441,115 @@ function Exercises() {
       <div className="exercise-library-head">
         <h2>Knižnica cvičení</h2>
         <button type="button" className="manager-add-btn" onClick={openCreateExerciseInMyClub}>
-          Vytvoriť cvičenie
+          {showCreateForm ? 'Zavrieť formulár' : 'Vytvoriť cvičenie'}
         </button>
       </div>
+
+      {showCreateForm ? (
+        <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
+          <form className="exercise-db-filters" onSubmit={handleCreateExercise}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-exercise-title">Názov</label>
+              <input
+                id="create-exercise-title"
+                type="text"
+                value={createExerciseForm.title}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Napr. Dynamické rozcvičenie"
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-exercise-category">Kategória</label>
+              <select
+                id="create-exercise-category"
+                value={createExerciseForm.categoryId}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+              >
+                <option value="">Bez kategórie</option>
+                {exerciseCategories.map((category) => (
+                  <option key={`create-exercise-category-${category.id}`} value={String(category.id)}>
+                    {String(category.name || 'Kategória')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-exercise-difficulty">Náročnosť</label>
+              <select
+                id="create-exercise-difficulty"
+                value={createExerciseForm.difficulty}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, difficulty: event.target.value }))}
+              >
+                <option value="">Neuvedené</option>
+                <option value="Nízka">Nízka</option>
+                <option value="Stredná">Stredná</option>
+                <option value="Vysoká">Vysoká</option>
+                <option value="Maximálna">Maximálna</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-exercise-duration">Trvanie (min)</label>
+              <input
+                id="create-exercise-duration"
+                type="number"
+                min="1"
+                value={createExerciseForm.duration}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, duration: event.target.value }))}
+                placeholder="10"
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+              <label htmlFor="create-exercise-description">Popis</label>
+              <textarea
+                id="create-exercise-description"
+                rows={3}
+                value={createExerciseForm.description}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Krátky popis cvičenia"
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+              <label htmlFor="create-exercise-equipment">Pomôcky</label>
+              <input
+                id="create-exercise-equipment"
+                type="text"
+                value={createExerciseForm.equipment}
+                onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, equipment: event.target.value }))}
+                placeholder="Kužele, lopty"
+              />
+            </div>
+
+            {canCreateSystemExercise ? (
+              <label className="planner-stitch-checkbox-option" style={{ gridColumn: '1 / -1' }}>
+                <input
+                  type="checkbox"
+                  checked={createExerciseForm.isSystem}
+                  onChange={(event) => setCreateExerciseForm((prev) => ({ ...prev, isSystem: event.target.checked }))}
+                />
+                <span>Verejné cvičenie pre všetky kluby</span>
+              </label>
+            ) : null}
+
+            {createExerciseError ? (
+              <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0 }}>{createExerciseError}</p>
+            ) : null}
+
+            <button
+              type="submit"
+              className="btn-secondary exercise-db-filter-reset-btn"
+              disabled={isCreatingExercise}
+            >
+              {isCreatingExercise ? 'Ukladám...' : 'Uložiť cvičenie'}
+            </button>
+          </form>
+        </div>
+      ) : null}
 
       <div className="card settings-placeholder-card metrics-section-card exercise-db-filters-card">
         <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
@@ -620,6 +730,9 @@ function Exercises() {
                       {normalizeExerciseFavorite(item?.isFavorite) ? 'favorite' : 'favorite_border'}
                     </span>
                   </button>
+                </div>
+                <div className="exercise-db-card-category-note">
+                  {item.isSystem ? 'Verejná knižnica' : 'Klubová knižnica'}
                 </div>
                 {getExerciseCategorySummary(item) ? (
                   <div className="exercise-db-card-category-note">{getExerciseCategorySummary(item)}</div>

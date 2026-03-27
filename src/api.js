@@ -1832,6 +1832,24 @@ class APIClient {
   }
 
   // Exercises
+  async getExercises(params = {}) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, exercises: [] };
+    }
+
+    const query = new URLSearchParams(params).toString();
+    const suffix = query ? `?${query}` : '';
+    return this.request(`/exercises${suffix}`);
+  }
+
+  async getExerciseCategories() {
+    if (USE_MOCK_DATA) {
+      return { total: 0, categories: [] };
+    }
+
+    return this.request('/exercises/categories');
+  }
+
   async createExercise(data) {
     if (USE_MOCK_DATA) {
       return {
