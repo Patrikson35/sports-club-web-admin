@@ -3,7 +3,7 @@
 }
 
 .web-settings-exercise-layout {
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: 1rem;
   align-items: flex-start;
 }

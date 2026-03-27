@@ -101,6 +101,28 @@ const getYoutubeThumbnailUrl = (videoId) => {
   return `https://img.youtube.com/vi/${resolvedId}/hqdefault.jpg`
 }
 
+const extractYoutubeVideoId = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  const directIdMatch = raw.match(/^[a-zA-Z0-9_-]{11}$/)
+  if (directIdMatch) return directIdMatch[0]
+
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
+  ]
+
+  for (const pattern of patterns) {
+    const match = raw.match(pattern)
+    if (match?.[1]) return match[1]
+  }
+
+  return ''
+}
+
 const resolveSelectedExerciseCategoryIds = (selectedCategoryIds, categorySelections) => {
   const selectedFromIds = Array.isArray(selectedCategoryIds)
     ? selectedCategoryIds.map((item) => String(item || '').trim()).filter(Boolean)
@@ -166,7 +188,21 @@ function Exercises({ webSettingsSection = '' }) {
   useEffect(() => {
     let isMounted = true
 
-    const mapApiExerciseItem = (item) => ({
+    const mapApiExerciseItem = (item) => {
+      const youtubeUrl = String(
+        item?.youtubeUrl
+        || item?.youtube_url
+        || item?.youtube?.url
+        || ''
+      ).trim()
+      const youtubeVideoId = String(
+        item?.youtubeVideoId
+        || item?.youtube_video_id
+        || item?.youtube?.videoId
+        || extractYoutubeVideoId(youtubeUrl)
+      ).trim()
+
+      return ({
       id: String(item?.id || '').trim(),
       name: String(item?.title || item?.name || '').trim(),
       description: String(item?.description || '').trim(),
@@ -175,7 +211,7 @@ function Exercises({ webSettingsSection = '' }) {
       playersCount: [],
       selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
       categorySelections: {},
-      youtube: { url: '', videoId: '' },
+      youtube: { url: youtubeUrl, videoId: youtubeVideoId },
       rating: 0,
       isFavorite: false,
       isSystem: Boolean(item?.isSystem),
@@ -183,6 +219,7 @@ function Exercises({ webSettingsSection = '' }) {
       categoryName: String(item?.category?.name || '').trim(),
       customLabels: normalizeCustomLabels(item?.customLabels)
     })
+    }
 
     const loadExerciseLibrary = async () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -506,7 +543,10 @@ function Exercises({ webSettingsSection = '' }) {
       playersCount: [],
       selectedCategoryIds: item?.category?.id ? [String(item.category.id)] : [],
       categorySelections: {},
-      youtube: { url: '', videoId: '' },
+      youtube: {
+        url: String(item?.youtubeUrl || item?.youtube_url || item?.youtube?.url || '').trim(),
+        videoId: String(item?.youtubeVideoId || item?.youtube_video_id || item?.youtube?.videoId || extractYoutubeVideoId(item?.youtubeUrl || item?.youtube_url || item?.youtube?.url || '')).trim()
+      },
       rating: 0,
       isFavorite: false,
       isSystem: Boolean(item?.isSystem),
