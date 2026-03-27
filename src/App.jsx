@@ -103,6 +103,11 @@ function AppContent() {
     (currentRole === 'assistant' && remoteVisibleRole === 'coach') ||
     remoteVisibleRole === currentRole
   )
+  const adminCanOpenMyClubExerciseSettings = (
+    currentRole === 'admin' &&
+    location.pathname === '/my-club' &&
+    String(new URLSearchParams(location.search).get('tab') || '').trim() === 'exerciseDatabase'
+  )
   const allowedSections = getRoleSections(currentRole, canUseRemoteSections ? remoteVisibleSections : null)
   const canAccessSection = (sectionKey) => allowedSections.includes(sectionKey)
 
@@ -378,7 +383,7 @@ function AppContent() {
               <Route path="/complete-profile/player" element={<CompleteProfilePlayer />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/clubs" element={canAccessSection('clubs') ? <Clubs /> : <Navigate to="/" />} />
-              <Route path="/my-club" element={currentRole === 'admin' ? <Navigate to="/web-settings" /> : (canOpenSettings ? <MyClub /> : <Navigate to="/" />)} />
+              <Route path="/my-club" element={currentRole === 'admin' ? (adminCanOpenMyClubExerciseSettings ? <MyClub /> : <Navigate to="/web-settings" />) : (canOpenSettings ? <MyClub /> : <Navigate to="/" />)} />
               <Route path="/web-settings" element={currentRole === 'admin' ? <WebSettings /> : <Navigate to="/" />} />
               <Route path="/club-permissions" element={currentRole === 'club' ? <ClubPermissions /> : <Navigate to="/" />} />
               <Route path="/teams" element={canAccessSection('categories') ? <Teams /> : <Navigate to="/" />} />

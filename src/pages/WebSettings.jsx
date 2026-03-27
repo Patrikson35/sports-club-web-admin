@@ -31,6 +31,11 @@ const normalizeSportKey = (value) => String(value || '')
 
 function WebSettings() {
   const location = useLocation()
+  const isGlobalSettingsTabActive = location.pathname.startsWith('/web-settings')
+  const isExerciseDatabaseTabActive = (
+    location.pathname === '/my-club' &&
+    String(new URLSearchParams(location.search).get('tab') || '').trim() === 'exerciseDatabase'
+  )
   const [sports, setSports] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -303,15 +308,15 @@ function WebSettings() {
       <div className="club-tabs" role="navigation" aria-label="Sekcie nastavenia webu">
         <Link
           to="/web-settings"
-          className={`club-tab ${location.pathname.startsWith('/web-settings') ? 'active' : ''}`}
-          aria-current={location.pathname.startsWith('/web-settings') ? 'page' : undefined}
+          className={`club-tab ${isGlobalSettingsTabActive ? 'active' : ''}`}
+          aria-current={isGlobalSettingsTabActive ? 'page' : undefined}
         >
           Globálne nastavenia
         </Link>
         <Link
-          to="/exercises"
-          className={`club-tab ${location.pathname.startsWith('/exercises') ? 'active' : ''}`}
-          aria-current={location.pathname.startsWith('/exercises') ? 'page' : undefined}
+          to="/my-club?tab=exerciseDatabase&section=exerciseCategories"
+          className={`club-tab ${isExerciseDatabaseTabActive ? 'active' : ''}`}
+          aria-current={isExerciseDatabaseTabActive ? 'page' : undefined}
         >
           Databáza cvičení
         </Link>
