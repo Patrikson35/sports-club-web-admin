@@ -1066,6 +1066,10 @@
   align-items: end;
 }
 
+.exercise-db-filters--category-create {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .exercise-library-filters {
   grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
 }
@@ -1120,7 +1124,7 @@
   min-width: 190px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #4f8eff 0%, #3b79f0 100%);
+  background: #3b82f6;
   color: #fff;
   font-weight: 600;
   box-shadow: 0 10px 22px rgba(59, 130, 246, 0.24);

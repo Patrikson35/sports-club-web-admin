@@ -675,7 +675,7 @@ function Exercises({ webSettingsSection = '' }) {
       {(showCategoryCreateForm && showExerciseCategoriesSection) ? (
         <>
           <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '0.65rem' }}>
-            <form id="create-category-form" className="exercise-db-filters" onSubmit={handleCreateCategory}>
+            <form id="create-category-form" className="exercise-db-filters exercise-db-filters--category-create" onSubmit={handleCreateCategory}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-category-sport">Výber športu</label>
               <select
@@ -758,7 +758,7 @@ function Exercises({ webSettingsSection = '' }) {
             <button
               type="submit"
               form="create-category-form"
-              className="btn-primary exercise-db-below-card-btn"
+              className="btn-edit exercise-db-below-card-btn"
               disabled={isCreatingCategory}
             >
               {isCreatingCategory ? 'Ukladám...' : 'Uložiť kategóriu'}
