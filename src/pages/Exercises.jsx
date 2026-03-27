@@ -178,18 +178,23 @@ function Exercises({ webSettingsSection = '' }) {
     const loadExerciseLibrary = async () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
       const normalizedRole = String(user?.role || '').trim().toLowerCase()
-      const role = normalizedRole === 'club_admin' ? 'club' : normalizedRole
-      const [categoryResponse, exerciseResponse, sportsResponse] = await Promise.all([
+      const role = ['admin', 'system_admin', 'super_admin', 'founder'].includes(normalizedRole)
+        ? 'admin'
+        : (normalizedRole === 'club_admin' ? 'club' : normalizedRole)
+      const [categoryResponse, exerciseResponse, sportsResponsePrimary, sportsResponseFallback] = await Promise.all([
         api.getExerciseCategories(),
         api.getExercises(),
-        api.getWebSettingsSports().catch(() => ({ sports: [] }))
+        api.getWebSettingsSports().catch(() => ({ sports: [] })),
+        api.getRegistrationSports().catch(() => ({ sports: [] }))
       ])
 
       if (!isMounted) return
 
       setCurrentRole(role)
 
-      const sportsRaw = Array.isArray(sportsResponse?.sports) ? sportsResponse.sports : []
+      const sportsRawPrimary = Array.isArray(sportsResponsePrimary?.sports) ? sportsResponsePrimary.sports : []
+      const sportsRawFallback = Array.isArray(sportsResponseFallback?.sports) ? sportsResponseFallback.sports : []
+      const sportsRaw = sportsRawPrimary.length > 0 ? sportsRawPrimary : sportsRawFallback
       const normalizedSports = sportsRaw
         .map((item) => ({
           key: String(item?.key || '').trim(),
@@ -663,18 +668,6 @@ function Exercises({ webSettingsSection = '' }) {
         <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
           <form className="exercise-db-filters" onSubmit={handleCreateCategory}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="create-category-name">Názov kategórie</label>
-              <input
-                id="create-category-name"
-                type="text"
-                value={createCategoryForm.name}
-                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Napr. Prechod do útoku"
-                required
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="create-category-sport">Výber športu</label>
               <select
                 id="create-category-sport"
@@ -689,6 +682,18 @@ function Exercises({ webSettingsSection = '' }) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="create-category-name">Názov kategórie</label>
+              <input
+                id="create-category-name"
+                type="text"
+                value={createCategoryForm.name}
+                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Napr. Prechod do útoku"
+                required
+              />
             </div>
 
             {!shouldRequireSportSelection ? (
@@ -709,16 +714,18 @@ function Exercises({ webSettingsSection = '' }) {
             </div>
             ) : null}
 
-            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-              <label htmlFor="create-category-description">Popis</label>
-              <input
-                id="create-category-description"
-                type="text"
-                value={createCategoryForm.description}
-                onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, description: event.target.value }))}
-                placeholder="Voliteľný popis"
-              />
-            </div>
+            {!shouldRequireSportSelection ? (
+              <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                <label htmlFor="create-category-description">Popis</label>
+                <input
+                  id="create-category-description"
+                  type="text"
+                  value={createCategoryForm.description}
+                  onChange={(event) => setCreateCategoryForm((prev) => ({ ...prev, description: event.target.value }))}
+                  placeholder="Voliteľný popis"
+                />
+              </div>
+            ) : null}
 
             {canCreateSystemExercise ? (
               <label className="planner-stitch-checkbox-option" style={{ gridColumn: '1 / -1' }}>
