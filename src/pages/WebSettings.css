@@ -17,6 +17,13 @@
   grid-template-columns: minmax(250px, 1fr) 120px 120px;
 }
 
+.web-settings-row-drop-target {
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.12);
+  outline: 1px dashed rgba(96, 165, 250, 0.65);
+  outline-offset: -1px;
+}
+
 @media (max-width: 920px) {
   .web-settings-metrics-wrap .metrics-table {
     grid-template-columns: 1fr;

@@ -35,6 +35,8 @@ function WebSettings() {
   const [showSportForm, setShowSportForm] = useState(false)
   const [editingSportIndex, setEditingSportIndex] = useState(-1)
   const [sportDraft, setSportDraft] = useState(createEmptySportRow(0))
+  const [draggedSportIndex, setDraggedSportIndex] = useState(-1)
+  const [dragOverSportIndex, setDragOverSportIndex] = useState(-1)
   const [confirmDialog, setConfirmDialog] = useState({ open: false, index: -1, label: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -156,6 +158,63 @@ function WebSettings() {
 
     setSuccess('')
     setError('')
+  }
+
+  const handleSportDragStart = (event, index) => {
+    if (loading) return
+    setDraggedSportIndex(index)
+    setDragOverSportIndex(index)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
+  }
+
+  const handleSportDragOver = (event, index) => {
+    if (draggedSportIndex < 0 || draggedSportIndex === index) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDragOverSportIndex(index)
+  }
+
+  const handleSportDrop = (event, dropIndex) => {
+    event.preventDefault()
+
+    const dataIndex = Number(event.dataTransfer.getData('text/plain'))
+    const sourceIndex = Number.isInteger(draggedSportIndex) && draggedSportIndex >= 0
+      ? draggedSportIndex
+      : dataIndex
+
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex === dropIndex) {
+      setDraggedSportIndex(-1)
+      setDragOverSportIndex(-1)
+      return
+    }
+
+    setSports((prev) => {
+      if (sourceIndex >= prev.length || dropIndex >= prev.length) return prev
+
+      const next = [...prev]
+      const [moved] = next.splice(sourceIndex, 1)
+      next.splice(dropIndex, 0, moved)
+
+      return next.map((item, index) => ({
+        ...item,
+        sortOrder: index + 1
+      }))
+    })
+
+    if (editingSportIndex >= 0) {
+      setShowSportForm(false)
+      resetSportDraft()
+    }
+
+    setSuccess('')
+    setDraggedSportIndex(-1)
+    setDragOverSportIndex(-1)
+  }
+
+  const handleSportDragEnd = () => {
+    setDraggedSportIndex(-1)
+    setDragOverSportIndex(-1)
   }
 
   const saveSportDraftLocally = () => {
@@ -290,7 +349,16 @@ function WebSettings() {
                   </div>
 
                   {sports.map((sport, index) => (
-                    <div key={`web-sport-row-${sport.key}-${index}`} className="metrics-table metrics-table-row web-settings-metrics-table" role="row">
+                    <div
+                      key={`web-sport-row-${sport.key}-${index}`}
+                      className={`metrics-table metrics-table-row web-settings-metrics-table ${dragOverSportIndex === index && draggedSportIndex !== index ? 'web-settings-row-drop-target' : ''}`}
+                      role="row"
+                      draggable={!loading}
+                      onDragStart={(event) => handleSportDragStart(event, index)}
+                      onDragOver={(event) => handleSportDragOver(event, index)}
+                      onDrop={(event) => handleSportDrop(event, index)}
+                      onDragEnd={handleSportDragEnd}
+                    >
                       <div className="metrics-name-cell">
                         <span className="material-icons-round metrics-drag-handle" aria-hidden="true">drag_indicator</span>
                         <div>
