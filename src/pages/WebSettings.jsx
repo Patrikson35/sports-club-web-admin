@@ -587,7 +587,7 @@ function WebSettings() {
                 }}
                 aria-current={activeExerciseSection === 'exerciseCategories' ? 'page' : undefined}
               >
-                <span className="material-icons-round" aria-hidden="true">swords</span>
+                <span className="material-icons-round" aria-hidden="true">category</span>
                 <span>Kategórie cvičení</span>
               </a>
             </nav>

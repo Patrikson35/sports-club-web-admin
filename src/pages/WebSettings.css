@@ -11,6 +11,21 @@
   align-self: flex-start;
 }
 
+.web-settings-exercise-sidebar .settings-submenu {
+  gap: 0.4rem;
+}
+
+.web-settings-exercise-sidebar .settings-submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 50px;
+}
+
+.web-settings-exercise-sidebar .settings-submenu-item > span:last-child {
+  white-space: nowrap;
+}
+
 .web-settings-exercise-main {
   min-width: 0;
 }
