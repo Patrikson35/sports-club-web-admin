@@ -1386,148 +1386,53 @@ function Exercises({ webSettingsSection = '' }) {
                 </button>
               </div>
 
-              <div
-                className={`exercise-detail-media ${String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? 'playable' : ''}`}
-                onClick={() => {
-                  if (!isExerciseDetailVideoPlaying) {
-                    startExerciseDetailVideo()
-                  }
-                }}
-              >
-                {isExerciseDetailVideoPlaying && String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? (
-                  <iframe
-                    src={`https://www.youtube.com/embed/${String(openedExerciseDetailItem.youtube.videoId).trim()}?autoplay=1&rel=0`}
-                    title={`Video cvičenia ${openedExerciseDetailItem.name}`}
-                    className="exercise-detail-media-video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                ) : getExercisePreviewImage(openedExerciseDetailItem) ? (
-                  <>
-                    <img
-                      src={getExercisePreviewImage(openedExerciseDetailItem)}
-                      alt={`Obrázok cvičenia ${openedExerciseDetailItem.name}`}
+              {!isEditingExerciseDetail ? (
+                <div
+                  className={`exercise-detail-media ${String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? 'playable' : ''}`}
+                  onClick={() => {
+                    if (!isExerciseDetailVideoPlaying) {
+                      startExerciseDetailVideo()
+                    }
+                  }}
+                >
+                  {isExerciseDetailVideoPlaying && String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${String(openedExerciseDetailItem.youtube.videoId).trim()}?autoplay=1&rel=0`}
+                      title={`Video cvičenia ${openedExerciseDetailItem.name}`}
+                      className="exercise-detail-media-video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
                     />
-                    {String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? (
-                      <button
-                        type="button"
-                        className="exercise-detail-play-btn"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          startExerciseDetailVideo()
-                        }}
-                        aria-label="Prehrať video"
-                        title="Prehrať video"
-                      >
-                        <span className="material-icons-round" aria-hidden="true">play_arrow</span>
-                      </button>
-                    ) : null}
-                  </>
-                ) : (
-                  <div className="exercise-detail-media-fallback">
-                    <span className="material-icons-round" aria-hidden="true">image</span>
-                  </div>
-                )}
-              </div>
+                  ) : getExercisePreviewImage(openedExerciseDetailItem) ? (
+                    <>
+                      <img
+                        src={getExercisePreviewImage(openedExerciseDetailItem)}
+                        alt={`Obrázok cvičenia ${openedExerciseDetailItem.name}`}
+                      />
+                      {String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? (
+                        <button
+                          type="button"
+                          className="exercise-detail-play-btn"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            startExerciseDetailVideo()
+                          }}
+                          aria-label="Prehrať video"
+                          title="Prehrať video"
+                        >
+                          <span className="material-icons-round" aria-hidden="true">play_arrow</span>
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="exercise-detail-media-fallback">
+                      <span className="material-icons-round" aria-hidden="true">image</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               <div className="exercise-detail-body">
-                <div className="exercise-detail-top-row">
-                  {!isEmbeddedWebSettingsView ? (
-                    <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
-                  ) : null}
-                </div>
-
-                <div className="exercise-detail-preferences-row" aria-label="Obľúbenosť a hodnotenie cvičenia">
-                  <button
-                    type="button"
-                    className={`exercise-detail-favorite-badge ${normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'active' : ''}`}
-                    onClick={() => toggleExerciseFavorite(openedExerciseDetailItem.id)}
-                    aria-label={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Odobrať z obľúbených' : 'Pridať medzi obľúbené'}
-                    title={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené cvičenie' : 'Označiť ako obľúbené'}
-                  >
-                    <span className="material-icons-round" aria-hidden="true">
-                      {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'favorite' : 'favorite_border'}
-                    </span>
-                    {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené' : 'Neobľúbené'}
-                  </button>
-
-                  <span className="exercise-detail-rating-inline" role="group" aria-label="Úroveň cvičenia">
-                    {[1, 2, 3, 4, 5].map((starValue) => (
-                      <button
-                        key={`detail-rating-star-${starValue}`}
-                        type="button"
-                        className={`exercise-detail-star-btn ${starValue <= normalizeExerciseRating(openedExerciseDetailItem?.rating) ? 'active' : ''}`}
-                        onClick={() => setExerciseRating(openedExerciseDetailItem.id, starValue)}
-                        aria-label={`Nastaviť úroveň ${starValue} z 5`}
-                        title={`${starValue} z 5`}
-                      >
-                        <span className="material-icons-round" aria-hidden="true">
-                          {starValue <= normalizeExerciseRating(openedExerciseDetailItem?.rating) ? 'star' : 'star_border'}
-                        </span>
-                      </button>
-                    ))}
-                  </span>
-                </div>
-
-                <div className="exercise-detail-meta-row">
-                  {openedExerciseCategorySummary ? (
-                    <div className="exercise-detail-categories">
-                      <strong>Kategórie:</strong>
-                      <span>{openedExerciseCategorySummary}</span>
-                    </div>
-                  ) : null}
-                </div>
-                {!isEmbeddedWebSettingsView ? (
-                  <div className="exercise-detail-meta-row" style={{ alignItems: 'flex-end' }}>
-                    <div className="form-group" style={{ margin: 0, width: '100%' }}>
-                      <label htmlFor="exercise-custom-labels-input">Vlastné kategórie / delenie</label>
-                      <input
-                        id="exercise-custom-labels-input"
-                        type="text"
-                        value={customLabelDraft}
-                        onChange={(event) => setCustomLabelDraft(event.target.value)}
-                        placeholder="Napr. U14, prechod, technika"
-                      />
-                    </div>
-                    {(currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach'))) ? (
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        disabled={isSavingCustomLabels}
-                        onClick={() => saveExerciseCustomLabels(openedExerciseDetailItem.id)}
-                      >
-                        {isSavingCustomLabels ? 'Ukladám...' : 'Uložiť delenie'}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-                {openedExerciseDetailItem.description ? (
-                  <p>{openedExerciseDetailItem.description}</p>
-                ) : (
-                  <p className="manager-empty-text" style={{ margin: 0 }}>Cvičenie zatiaľ nemá popis.</p>
-                )}
-
-                {canManageOpenedExercise ? (
-                  <div className="exercise-detail-actions-row">
-                    <button
-                      type="button"
-                      className="btn-edit exercise-detail-edit-btn"
-                      onClick={startEditOpenedExercise}
-                      disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
-                    >
-                      Upraviť cvičenie
-                    </button>
-                    <button
-                      type="button"
-                      className="exercise-detail-delete-btn"
-                      onClick={openDeleteExerciseConfirm}
-                      disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
-                    >
-                      {isDeletingExerciseDetail ? 'Odstraňujem...' : 'Odstrániť cvičenie'}
-                    </button>
-                  </div>
-                ) : null}
-
                 {isEditingExerciseDetail ? (
                   <div className="exercise-detail-edit-box">
                     <div className="form-group" style={{ margin: 0 }}>
@@ -1577,7 +1482,106 @@ function Exercises({ webSettingsSection = '' }) {
                       </button>
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <>
+                    <div className="exercise-detail-top-row">
+                      {!isEmbeddedWebSettingsView ? (
+                        <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="exercise-detail-preferences-row" aria-label="Obľúbenosť a hodnotenie cvičenia">
+                      <button
+                        type="button"
+                        className={`exercise-detail-favorite-badge ${normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'active' : ''}`}
+                        onClick={() => toggleExerciseFavorite(openedExerciseDetailItem.id)}
+                        aria-label={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Odobrať z obľúbených' : 'Pridať medzi obľúbené'}
+                        title={normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené cvičenie' : 'Označiť ako obľúbené'}
+                      >
+                        <span className="material-icons-round" aria-hidden="true">
+                          {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'favorite' : 'favorite_border'}
+                        </span>
+                        {normalizeExerciseFavorite(openedExerciseDetailItem?.isFavorite) ? 'Obľúbené' : 'Neobľúbené'}
+                      </button>
+
+                      <span className="exercise-detail-rating-inline" role="group" aria-label="Úroveň cvičenia">
+                        {[1, 2, 3, 4, 5].map((starValue) => (
+                          <button
+                            key={`detail-rating-star-${starValue}`}
+                            type="button"
+                            className={`exercise-detail-star-btn ${starValue <= normalizeExerciseRating(openedExerciseDetailItem?.rating) ? 'active' : ''}`}
+                            onClick={() => setExerciseRating(openedExerciseDetailItem.id, starValue)}
+                            aria-label={`Nastaviť úroveň ${starValue} z 5`}
+                            title={`${starValue} z 5`}
+                          >
+                            <span className="material-icons-round" aria-hidden="true">
+                              {starValue <= normalizeExerciseRating(openedExerciseDetailItem?.rating) ? 'star' : 'star_border'}
+                            </span>
+                          </button>
+                        ))}
+                      </span>
+                    </div>
+
+                    <div className="exercise-detail-meta-row">
+                      {openedExerciseCategorySummary ? (
+                        <div className="exercise-detail-categories">
+                          <strong>Kategórie:</strong>
+                          <span>{openedExerciseCategorySummary}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    {!isEmbeddedWebSettingsView ? (
+                      <div className="exercise-detail-meta-row" style={{ alignItems: 'flex-end' }}>
+                        <div className="form-group" style={{ margin: 0, width: '100%' }}>
+                          <label htmlFor="exercise-custom-labels-input">Vlastné kategórie / delenie</label>
+                          <input
+                            id="exercise-custom-labels-input"
+                            type="text"
+                            value={customLabelDraft}
+                            onChange={(event) => setCustomLabelDraft(event.target.value)}
+                            placeholder="Napr. U14, prechod, technika"
+                          />
+                        </div>
+                        {(currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach'))) ? (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            disabled={isSavingCustomLabels}
+                            onClick={() => saveExerciseCustomLabels(openedExerciseDetailItem.id)}
+                          >
+                            {isSavingCustomLabels ? 'Ukladám...' : 'Uložiť delenie'}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {openedExerciseDetailItem.description ? (
+                      <p>{openedExerciseDetailItem.description}</p>
+                    ) : (
+                      <p className="manager-empty-text" style={{ margin: 0 }}>Cvičenie zatiaľ nemá popis.</p>
+                    )}
+
+                    {canManageOpenedExercise ? (
+                      <div className="exercise-detail-actions-row">
+                        <button
+                          type="button"
+                          className="btn-edit exercise-detail-edit-btn"
+                          onClick={startEditOpenedExercise}
+                          disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
+                        >
+                          Upraviť cvičenie
+                        </button>
+                        <button
+                          type="button"
+                          className="exercise-detail-delete-btn"
+                          onClick={openDeleteExerciseConfirm}
+                          disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
+                        >
+                          {isDeletingExerciseDetail ? 'Odstraňujem...' : 'Odstrániť cvičenie'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
 
                 {detailActionError ? (
                   <p className="manager-empty-text" style={{ margin: 0 }}>{detailActionError}</p>
