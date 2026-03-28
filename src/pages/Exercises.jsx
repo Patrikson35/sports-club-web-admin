@@ -1,7 +1,13 @@
   // --- Klubový filtr ---
   const [clubs, setClubs] = useState([])
+  const [clubsError, setClubsError] = useState('')
   useEffect(() => {
-    api.getClubs().then(data => setClubs(Array.isArray(data?.clubs) ? data.clubs : [])).catch(() => setClubs([]))
+    api.getClubs()
+      .then(data => setClubs(Array.isArray(data?.clubs) ? data.clubs : []))
+      .catch((err) => {
+        setClubs([])
+        setClubsError('Nepodařilo se načíst seznam klubů. Zkuste to prosím později.')
+      })
   }, [])
 
   // --- Nové filtry ---
@@ -1102,6 +1108,9 @@ function Exercises({ webSettingsSection = '' }) {
 
       <>
       <div className="card settings-placeholder-card metrics-section-card exercise-db-filters-card">
+        {clubsError && (
+          <div style={{ color: '#ff6b6b', marginBottom: 12 }}>{clubsError}</div>
+        )}
         <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label htmlFor="exercise-library-filter-sport">Vyber športu</label>
