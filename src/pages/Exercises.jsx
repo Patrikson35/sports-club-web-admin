@@ -734,16 +734,10 @@ function Exercises({ webSettingsSection = '' }) {
   const canManageOpenedExercise = openedExerciseDetailItem
     ? (currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach')))
     : false
-  const isWebAdminSharedExerciseReadOnly = isEmbeddedWebSettingsView && currentRole === 'admin'
-  const useAdminFocusedEditMode = currentRole === 'admin' && isEditingExerciseDetail
+  const useAdminFocusedEditMode = isEmbeddedWebSettingsView && currentRole === 'admin' && isEditingExerciseDetail
 
   const startEditOpenedExercise = () => {
     if (!openedExerciseDetailItem || !canManageOpenedExercise) return
-    if (isWebAdminSharedExerciseReadOnly) {
-      setDetailActionError('Vo web-admin režime je úprava existujúcich cvičení vypnutá, aby sa zmeny neprejavili klubom a trénerom.')
-      setDetailActionSuccess('')
-      return
-    }
     setDetailActionError('')
     setDetailActionSuccess('')
     setIsEditingExerciseDetail(true)
@@ -762,10 +756,6 @@ function Exercises({ webSettingsSection = '' }) {
 
   const saveOpenedExerciseChanges = async () => {
     if (!openedExerciseDetailItem || !canManageOpenedExercise || isUpdatingExerciseDetail) return
-    if (isWebAdminSharedExerciseReadOnly) {
-      setDetailActionError('Vo web-admin režime je ukladanie úprav existujúcich cvičení vypnuté.')
-      return
-    }
 
     const title = String(editExerciseDraft.title || '').trim()
     if (!title) {
@@ -795,11 +785,6 @@ function Exercises({ webSettingsSection = '' }) {
 
   const openDeleteExerciseConfirm = () => {
     if (!openedExerciseDetailItem || !canManageOpenedExercise || isDeletingExerciseDetail) return
-    if (isWebAdminSharedExerciseReadOnly) {
-      setDetailActionError('Vo web-admin režime je mazanie existujúcich cvičení vypnuté, aby sa neovplyvnili ostatné roly.')
-      setDetailActionSuccess('')
-      return
-    }
     setDeleteConfirmDialog({
       open: true,
       id: String(openedExerciseDetailItem.id || ''),
@@ -1533,7 +1518,7 @@ function Exercises({ webSettingsSection = '' }) {
                           type="button"
                           className="btn-edit exercise-detail-edit-btn"
                           onClick={startEditOpenedExercise}
-                          disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail || isWebAdminSharedExerciseReadOnly}
+                          disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
                         >
                           Upraviť cvičenie
                         </button>
@@ -1541,17 +1526,11 @@ function Exercises({ webSettingsSection = '' }) {
                           type="button"
                           className="exercise-detail-delete-btn"
                           onClick={openDeleteExerciseConfirm}
-                          disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail || isWebAdminSharedExerciseReadOnly}
+                          disabled={isUpdatingExerciseDetail || isDeletingExerciseDetail}
                         >
                           {isDeletingExerciseDetail ? 'Odstraňujem...' : 'Odstrániť cvičenie'}
                         </button>
                       </div>
-                    ) : null}
-
-                    {isWebAdminSharedExerciseReadOnly ? (
-                      <p className="manager-empty-text" style={{ margin: 0 }}>
-                        Web-admin má tento detail v režime iba na čítanie. Úpravy a mazanie sú vypnuté, aby sa neprepísali dáta klubu a trénerov.
-                      </p>
                     ) : null}
                   </>
                 ) : null}
