@@ -1,21 +1,4 @@
-  // --- Klubový filtr ---
-  const [clubs, setClubs] = useState([])
-  const [clubsError, setClubsError] = useState('')
-  useEffect(() => {
-    api.getClubs()
-      .then(data => setClubs(Array.isArray(data?.clubs) ? data.clubs : []))
-      .catch((err) => {
-        setClubs([])
-        setClubsError('Nepodařilo se načíst seznam klubů. Zkuste to prosím později.')
-      })
-  }, [])
-
-  // --- Nové filtry ---
-  const [exerciseLibraryFilters, setExerciseLibraryFilters] = useState({
-    sportKey: 'all',
-    libraryType: 'all', // 'all' | 'public' | 'private'
-    clubId: 'all'
-  })
+// ...existing code...
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import './MyClub.css'
@@ -157,6 +140,24 @@ const resolveSelectedExerciseCategoryIds = (selectedCategoryIds, categorySelecti
 }
 
 function Exercises({ webSettingsSection = '' }) {
+    // --- Klubový filtr ---
+    const [clubs, setClubs] = useState([])
+    const [clubsError, setClubsError] = useState('')
+    useEffect(() => {
+      api.getClubs()
+        .then(data => setClubs(Array.isArray(data?.clubs) ? data.clubs : []))
+        .catch((err) => {
+          setClubs([])
+          setClubsError('Nepodařilo se načíst seznam klubů. Zkuste to prosím později.')
+        })
+    }, [])
+
+    // --- Nové filtry ---
+    const [exerciseLibraryFilters, setExerciseLibraryFilters] = useState({
+      sportKey: 'all',
+      libraryType: 'all', // 'all' | 'public' | 'private'
+      clubId: 'all'
+    })
   const isEmbeddedWebSettingsView = Boolean(String(webSettingsSection || '').trim())
   const showExerciseListSection = !isEmbeddedWebSettingsView || webSettingsSection === 'exerciseList'
   const showCreateExerciseSection = !isEmbeddedWebSettingsView || webSettingsSection === 'createExercise'
