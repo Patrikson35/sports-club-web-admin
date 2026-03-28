@@ -1,3 +1,15 @@
+  // --- Klubový filtr ---
+  const [clubs, setClubs] = useState([])
+  useEffect(() => {
+    api.getClubs().then(data => setClubs(Array.isArray(data?.clubs) ? data.clubs : [])).catch(() => setClubs([]))
+  }, [])
+
+  // --- Nové filtry ---
+  const [exerciseLibraryFilters, setExerciseLibraryFilters] = useState({
+    sportKey: 'all',
+    libraryType: 'all', // 'all' | 'public' | 'private'
+    clubId: 'all'
+  })
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import './MyClub.css'
@@ -348,12 +360,15 @@ function Exercises({ webSettingsSection = '' }) {
   }, [exerciseListFilters?.categoryId, exerciseListFilters?.subcategory, exerciseListSubcategoryOptions])
 
   const filteredExerciseDatabaseItems = useMemo(() => {
-    const selectedSportKey = String(exerciseListFilters?.sportKey || 'all')
+    const { sportKey, libraryType, clubId } = exerciseLibraryFilters;
     return exerciseDatabaseItems.filter((item) => {
-      if (selectedSportKey !== 'all' && String(item?.sportKey || '') !== selectedSportKey) return false;
+      if (sportKey !== 'all' && String(item?.sportKey || '') !== sportKey) return false;
+      if (libraryType === 'public' && !item.isSystem) return false;
+      if (libraryType === 'private' && item.isSystem) return false;
+      if (clubId !== 'all' && String(item?.clubId || '') !== clubId) return false;
       return true;
     });
-  }, [exerciseDatabaseItems, exerciseListFilters]);
+  }, [exerciseDatabaseItems, exerciseLibraryFilters]);
 
   const getExercisePreviewImage = (item) => {
     const uploadedImage = String(item?.imageUrl || '').trim()
@@ -1084,21 +1099,45 @@ function Exercises({ webSettingsSection = '' }) {
 
       {showExerciseListSection ? (
 
+
       <>
       <div className="card settings-placeholder-card metrics-section-card exercise-db-filters-card">
         <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-sport">Vyber športu</label>
+            <label htmlFor="exercise-library-filter-sport">Vyber športu</label>
             <select
-              id="exercise-list-filter-sport"
-              value={exerciseListFilters.sportKey || 'all'}
-              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, sportKey: event.target.value }))}
+              id="exercise-library-filter-sport"
+              value={exerciseLibraryFilters.sportKey}
+              onChange={e => setExerciseLibraryFilters(f => ({ ...f, sportKey: e.target.value }))}
             >
               <option value="all">Všetky</option>
               {sportOptions.map((sport) => (
-                <option key={`exercise-list-filter-sport-${sport.key}`} value={sport.key}>
-                  {sport.label}
-                </option>
+                <option key={`exercise-library-filter-sport-${sport.key}`} value={sport.key}>{sport.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="exercise-library-filter-type">Vyber knižnice</label>
+            <select
+              id="exercise-library-filter-type"
+              value={exerciseLibraryFilters.libraryType}
+              onChange={e => setExerciseLibraryFilters(f => ({ ...f, libraryType: e.target.value }))}
+            >
+              <option value="all">Všetky</option>
+              <option value="public">Verejné</option>
+              <option value="private">Privátne</option>
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="exercise-library-filter-club">Vyber klubu</label>
+            <select
+              id="exercise-library-filter-club"
+              value={exerciseLibraryFilters.clubId}
+              onChange={e => setExerciseLibraryFilters(f => ({ ...f, clubId: e.target.value }))}
+            >
+              <option value="all">Všetky</option>
+              {clubs.map(club => (
+                <option key={`exercise-library-filter-club-${club.id}`} value={club.id}>{club.name}</option>
               ))}
             </select>
           </div>
