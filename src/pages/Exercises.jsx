@@ -1120,77 +1120,23 @@ function Exercises({ webSettingsSection = '' }) {
       ) : null}
 
       {showExerciseListSection ? (
+
       <>
       <div className="card settings-placeholder-card metrics-section-card exercise-db-filters-card">
         <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-category">Kategória</label>
+            <label htmlFor="exercise-list-filter-sport">Vyber športu</label>
             <select
-              id="exercise-list-filter-category"
-              value={exerciseListFilters.categoryId}
-              onChange={(event) => {
-                const nextCategoryId = event.target.value
-                setExerciseListFilters((prev) => ({
-                  ...prev,
-                  categoryId: nextCategoryId,
-                  subcategory: 'all'
-                }))
-              }}
+              id="exercise-list-filter-sport"
+              value={exerciseListFilters.sportKey || 'all'}
+              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, sportKey: event.target.value }))}
             >
               <option value="all">Všetky</option>
-              {exerciseCategories.map((category) => (
-                <option key={`exercise-list-filter-category-${category.id}`} value={String(category.id)}>
-                  {String(category.name || 'Kategória')}
+              {sportOptions.map((sport) => (
+                <option key={`exercise-list-filter-sport-${sport.key}`} value={sport.key}>
+                  {sport.label}
                 </option>
               ))}
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-subcategory">Podkategória</label>
-            <select
-              id="exercise-list-filter-subcategory"
-              value={exerciseListFilters.subcategory}
-              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, subcategory: event.target.value }))}
-              disabled={exerciseListFilters.categoryId === 'all' || exerciseListSubcategoryOptions.length === 0}
-            >
-              <option value="all">Všetky</option>
-              {exerciseListSubcategoryOptions.map((subcategory) => (
-                <option key={`exercise-list-filter-subcategory-${subcategory}`} value={subcategory}>
-                  {subcategory}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-players">Počet hráčov</label>
-            <select
-              id="exercise-list-filter-players"
-              value={exerciseListFilters.playersCount}
-              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, playersCount: event.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              {EXERCISE_PLAYERS_COUNT_OPTIONS.map((countValue) => (
-                <option key={`exercise-list-filter-players-${countValue}`} value={countValue}>
-                  {countValue}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-list-filter-intensity">Intenzita</label>
-            <select
-              id="exercise-list-filter-intensity"
-              value={exerciseListFilters.intensity}
-              onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, intensity: event.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              <option value="Nízka">Nízka</option>
-              <option value="Stredná">Stredná</option>
-              <option value="Vysoká">Vysoká</option>
-              <option value="Maximálna">Maximálna</option>
             </select>
           </div>
 
