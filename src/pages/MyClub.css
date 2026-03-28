@@ -1548,6 +1548,11 @@
   gap: 0.55rem;
 }
 
+.exercise-detail-preferences-row .exercise-detail-rating-inline {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .exercise-detail-meta-row {
   display: flex;
   align-items: center;
