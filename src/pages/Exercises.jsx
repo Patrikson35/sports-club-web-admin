@@ -160,7 +160,7 @@ function Exercises({ webSettingsSection = '' }) {
   const [isUpdatingExerciseDetail, setIsUpdatingExerciseDetail] = useState(false)
   const [isDeletingExerciseDetail, setIsDeletingExerciseDetail] = useState(false)
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState({ open: false, id: '', name: '' })
-  const [editExerciseDraft, setEditExerciseDraft] = useState({ title: '', youtubeUrl: '', description: '' })
+  const [editExerciseDraft, setEditExerciseDraft] = useState({ title: '', sportKey: '', youtubeUrl: '', description: '' })
   const [createCategoryError, setCreateCategoryError] = useState('')
   const [customLabelDraft, setCustomLabelDraft] = useState('')
   const [createExerciseForm, setCreateExerciseForm] = useState({
@@ -720,12 +720,13 @@ function Exercises({ webSettingsSection = '' }) {
 
   useEffect(() => {
     if (!openedExerciseDetailItem) {
-      setEditExerciseDraft({ title: '', youtubeUrl: '', description: '' })
+      setEditExerciseDraft({ title: '', sportKey: '', youtubeUrl: '', description: '' })
       return
     }
 
     setEditExerciseDraft({
       title: String(openedExerciseDetailItem?.name || openedExerciseDetailItem?.title || '').trim(),
+      sportKey: String(openedExerciseDetailItem?.sportKey || '').trim(),
       youtubeUrl: String(openedExerciseDetailItem?.youtube?.url || '').trim(),
       description: String(openedExerciseDetailItem?.description || '').trim()
     })
@@ -747,6 +748,7 @@ function Exercises({ webSettingsSection = '' }) {
     if (!openedExerciseDetailItem) return
     setEditExerciseDraft({
       title: String(openedExerciseDetailItem?.name || openedExerciseDetailItem?.title || '').trim(),
+      sportKey: String(openedExerciseDetailItem?.sportKey || '').trim(),
       youtubeUrl: String(openedExerciseDetailItem?.youtube?.url || '').trim(),
       description: String(openedExerciseDetailItem?.description || '').trim()
     })
@@ -769,6 +771,7 @@ function Exercises({ webSettingsSection = '' }) {
     try {
       await api.updateExercise(openedExerciseDetailItem.id, {
         title,
+        sportKey: String(editExerciseDraft.sportKey || '').trim() || null,
         youtubeUrl: String(editExerciseDraft.youtubeUrl || '').trim() || null,
         description: String(editExerciseDraft.description || '').trim() || null
       })
@@ -1555,6 +1558,21 @@ function Exercises({ webSettingsSection = '' }) {
                         onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, youtubeUrl: event.target.value }))}
                         placeholder="https://www.youtube.com/watch?v=..."
                       />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-sport">Vyber športu</label>
+                      <select
+                        id="exercise-edit-sport"
+                        value={editExerciseDraft.sportKey}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, sportKey: event.target.value }))}
+                      >
+                        <option value="">Bez športu</option>
+                        {sportOptions.map((sport) => (
+                          <option key={`exercise-edit-sport-${sport.key}`} value={sport.key}>
+                            {sport.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label htmlFor="exercise-edit-description">Popis</label>

@@ -1675,6 +1675,17 @@
   background: rgba(30, 41, 59, 0.28);
 }
 
+.exercise-detail-edit-box textarea,
+.exercise-detail-edit-box select {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.exercise-detail-edit-box .exercise-detail-actions-row button {
+  min-width: 170px;
+  height: 44px;
+  padding: 0 1.2rem;
+}
+
 .exercise-detail-categories {
   display: flex;
   align-items: baseline;
