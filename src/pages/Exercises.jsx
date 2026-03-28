@@ -734,6 +734,7 @@ function Exercises({ webSettingsSection = '' }) {
   const canManageOpenedExercise = openedExerciseDetailItem
     ? (currentRole === 'admin' || (!openedExerciseDetailItem?.isSystem && (currentRole === 'club' || currentRole === 'coach')))
     : false
+  const useAdminFocusedEditMode = currentRole === 'admin' && isEditingExerciseDetail
 
   const startEditOpenedExercise = () => {
     if (!openedExerciseDetailItem || !canManageOpenedExercise) return
@@ -1386,7 +1387,7 @@ function Exercises({ webSettingsSection = '' }) {
                 </button>
               </div>
 
-              {!isEditingExerciseDetail ? (
+              {!useAdminFocusedEditMode ? (
                 <div
                   className={`exercise-detail-media ${String(openedExerciseDetailItem?.youtube?.videoId || '').trim() ? 'playable' : ''}`}
                   onClick={() => {
@@ -1433,56 +1434,7 @@ function Exercises({ webSettingsSection = '' }) {
               ) : null}
 
               <div className="exercise-detail-body">
-                {isEditingExerciseDetail ? (
-                  <div className="exercise-detail-edit-box">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label htmlFor="exercise-edit-title">Názov</label>
-                      <input
-                        id="exercise-edit-title"
-                        type="text"
-                        value={editExerciseDraft.title}
-                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, title: event.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label htmlFor="exercise-edit-youtube">Link na video (YouTube)</label>
-                      <input
-                        id="exercise-edit-youtube"
-                        type="url"
-                        value={editExerciseDraft.youtubeUrl}
-                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, youtubeUrl: event.target.value }))}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label htmlFor="exercise-edit-description">Popis</label>
-                      <textarea
-                        id="exercise-edit-description"
-                        rows={3}
-                        value={editExerciseDraft.description}
-                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, description: event.target.value }))}
-                      />
-                    </div>
-                    <div className="exercise-detail-actions-row">
-                      <button
-                        type="button"
-                        className="btn-edit"
-                        onClick={saveOpenedExerciseChanges}
-                        disabled={isUpdatingExerciseDetail}
-                      >
-                        {isUpdatingExerciseDetail ? 'Ukladám...' : 'Uložiť zmeny'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={cancelEditOpenedExercise}
-                        disabled={isUpdatingExerciseDetail}
-                      >
-                        Zrušiť
-                      </button>
-                    </div>
-                  </div>
-                ) : (
+                {!useAdminFocusedEditMode ? (
                   <>
                     <div className="exercise-detail-top-row">
                       {!isEmbeddedWebSettingsView ? (
@@ -1581,7 +1533,58 @@ function Exercises({ webSettingsSection = '' }) {
                       </div>
                     ) : null}
                   </>
-                )}
+                ) : null}
+
+                {isEditingExerciseDetail ? (
+                  <div className="exercise-detail-edit-box">
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-title">Názov</label>
+                      <input
+                        id="exercise-edit-title"
+                        type="text"
+                        value={editExerciseDraft.title}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, title: event.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-youtube">Link na video (YouTube)</label>
+                      <input
+                        id="exercise-edit-youtube"
+                        type="url"
+                        value={editExerciseDraft.youtubeUrl}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, youtubeUrl: event.target.value }))}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor="exercise-edit-description">Popis</label>
+                      <textarea
+                        id="exercise-edit-description"
+                        rows={3}
+                        value={editExerciseDraft.description}
+                        onChange={(event) => setEditExerciseDraft((prev) => ({ ...prev, description: event.target.value }))}
+                      />
+                    </div>
+                    <div className="exercise-detail-actions-row">
+                      <button
+                        type="button"
+                        className="btn-edit"
+                        onClick={saveOpenedExerciseChanges}
+                        disabled={isUpdatingExerciseDetail}
+                      >
+                        {isUpdatingExerciseDetail ? 'Ukladám...' : 'Uložiť zmeny'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={cancelEditOpenedExercise}
+                        disabled={isUpdatingExerciseDetail}
+                      >
+                        Zrušiť
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {detailActionError ? (
                   <p className="manager-empty-text" style={{ margin: 0 }}>{detailActionError}</p>
