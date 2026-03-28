@@ -348,49 +348,12 @@ function Exercises({ webSettingsSection = '' }) {
   }, [exerciseListFilters?.categoryId, exerciseListFilters?.subcategory, exerciseListSubcategoryOptions])
 
   const filteredExerciseDatabaseItems = useMemo(() => {
-    const selectedIntensity = String(exerciseListFilters?.intensity || 'all')
-    const selectedPlayersCount = String(exerciseListFilters?.playersCount || 'all')
-    const selectedCategoryId = String(exerciseListFilters?.categoryId || 'all')
-    const selectedSubcategory = String(exerciseListFilters?.subcategory || 'all')
-    const selectedLevel = String(exerciseListFilters?.level || 'all')
-    const selectedFavorite = String(exerciseListFilters?.favorite || 'all')
-
+    const selectedSportKey = String(exerciseListFilters?.sportKey || 'all')
     return exerciseDatabaseItems.filter((item) => {
-      if (selectedIntensity !== 'all' && String(item?.intensity || '') !== selectedIntensity) return false
-
-      if (selectedPlayersCount !== 'all') {
-        const selectedValues = normalizeExercisePlayersCount(item?.playersCount)
-        if (!selectedValues.includes(selectedPlayersCount)) return false
-      }
-
-      if (selectedLevel !== 'all') {
-        const itemLevel = normalizeExerciseRating(item?.rating)
-        if (String(itemLevel) !== selectedLevel) return false
-      }
-
-      if (selectedFavorite === 'favorite' && !normalizeExerciseFavorite(item?.isFavorite)) {
-        return false
-      }
-
-      if (selectedFavorite === 'not-favorite' && normalizeExerciseFavorite(item?.isFavorite)) {
-        return false
-      }
-
-      if (selectedCategoryId !== 'all') {
-        const selectedItemCategoryIds = resolveSelectedExerciseCategoryIds(item?.selectedCategoryIds, item?.categorySelections)
-        if (!selectedItemCategoryIds.includes(selectedCategoryId)) return false
-
-        if (selectedSubcategory !== 'all') {
-          const selectedSubcategories = Array.isArray(item?.categorySelections?.[selectedCategoryId])
-            ? item.categorySelections[selectedCategoryId]
-            : []
-          if (!selectedSubcategories.includes(selectedSubcategory)) return false
-        }
-      }
-
-      return true
-    })
-  }, [exerciseDatabaseItems, exerciseListFilters])
+      if (selectedSportKey !== 'all' && String(item?.sportKey || '') !== selectedSportKey) return false;
+      return true;
+    });
+  }, [exerciseDatabaseItems, exerciseListFilters]);
 
   const getExercisePreviewImage = (item) => {
     const uploadedImage = String(item?.imageUrl || '').trim()
