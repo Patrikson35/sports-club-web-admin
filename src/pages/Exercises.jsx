@@ -1324,23 +1324,7 @@ function Exercises({ webSettingsSection = '' }) {
                 ) : null}
                 <p className="exercise-db-card-description">{item.description || 'Bez popisu cvičenia.'}</p>
 
-                <div className="exercise-db-card-stats">
-                  <div className="exercise-db-card-stat-item" aria-label="Počet hráčov">
-                    <span className="material-icons-round" aria-hidden="true">groups</span>
-                    <div>
-                      <small>Počet hráčov</small>
-                      <strong>{formatExercisePlayersCount(item.playersCount) || '—'}</strong>
-                    </div>
-                  </div>
-
-                  <div className="exercise-db-card-stat-item" aria-label="Intenzita">
-                    <span className="material-icons-round" aria-hidden="true">whatshot</span>
-                    <div>
-                      <small>Intenzita</small>
-                      <strong>{item.intensity || '—'}</strong>
-                    </div>
-                  </div>
-                </div>
+                {/* Karty Počet hráčov a Intenzita byly odstraněny na přání uživatele */}
 
                 <div className="exercise-db-card-rating" aria-label="Hodnotenie cvičenia">
                   <small>Úroveň cvičenia</small>
