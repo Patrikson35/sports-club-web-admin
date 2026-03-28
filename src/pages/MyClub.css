@@ -9,6 +9,18 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: 20px 24px 32px;
+/* VŠECHNY BUTTONY radius 5px */
+button,
+.btn-primary,
+.btn-edit,
+.btn-secondary,
+.exercise-form-action-btn,
+.training-division-add-row-btn,
+.training-division-remove-row-btn,
+.exercise-short-code-btn,
+.manager-role-save-btn {
+  border-radius: 5px !important;
+}
 }
 
 .club-header {
