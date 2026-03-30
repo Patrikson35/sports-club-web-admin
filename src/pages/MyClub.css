@@ -1087,7 +1087,7 @@ button,
 }
 
 .exercise-library-filters {
-  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+  grid-template-columns: 1fr 1fr 1fr auto;
 }
 
 .exercise-db-filters-card {

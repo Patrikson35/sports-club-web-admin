@@ -1146,9 +1146,11 @@ function Exercises({ webSettingsSection = '' }) {
               onChange={e => setExerciseLibraryFilters(f => ({ ...f, clubId: e.target.value }))}
             >
               <option value="all">Všetky</option>
-              {clubs.map(club => (
-                <option key={`exercise-library-filter-club-${club.id}`} value={club.id}>{club.name}</option>
-              ))}
+              {clubs
+                .filter(club => exerciseLibraryFilters.sportKey === 'all' || String(club.sportKey) === String(exerciseLibraryFilters.sportKey))
+                .map(club => (
+                  <option key={`exercise-library-filter-club-${club.id}`} value={club.id}>{club.name}</option>
+                ))}
             </select>
           </div>
 
