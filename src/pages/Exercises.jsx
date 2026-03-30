@@ -656,7 +656,7 @@ function Exercises({ webSettingsSection = '' }) {
         difficulty: String(createExerciseForm.difficulty || '').trim() || null,
         duration: createExerciseForm.duration ? Number(createExerciseForm.duration) : null,
         equipment: String(createExerciseForm.equipment || '').trim() || null,
-        isSystem: isEmbeddedWebSettingsView || (canCreateSystemExercise && createExerciseForm.isSystem),
+        isSystem: true,
         customLabels: normalizeCustomLabels(
           String(createExerciseForm.customLabels || '')
             .split(',')
