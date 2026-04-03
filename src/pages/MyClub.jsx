@@ -927,7 +927,22 @@ function MyClub() {
     subcategory: 'all'
   })
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
+  const [publicExerciseLibraryItems, setPublicExerciseLibraryItems] = useState([])
   const [openedExerciseDetailItem, setOpenedExerciseDetailItem] = useState(null)
+  const [publicExerciseDownloadDialog, setPublicExerciseDownloadDialog] = useState({
+    open: false,
+    item: null,
+    title: '',
+    description: '',
+    intensity: 'Stredná',
+    playersCount: [],
+    divisionGroups: {},
+    imageUrl: '',
+    imageName: '',
+    selectedCategoryIds: [],
+    categorySelections: {},
+    expandedCategoryIds: []
+  })
   const [isExerciseDetailVideoPlaying, setIsExerciseDetailVideoPlaying] = useState(false)
   const [editingExerciseDatabaseItemId, setEditingExerciseDatabaseItemId] = useState(null)
   const [exerciseFormDraft, setExerciseFormDraft] = useState({
@@ -984,6 +999,7 @@ function MyClub() {
   const metricEditorFormRef = useRef(null)
   const exerciseCategoryFormRef = useRef(null)
   const exerciseImageInputRef = useRef(null)
+  const publicDownloadImageInputRef = useRef(null)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -994,7 +1010,7 @@ function MyClub() {
 
     setActiveTab('exerciseDatabase')
 
-    if (requestedSection === 'exerciseList' || requestedSection === 'createExercise' || requestedSection === 'exerciseCategories') {
+    if (requestedSection === 'publicExercises' || requestedSection === 'exerciseList' || requestedSection === 'createExercise' || requestedSection === 'exerciseCategories') {
       setActiveExerciseDatabaseSection(requestedSection)
       if (requestedSection === 'createExercise') {
         setEditingExerciseDatabaseItemId(null)
@@ -1096,28 +1112,72 @@ function MyClub() {
       .filter((item) => item.id && item.name)
   }
 
+  const normalizePublicExerciseLibraryItems = (value) => {
+    const parsed = Array.isArray(value) ? value : []
+    return parsed
+      .map((item) => {
+        const youtube = item?.youtube && typeof item.youtube === 'object' ? item.youtube : {}
+        const categoryId = String(item?.category?.id || '').trim()
+        return {
+          id: `public-${String(item?.id || '').trim()}`,
+          sourceExerciseId: String(item?.id || '').trim(),
+          name: String(item?.name || item?.title || '').trim(),
+          description: String(item?.description || '').trim(),
+          durationMinutes: Number.parseInt(String(item?.duration || 0), 10) || 0,
+          intensity: String(item?.difficulty || 'Stredná').trim() || 'Stredná',
+          playersCount: [],
+          imageUrl: '',
+          imageName: '',
+          selectedCategoryIds: categoryId ? [categoryId] : [],
+          categorySelections: {},
+          divisionGroups: {},
+          isActive: true,
+          isPublic: item?.isSystem !== false,
+          isLibraryItem: true,
+          rating: normalizeExerciseRating(item?.rating),
+          isFavorite: normalizeExerciseFavorite(item?.isFavorite),
+          youtube: {
+            url: String(youtube?.url || '').trim(),
+            videoId: String(youtube?.videoId || '').trim()
+          },
+          createdAt: '',
+          updatedAt: ''
+        }
+      })
+      .filter((item) => item.id && item.name && item.isPublic)
+  }
+
   useEffect(() => {
     if (!clubId) {
       setTrainingDivisions([])
       setExerciseCategories([])
       setExerciseDatabaseItems([])
+      setPublicExerciseLibraryItems([])
       return
     }
 
     let isMounted = true
 
     const loadClubExerciseData = async () => {
-      try {
-        const data = await api.getMyClub()
-        if (!isMounted) return
+      const [clubResult, exercisesResult] = await Promise.allSettled([
+        api.getMyClub(),
+        api.getExercises()
+      ])
+
+      if (!isMounted) return
+
+      // Never clear club-managed data when the public library request fails.
+      if (clubResult.status === 'fulfilled') {
+        const data = clubResult.value
         setTrainingDivisions(normalizeTrainingDivisionsOnline(data?.trainingDivisions))
         setExerciseCategories(normalizeExerciseCategoriesOnline(data?.exerciseCategories))
         setExerciseDatabaseItems(normalizeExerciseDatabaseItemsOnline(data?.exerciseDatabaseItems))
-      } catch {
-        if (!isMounted) return
-        setTrainingDivisions([])
-        setExerciseCategories([])
-        setExerciseDatabaseItems([])
+      }
+
+      if (exercisesResult.status === 'fulfilled') {
+        setPublicExerciseLibraryItems(normalizePublicExerciseLibraryItems(exercisesResult.value?.exercises))
+      } else {
+        setPublicExerciseLibraryItems([])
       }
     }
 
@@ -2942,6 +3002,412 @@ function MyClub() {
     setSuccess('Cvičenie bolo odstránené.')
   }
 
+  const getDefaultDownloadDivisionGroups = () => {
+    return getVisibleTrainingDivisionsForExerciseForm().reduce((acc, division) => {
+      const divisionId = String(division?.id || '')
+      if (!divisionId) return acc
+      const divisionGroups = getTrainingDivisionGroups(division)
+      acc[divisionId] = divisionGroups[0] || ''
+      return acc
+    }, {})
+  }
+
+  const getFilteredExerciseCategoriesForDownload = () => {
+    const visibleDivisions = getVisibleTrainingDivisionsForExerciseForm()
+    const visibleDivisionIds = new Set(visibleDivisions.map((division) => String(division?.id || '')))
+    const selectedDivisionGroups = publicExerciseDownloadDialog?.divisionGroups && typeof publicExerciseDownloadDialog.divisionGroups === 'object'
+      ? publicExerciseDownloadDialog.divisionGroups
+      : {}
+
+    return (Array.isArray(exerciseCategories) ? exerciseCategories : []).filter((category) => {
+      const assignedGroups = category?.assignedDivisionGroups && typeof category.assignedDivisionGroups === 'object'
+        ? category.assignedDivisionGroups
+        : {}
+
+      const relevantAssignments = Object.entries(assignedGroups).filter(([divisionId]) => (
+        visibleDivisionIds.has(String(divisionId || ''))
+      ))
+
+      if (relevantAssignments.length === 0) return true
+
+      return relevantAssignments.some(([divisionId, allowedGroups]) => {
+        const selectedGroup = String(selectedDivisionGroups[String(divisionId || '')] || '').trim()
+        if (!selectedGroup) return false
+
+        const normalizedAllowedGroups = Array.isArray(allowedGroups)
+          ? allowedGroups.map((name) => String(name || '').trim()).filter(Boolean)
+          : []
+
+        return normalizedAllowedGroups.includes(selectedGroup)
+      })
+    })
+  }
+
+  const openPublicExerciseDownloadDialog = (item) => {
+    if (!item?.id || !isPublicExerciseSection) return
+
+    if (!Array.isArray(exerciseCategories) || exerciseCategories.length === 0) {
+      setError('Pred stiahnutím cvičenia najprv vytvorte aspoň jednu kategóriu.')
+      setActiveExerciseDatabaseSection('exerciseCategories')
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    setPublicExerciseDownloadDialog({
+      open: true,
+      item,
+      title: String(item?.name || '').trim(),
+      description: String(item?.description || '').trim(),
+      intensity: String(item?.intensity || 'Stredná').trim() || 'Stredná',
+      playersCount: normalizeExercisePlayersCount(item?.playersCount),
+      divisionGroups: getDefaultDownloadDivisionGroups(),
+      imageUrl: String(item?.imageUrl || '').trim(),
+      imageName: String(item?.imageName || '').trim(),
+      selectedCategoryIds: [],
+      categorySelections: {},
+      expandedCategoryIds: []
+    })
+  }
+
+  const closePublicExerciseDownloadDialog = () => {
+    setPublicExerciseDownloadDialog({
+      open: false,
+      item: null,
+      title: '',
+      description: '',
+      intensity: 'Stredná',
+      playersCount: [],
+      divisionGroups: {},
+      imageUrl: '',
+      imageName: '',
+      selectedCategoryIds: [],
+      categorySelections: {},
+      expandedCategoryIds: []
+    })
+    if (publicDownloadImageInputRef.current) {
+      publicDownloadImageInputRef.current.value = ''
+    }
+  }
+
+  const updatePublicExerciseDownloadDialogField = (fieldName, value) => {
+    const resolvedFieldName = String(fieldName || '').trim()
+    if (!resolvedFieldName) return
+
+    setPublicExerciseDownloadDialog((prev) => ({
+      ...prev,
+      [resolvedFieldName]: value
+    }))
+  }
+
+  const togglePublicExerciseDownloadPlayersCount = (countValue) => {
+    const resolvedCount = String(countValue || '').trim()
+    if (!resolvedCount) return
+
+    setPublicExerciseDownloadDialog((prev) => {
+      const selectedValues = normalizeExercisePlayersCount(prev?.playersCount)
+      const isSelected = selectedValues.includes(resolvedCount)
+      const nextSelectedValues = isSelected
+        ? selectedValues.filter((item) => item !== resolvedCount)
+        : [...selectedValues, resolvedCount]
+
+      return {
+        ...prev,
+        playersCount: normalizeExercisePlayersCount(nextSelectedValues)
+      }
+    })
+  }
+
+  const openPublicDownloadImagePicker = () => {
+    publicDownloadImageInputRef.current?.click()
+  }
+
+  const clearPublicDownloadImage = () => {
+    setPublicExerciseDownloadDialog((prev) => ({
+      ...prev,
+      imageUrl: '',
+      imageName: ''
+    }))
+    if (publicDownloadImageInputRef.current) {
+      publicDownloadImageInputRef.current.value = ''
+    }
+  }
+
+  const handlePublicDownloadImageChange = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!String(file.type || '').startsWith('image/')) {
+      setError('Vyberte prosim obrazok.')
+      return
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      setPublicExerciseDownloadDialog((prev) => ({
+        ...prev,
+        imageUrl: dataUrl,
+        imageName: String(file.name || '')
+      }))
+      setError('')
+    } catch {
+      setError('Obrazok sa nepodarilo nacitat.')
+    }
+  }
+
+  const togglePublicExerciseDownloadCategoryExpanded = (categoryId) => {
+    const resolvedCategoryId = String(categoryId || '').trim()
+    if (!resolvedCategoryId) return
+
+    setPublicExerciseDownloadDialog((prev) => {
+      const expanded = Array.isArray(prev?.expandedCategoryIds)
+        ? prev.expandedCategoryIds.map((id) => String(id || '').trim()).filter(Boolean)
+        : []
+      const isExpanded = expanded.includes(resolvedCategoryId)
+      const nextExpanded = isExpanded
+        ? expanded.filter((id) => id !== resolvedCategoryId)
+        : [...expanded, resolvedCategoryId]
+
+      return {
+        ...prev,
+        expandedCategoryIds: nextExpanded
+      }
+    })
+  }
+
+  const togglePublicExerciseDownloadCategory = (categoryId) => {
+    const resolvedCategoryId = String(categoryId || '').trim()
+    if (!resolvedCategoryId) return
+
+    setPublicExerciseDownloadDialog((prev) => {
+      const selected = Array.isArray(prev?.selectedCategoryIds)
+        ? prev.selectedCategoryIds.map((id) => String(id || '').trim()).filter(Boolean)
+        : []
+      const isSelected = selected.includes(resolvedCategoryId)
+      const nextSelected = isSelected
+        ? selected.filter((id) => id !== resolvedCategoryId)
+        : [...selected, resolvedCategoryId]
+      const normalizedSelections = normalizeExerciseCategorySelections(prev?.categorySelections, exerciseCategories)
+
+      if (isSelected && normalizedSelections?.[resolvedCategoryId]) {
+        delete normalizedSelections[resolvedCategoryId]
+      }
+
+      return {
+        ...prev,
+        selectedCategoryIds: Array.from(new Set(nextSelected)),
+        categorySelections: normalizedSelections
+      }
+    })
+  }
+
+  const togglePublicExerciseDownloadSubcategory = (categoryId, subcategoryName) => {
+    const resolvedCategoryId = String(categoryId || '').trim()
+    const resolvedSubcategory = String(subcategoryName || '').trim()
+    if (!resolvedCategoryId || !resolvedSubcategory) return
+
+    setPublicExerciseDownloadDialog((prev) => {
+      const normalizedSelections = normalizeExerciseCategorySelections(prev?.categorySelections, exerciseCategories)
+      const currentSubcategories = Array.isArray(normalizedSelections?.[resolvedCategoryId])
+        ? normalizedSelections[resolvedCategoryId]
+        : []
+      const isAlreadySelected = currentSubcategories.includes(resolvedSubcategory)
+      const nextSubcategories = isAlreadySelected
+        ? currentSubcategories.filter((name) => name !== resolvedSubcategory)
+        : [...currentSubcategories, resolvedSubcategory]
+
+      if (nextSubcategories.length > 0) {
+        normalizedSelections[resolvedCategoryId] = nextSubcategories
+      } else {
+        delete normalizedSelections[resolvedCategoryId]
+      }
+
+      const nextSelectedCategoryIds = resolveSelectedExerciseCategoryIds(
+        prev?.selectedCategoryIds,
+        normalizedSelections,
+        exerciseCategories
+      )
+
+      return {
+        ...prev,
+        selectedCategoryIds: nextSelectedCategoryIds,
+        categorySelections: normalizedSelections
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (!publicExerciseDownloadDialog?.open) return
+
+    const visibleDivisions = getVisibleTrainingDivisionsForExerciseForm()
+    const currentMap = publicExerciseDownloadDialog?.divisionGroups && typeof publicExerciseDownloadDialog.divisionGroups === 'object'
+      ? publicExerciseDownloadDialog.divisionGroups
+      : {}
+
+    const nextMap = visibleDivisions.reduce((acc, division) => {
+      const divisionId = String(division?.id || '')
+      if (!divisionId) return acc
+      const divisionGroups = getTrainingDivisionGroups(division)
+      const currentSelected = String(currentMap[divisionId] || '').trim()
+      if (divisionGroups.length === 0) {
+        acc[divisionId] = ''
+        return acc
+      }
+      acc[divisionId] = divisionGroups.includes(currentSelected) ? currentSelected : divisionGroups[0]
+      return acc
+    }, {})
+
+    if (JSON.stringify(currentMap) === JSON.stringify(nextMap)) return
+
+    setPublicExerciseDownloadDialog((prev) => ({
+      ...prev,
+      divisionGroups: nextMap
+    }))
+  }, [
+    publicExerciseDownloadDialog?.open,
+    publicExerciseDownloadDialog?.divisionGroups,
+    trainingDivisions,
+    trainingExerciseDisplaySettings
+  ])
+
+  useEffect(() => {
+    if (!publicExerciseDownloadDialog?.open) return
+
+    const filteredCategorySource = getFilteredExerciseCategoriesForDownload()
+    const nextSelections = normalizeExerciseCategorySelections(
+      publicExerciseDownloadDialog?.categorySelections,
+      filteredCategorySource
+    )
+    const nextSelectedCategoryIds = resolveSelectedExerciseCategoryIds(
+      publicExerciseDownloadDialog?.selectedCategoryIds,
+      nextSelections,
+      filteredCategorySource
+    )
+
+    const currentSelections = publicExerciseDownloadDialog?.categorySelections && typeof publicExerciseDownloadDialog.categorySelections === 'object'
+      ? publicExerciseDownloadDialog.categorySelections
+      : {}
+    const currentSelectedCategoryIds = Array.isArray(publicExerciseDownloadDialog?.selectedCategoryIds)
+      ? publicExerciseDownloadDialog.selectedCategoryIds
+      : []
+
+    if (
+      JSON.stringify(currentSelections) === JSON.stringify(nextSelections)
+      && JSON.stringify(currentSelectedCategoryIds) === JSON.stringify(nextSelectedCategoryIds)
+    ) {
+      return
+    }
+
+    setPublicExerciseDownloadDialog((prev) => ({
+      ...prev,
+      categorySelections: nextSelections,
+      selectedCategoryIds: nextSelectedCategoryIds
+    }))
+  }, [
+    publicExerciseDownloadDialog?.open,
+    publicExerciseDownloadDialog?.categorySelections,
+    publicExerciseDownloadDialog?.selectedCategoryIds,
+    publicExerciseDownloadDialog?.divisionGroups,
+    exerciseCategories,
+    trainingDivisions,
+    trainingExerciseDisplaySettings
+  ])
+
+  const confirmPublicExerciseDownload = () => {
+    const filteredCategorySource = getFilteredExerciseCategoriesForDownload()
+    const normalizedCategorySelections = normalizeExerciseCategorySelections(
+      publicExerciseDownloadDialog?.categorySelections,
+      filteredCategorySource
+    )
+    const selectedCategoryIds = resolveSelectedExerciseCategoryIds(
+      publicExerciseDownloadDialog?.selectedCategoryIds,
+      normalizedCategorySelections,
+      filteredCategorySource
+    )
+    const sourceItem = publicExerciseDownloadDialog?.item
+
+    if (!sourceItem?.id) {
+      setError('Vybrané verejné cvičenie sa nepodarilo načítať.')
+      return
+    }
+
+    const resolvedTitle = String(publicExerciseDownloadDialog?.title || '').trim()
+    const resolvedDescription = String(publicExerciseDownloadDialog?.description || '').trim()
+    const resolvedIntensity = String(publicExerciseDownloadDialog?.intensity || 'Stredná').trim() || 'Stredná'
+    const resolvedPlayersCount = normalizeExercisePlayersCount(publicExerciseDownloadDialog?.playersCount)
+    const resolvedImageUrl = String(publicExerciseDownloadDialog?.imageUrl || '').trim()
+    const resolvedImageName = String(publicExerciseDownloadDialog?.imageName || '').trim()
+    const resolvedDivisionGroups = publicExerciseDownloadDialog?.divisionGroups && typeof publicExerciseDownloadDialog.divisionGroups === 'object'
+      ? publicExerciseDownloadDialog.divisionGroups
+      : {}
+
+    if (!resolvedTitle) {
+      setError('Nadpis cvičenia je povinný.')
+      return
+    }
+
+    if (selectedCategoryIds.length === 0) {
+      setError('Pred stiahnutím vyberte aspoň jednu kategóriu cvičenia.')
+      return
+    }
+
+    let alreadyExists = false
+
+    setExerciseDatabaseItems((prev) => {
+      const source = Array.isArray(prev) ? prev : []
+
+      const duplicate = source.some((entry) => {
+        const sameSourceId = String(entry?.sourceExerciseId || '').trim() && String(entry?.sourceExerciseId || '').trim() === String(sourceItem?.sourceExerciseId || '').trim()
+        const sameYoutube = String(entry?.youtube?.videoId || '').trim() && String(entry?.youtube?.videoId || '').trim() === String(sourceItem?.youtube?.videoId || '').trim()
+        const sameName = normalizeComparableText(entry?.name) && normalizeComparableText(entry?.name) === normalizeComparableText(sourceItem?.name)
+        return sameSourceId || sameYoutube || sameName
+      })
+
+      if (duplicate) {
+        alreadyExists = true
+        return source
+      }
+
+      const nowIso = new Date().toISOString()
+      const downloadedItem = {
+        id: `exercise-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        sourceExerciseId: String(sourceItem?.sourceExerciseId || sourceItem?.id || '').trim(),
+        name: resolvedTitle,
+        description: resolvedDescription,
+        intensity: resolvedIntensity,
+        playersCount: resolvedPlayersCount,
+        imageUrl: resolvedImageUrl,
+        imageName: resolvedImageName,
+        selectedCategoryIds,
+        categorySelections: normalizedCategorySelections,
+        divisionGroups: resolvedDivisionGroups,
+        isActive: true,
+        isPublic: false,
+        isLibraryItem: false,
+        rating: 0,
+        isFavorite: false,
+        youtube: {
+          url: String(sourceItem?.youtube?.url || '').trim(),
+          videoId: String(sourceItem?.youtube?.videoId || '').trim()
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso
+      }
+
+      return [downloadedItem, ...source]
+    })
+
+    if (alreadyExists) {
+      setError('Toto cvičenie už v zozname cvičení existuje.')
+      return
+    }
+
+    closePublicExerciseDownloadDialog()
+    setError('')
+    setSuccess('Cvičenie bolo stiahnuté do vášho zoznamu cvičení.')
+    setActiveExerciseDatabaseSection('exerciseList')
+  }
+
   const saveExerciseFromDatabaseForm = () => {
     const exerciseName = String(exerciseFormDraft.name || '').trim()
     if (!exerciseName) {
@@ -3101,7 +3567,20 @@ function MyClub() {
     const selectedCategoryId = String(exerciseListFilters?.categoryId || 'all')
     const selectedSubcategory = String(exerciseListFilters?.subcategory || 'all')
 
-    return (Array.isArray(exerciseDatabaseItems) ? exerciseDatabaseItems : []).filter((item) => {
+    const rawSourceItems = activeExerciseDatabaseSection === 'publicExercises'
+      ? (Array.isArray(publicExerciseLibraryItems) ? publicExerciseLibraryItems : [])
+      : (Array.isArray(exerciseDatabaseItems) ? exerciseDatabaseItems : [])
+
+    const sourceItems = rawSourceItems.filter((item) => {
+      if (activeExerciseDatabaseSection !== 'publicExercises') return true
+      return item?.isPublic !== false
+    })
+
+    if (activeExerciseDatabaseSection === 'publicExercises') {
+      return sourceItems
+    }
+
+    return sourceItems.filter((item) => {
       if (selectedIntensity !== 'all' && String(item?.intensity || '') !== selectedIntensity) {
         return false
       }
@@ -3129,7 +3608,12 @@ function MyClub() {
 
       return true
     })
-  }, [exerciseDatabaseItems, exerciseListFilters])
+  }, [exerciseDatabaseItems, publicExerciseLibraryItems, exerciseListFilters, activeExerciseDatabaseSection])
+
+  const activeExerciseSourceItems = activeExerciseDatabaseSection === 'publicExercises'
+    ? publicExerciseLibraryItems
+    : exerciseDatabaseItems
+  const isPublicExerciseSection = activeExerciseDatabaseSection === 'publicExercises'
 
   const startExerciseCategoryDrag = (categoryId) => {
     setDraggedExerciseCategoryId(String(categoryId || ''))
@@ -3868,6 +4352,11 @@ function MyClub() {
 
     if (type === 'category' && payload?.id) {
       await deleteCategoryFromMembers(payload)
+      return
+    }
+
+    if (type === 'exerciseCategory' && payload?.id) {
+      removeExerciseCategory(payload)
       return
     }
 
@@ -4791,6 +5280,14 @@ function MyClub() {
         title: 'Potvrdiť odstránenie cvičenia',
         message: `Naozaj chcete odstrániť cvičenie „${payload.name || 'cvičenie'}“?`,
         confirmLabel: 'Odstrániť cvičenie'
+      }
+    }
+
+    if (confirmDialog.type === 'exerciseCategory') {
+      return {
+        title: 'Potvrdiť odstránenie kategórie cvičení',
+        message: `Naozaj chcete odstrániť kategóriu cvičení „${payload.name || 'kategória'}“?`,
+        confirmLabel: 'Odstrániť kategóriu'
       }
     }
 
@@ -6196,6 +6693,19 @@ function MyClub() {
 
               <a
                 href="#"
+                className={`settings-submenu-item ${activeExerciseDatabaseSection === 'publicExercises' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setActiveExerciseDatabaseSection('publicExercises')
+                }}
+                aria-current={activeExerciseDatabaseSection === 'publicExercises' ? 'page' : undefined}
+              >
+                <span className="material-icons-round" aria-hidden="true">public</span>
+                <span>Knižnica cvičení</span>
+              </a>
+
+              <a
+                href="#"
                 className={`settings-submenu-item ${activeExerciseDatabaseSection === 'createExercise' ? 'active' : ''}`}
                 onClick={(e) => {
                   e.preventDefault()
@@ -6530,8 +7040,9 @@ function MyClub() {
               </div>
             )}
 
-            {activeExerciseDatabaseSection === 'exerciseList' && (
+            {(activeExerciseDatabaseSection === 'exerciseList' || activeExerciseDatabaseSection === 'publicExercises') && (
               <>
+                {activeExerciseDatabaseSection === 'exerciseList' ? (
                 <div className="card settings-placeholder-card metrics-section-card exercise-db-filters-card">
                   <div className="exercise-db-filters" role="region" aria-label="Filtre zoznamu cvičení">
                     <div className="form-group" style={{ marginBottom: 0 }}>
@@ -6614,12 +7125,13 @@ function MyClub() {
                     </button>
                   </div>
                 </div>
+                ) : null}
 
                 <div className="card settings-placeholder-card metrics-section-card">
                 <div className="exercise-db-head-row">
                   <div className="manager-role-heading">
                     <span className="material-icons-round section-icon" aria-hidden="true">format_list_bulleted</span>
-                    <h3 className="manager-section-title">Zoznam cvičení</h3>
+                    <h3 className="manager-section-title">{activeExerciseDatabaseSection === 'publicExercises' ? 'Verejné cvičenia' : 'Zoznam cvičení'}</h3>
                   </div>
 
                   <div className="exercise-db-view-toggle" role="tablist" aria-label="Prepnutie zobrazenia zoznamu cvičení">
@@ -6646,13 +7158,17 @@ function MyClub() {
                   </div>
                 </div>
 
-                {exerciseDatabaseItems.length === 0 ? (
+                {activeExerciseSourceItems.length === 0 ? (
                   <p className="manager-empty-text" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
-                    Databáza cvičení je zatiaľ prázdna.
+                    {isPublicExerciseSection
+                      ? 'Verejná knižnica cvičení je zatiaľ prázdna.'
+                      : 'Databáza cvičení je zatiaľ prázdna.'}
                   </p>
                 ) : filteredExerciseDatabaseItems.length === 0 ? (
                   <p className="manager-empty-text" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
-                    Žiadne cvičenie nezodpovedá filtru.
+                    {activeExerciseDatabaseSection === 'publicExercises'
+                      ? 'Žiadne verejné cvičenie nebolo nájdené.'
+                      : 'Žiadne cvičenie nezodpovedá filtru.'}
                   </p>
                 ) : exerciseListViewMode === 'cards' ? (
                   <div className="exercise-db-cards" style={{ marginTop: '0.8rem' }}>
@@ -6688,28 +7204,30 @@ function MyClub() {
                         <div className="exercise-db-card-title">{item.name}</div>
                         <p className="exercise-db-card-description">{item.description || 'Bez popisu cvičenia.'}</p>
 
-                        <div className="exercise-db-card-stats">
-                          <div className="exercise-db-card-stat-item" aria-label="Počet hráčov">
-                            <span className="material-icons-round" aria-hidden="true">groups</span>
-                            <div>
-                              <small>Počet hráčov</small>
-                              <strong>{formatExercisePlayersCount(item.playersCount) || '—'}</strong>
+                        {!isPublicExerciseSection ? (
+                          <div className="exercise-db-card-stats">
+                            <div className="exercise-db-card-stat-item" aria-label="Počet hráčov">
+                              <span className="material-icons-round" aria-hidden="true">groups</span>
+                              <div>
+                                <small>Počet hráčov</small>
+                                <strong>{formatExercisePlayersCount(item.playersCount) || '—'}</strong>
+                              </div>
+                            </div>
+
+                            <div className="exercise-db-card-stat-item" aria-label="Intenzita">
+                              <span className="material-icons-round" aria-hidden="true">whatshot</span>
+                              <div>
+                                <small>Intenzita</small>
+                                <strong>{item.intensity || '—'}</strong>
+                              </div>
                             </div>
                           </div>
+                        ) : null}
 
-                          <div className="exercise-db-card-stat-item" aria-label="Intenzita">
-                            <span className="material-icons-round" aria-hidden="true">whatshot</span>
-                            <div>
-                              <small>Intenzita</small>
-                              <strong>{item.intensity || '—'}</strong>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="exercise-db-card-footer-actions">
+                        <div className={`exercise-db-card-footer-actions ${isPublicExerciseSection ? 'public' : ''}`}>
                           <button
                             type="button"
-                            className="btn-secondary exercise-db-card-action-btn"
+                            className={`btn-secondary exercise-db-card-action-btn ${isPublicExerciseSection ? 'public-view' : ''}`}
                             onClick={(event) => {
                               event.stopPropagation()
                               openExerciseDetailItem(item)
@@ -6717,33 +7235,52 @@ function MyClub() {
                             aria-label={`Otvoriť detail cvičenia ${item.name}`}
                             title="Zobraziť"
                           >
-                            Zobraziť
+                            {isPublicExerciseSection ? (
+                              <span>Zobraziť</span>
+                            ) : 'Zobraziť'}
                           </button>
 
-                          <button
-                            type="button"
-                            className="btn-secondary exercise-db-card-action-btn"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              startEditExerciseDatabaseItem(item)
-                            }}
-                            aria-label={`Upraviť cvičenie ${item.name}`}
-                            title="Upraviť"
-                          >
-                            Upraviť
-                          </button>
-                          <button
-                            type="button"
-                            className="role-action-btn role-action-delete exercise-db-card-delete-btn"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              removeExerciseDatabaseItem(item)
-                            }}
-                            aria-label={`Odstrániť cvičenie ${item.name}`}
-                            title="Odstrániť"
-                          >
-                            <span className="material-icons-round" aria-hidden="true">delete</span>
-                          </button>
+                          {isPublicExerciseSection ? (
+                            <button
+                              type="button"
+                              className="exercise-db-card-download-btn"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openPublicExerciseDownloadDialog(item)
+                              }}
+                              aria-label={`Stiahnuť cvičenie ${item.name}`}
+                              title="Stiahnuť"
+                            >
+                              <span>Stiahnuť</span>
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-secondary exercise-db-card-action-btn"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  startEditExerciseDatabaseItem(item)
+                                }}
+                                aria-label={`Upraviť cvičenie ${item.name}`}
+                                title="Upraviť"
+                              >
+                                Upraviť
+                              </button>
+                              <button
+                                type="button"
+                                className="role-action-btn role-action-delete exercise-db-card-delete-btn"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  removeExerciseDatabaseItem(item)
+                                }}
+                                aria-label={`Odstrániť cvičenie ${item.name}`}
+                                title="Odstrániť"
+                              >
+                                <span className="material-icons-round" aria-hidden="true">delete</span>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -6768,26 +7305,28 @@ function MyClub() {
                             <span className="exercise-db-youtube-link muted">Bez videa</span>
                           )}
 
-                          <div className="manager-table-actions">
-                            <button
-                              type="button"
-                              className="role-action-btn role-action-edit"
-                              onClick={() => startEditExerciseDatabaseItem(item)}
-                              aria-label={`Upraviť cvičenie ${item.name}`}
-                              title="Upraviť"
-                            >
-                              <span className="material-icons-round" aria-hidden="true">edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="role-action-btn role-action-delete"
-                              onClick={() => removeExerciseDatabaseItem(item)}
-                              aria-label={`Odstrániť cvičenie ${item.name}`}
-                              title="Odstrániť"
-                            >
-                              <span className="material-icons-round" aria-hidden="true">delete</span>
-                            </button>
-                          </div>
+                          {!isPublicExerciseSection ? (
+                            <div className="manager-table-actions">
+                              <button
+                                type="button"
+                                className="role-action-btn role-action-edit"
+                                onClick={() => startEditExerciseDatabaseItem(item)}
+                                aria-label={`Upraviť cvičenie ${item.name}`}
+                                title="Upraviť"
+                              >
+                                <span className="material-icons-round" aria-hidden="true">edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="role-action-btn role-action-delete"
+                                onClick={() => removeExerciseDatabaseItem(item)}
+                                aria-label={`Odstrániť cvičenie ${item.name}`}
+                                title="Odstrániť"
+                              >
+                                <span className="material-icons-round" aria-hidden="true">delete</span>
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     ))}
@@ -6860,7 +7399,9 @@ function MyClub() {
                       </div>
 
                       <div className="exercise-detail-body">
-                        <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
+                        {!isPublicExerciseSection ? (
+                          <p><strong>Intenzita:</strong> {openedExerciseDetailItem.intensity}</p>
+                        ) : null}
                         {(Array.isArray(openedExerciseDetailItem?.selectedCategoryIds) && openedExerciseDetailItem.selectedCategoryIds.length > 0)
                         || (openedExerciseDetailItem?.categorySelections && Object.keys(openedExerciseDetailItem.categorySelections).length > 0) ? (
                           <div className="exercise-detail-categories">
@@ -6891,20 +7432,307 @@ function MyClub() {
                         )}
                       </div>
 
-                      <div className="exercise-detail-actions">
+                      {!isPublicExerciseSection ? (
+                        <div className="exercise-detail-actions">
+                          <button
+                            type="button"
+                            className="manager-add-btn"
+                            onClick={() => editExerciseFromDetail(openedExerciseDetailItem)}
+                          >
+                            Upraviť
+                          </button>
+                          <button
+                            type="button"
+                            className="manager-add-btn category-form-toggle-cancel"
+                            onClick={() => removeExerciseFromDetail(openedExerciseDetailItem)}
+                          >
+                            Odstrániť
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {publicExerciseDownloadDialog.open ? (
+                  <div
+                    className="confirm-modal-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Stiahnuť verejné cvičenie"
+                    onClick={closePublicExerciseDownloadDialog}
+                  >
+                    <div className="confirm-modal-card public-download-modal" onClick={(event) => event.stopPropagation()}>
+                      <h3>Stiahnuť cvičenie do zoznamu</h3>
+                      <p>
+                        Cvičenie <strong>{String(publicExerciseDownloadDialog?.item?.name || 'Bez názvu')}</strong> sa pridá do vášho zoznamu až po priradení kategórií.
+                      </p>
+
+                      <div className="public-download-edit-fields">
+                        <div className="public-download-form-grid">
+                          <div className="form-group" style={{ marginBottom: '0.55rem' }}>
+                            <label htmlFor="public-download-title">Nadpis</label>
+                            <input
+                              id="public-download-title"
+                              type="text"
+                              value={publicExerciseDownloadDialog?.title || ''}
+                              onChange={(event) => updatePublicExerciseDownloadDialogField('title', event.target.value)}
+                              placeholder="Zadajte nadpis cvičenia"
+                            />
+                          </div>
+
+                          <div className="form-row" style={{ marginBottom: '0.55rem' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label htmlFor="public-download-intensity">Intenzita</label>
+                              <details className="manager-permissions-dropdown">
+                                <summary className="manager-permissions-trigger">
+                                  {String(publicExerciseDownloadDialog?.intensity || 'Stredná')}
+                                </summary>
+
+                                <div className="manager-permissions-list" role="group" aria-label="Výber intenzity">
+                                  {['Nízka', 'Stredná', 'Vysoká', 'Maximálna'].map((intensityOption) => {
+                                    const optionId = `public-download-intensity-${intensityOption}`
+                                    const isSelected = String(publicExerciseDownloadDialog?.intensity || 'Stredná') === intensityOption
+
+                                    return (
+                                      <label
+                                        key={optionId}
+                                        htmlFor={optionId}
+                                        className="manager-permission-item"
+                                        onClick={(event) => {
+                                          const detailsElement = event.currentTarget.closest('details')
+                                          if (detailsElement) {
+                                            detailsElement.removeAttribute('open')
+                                          }
+                                        }}
+                                      >
+                                        <input
+                                          id={optionId}
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => updatePublicExerciseDownloadDialogField('intensity', intensityOption)}
+                                        />
+                                        <span>{intensityOption}</span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </details>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>Počet hráčov</label>
+                              <details className="manager-permissions-dropdown">
+                                <summary className="manager-permissions-trigger">
+                                  {formatExercisePlayersCount(publicExerciseDownloadDialog?.playersCount)
+                                    ? `Vybrané: ${formatExercisePlayersCount(publicExerciseDownloadDialog?.playersCount)}`
+                                    : 'Vyber počty hráčov'}
+                                </summary>
+                                <div className="manager-permissions-list">
+                                  {EXERCISE_PLAYERS_COUNT_OPTIONS.map((countValue) => {
+                                    const optionId = `public-download-players-count-${countValue}`
+                                    const checked = normalizeExercisePlayersCount(publicExerciseDownloadDialog?.playersCount).includes(countValue)
+
+                                    return (
+                                      <label key={optionId} htmlFor={optionId} className="manager-permission-item">
+                                        <input
+                                          id={optionId}
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() => togglePublicExerciseDownloadPlayersCount(countValue)}
+                                        />
+                                        <span>{countValue}</span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </details>
+                            </div>
+                          </div>
+
+                          {getVisibleTrainingDivisionsForExerciseForm().map((division) => {
+                            const divisionId = String(division?.id || '')
+                            const divisionGroups = getTrainingDivisionGroups(division)
+                            const selectedGroup = String(publicExerciseDownloadDialog?.divisionGroups?.[divisionId] || '')
+
+                            if (!divisionId || divisionGroups.length === 0) return null
+
+                            return (
+                              <div key={`public-download-division-${divisionId}`} className="form-group" style={{ marginBottom: '0.55rem' }}>
+                                <label>{division.name || 'Delenie tréningov'}</label>
+                                <div className="exercise-short-code-grid">
+                                  {divisionGroups.map((groupName) => (
+                                    <button
+                                      key={`${divisionId}-${groupName}`}
+                                      type="button"
+                                      className={`exercise-short-code-btn ${selectedGroup === groupName ? 'active' : ''}`}
+                                      onClick={() => setPublicExerciseDownloadDialog((prev) => ({
+                                        ...prev,
+                                        divisionGroups: {
+                                          ...(prev?.divisionGroups && typeof prev.divisionGroups === 'object' ? prev.divisionGroups : {}),
+                                          [divisionId]: groupName
+                                        }
+                                      }))}
+                                    >
+                                      {groupName}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })}
+
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label htmlFor="public-download-description">Popis cvičenia</label>
+                            <textarea
+                              id="public-download-description"
+                              rows={3}
+                              value={publicExerciseDownloadDialog?.description || ''}
+                              onChange={(event) => updatePublicExerciseDownloadDialogField('description', event.target.value)}
+                              placeholder="Upravte popis cvičenia podľa seba"
+                            />
+                          </div>
+
+                          <div className="public-download-upload-wrap">
+                            <input
+                              ref={publicDownloadImageInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePublicDownloadImageChange}
+                              style={{ display: 'none' }}
+                            />
+                            <label>Obrázok cvičenia</label>
+                            <div className="exercise-upload-actions" style={{ marginTop: '0.45rem' }}>
+                              <button type="button" className="btn-secondary" onClick={openPublicDownloadImagePicker}>Nahrať obrázok</button>
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={clearPublicDownloadImage}
+                                disabled={!publicExerciseDownloadDialog?.imageUrl}
+                              >
+                                Odstrániť obrázok
+                              </button>
+                            </div>
+
+                            {publicExerciseDownloadDialog?.imageUrl ? (
+                              <div className="exercise-upload-preview-wrap" style={{ marginTop: '0.5rem' }}>
+                                <img src={publicExerciseDownloadDialog.imageUrl} alt="Náhľad obrázka cvičenia" className="exercise-upload-preview" />
+                                <small>{publicExerciseDownloadDialog.imageName || 'Nahratý obrázok'}</small>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="public-download-categories">
+                        <div className="public-download-categories-title">Vyberte kategórie (povinné):</div>
+                        <div className="public-download-inline-list" role="group" aria-label="Výber kategórií a podkategórií">
+                          {(() => {
+                            const filteredCategories = getFilteredExerciseCategoriesForDownload()
+
+                            if (!Array.isArray(filteredCategories) || filteredCategories.length === 0) {
+                              return (
+                                <p className="manager-empty-text" style={{ margin: '0.65rem' }}>
+                                  Pre zvolený typ tréningu nie sú dostupné žiadne kategórie.
+                                </p>
+                              )
+                            }
+
+                            return filteredCategories.map((category) => {
+                            const categoryId = String(category?.id || '').trim()
+                            if (!categoryId) return null
+
+                            const categoryName = String(category?.name || 'Kategória').trim() || 'Kategória'
+                            const isCategorySelected = (Array.isArray(publicExerciseDownloadDialog?.selectedCategoryIds)
+                              ? publicExerciseDownloadDialog.selectedCategoryIds
+                              : [])
+                              .map((id) => String(id || '').trim())
+                              .includes(categoryId)
+                            const subcategories = Array.isArray(category?.subcategories)
+                              ? category.subcategories.map((name) => String(name || '').trim()).filter(Boolean)
+                              : []
+                              const hasSubcategories = subcategories.length > 0
+                              const isExpanded = (Array.isArray(publicExerciseDownloadDialog?.expandedCategoryIds)
+                                ? publicExerciseDownloadDialog.expandedCategoryIds
+                                : [])
+                                .map((id) => String(id || '').trim())
+                                .includes(categoryId)
+                            const selectedSubcategories = Array.isArray(publicExerciseDownloadDialog?.categorySelections?.[categoryId])
+                              ? publicExerciseDownloadDialog.categorySelections[categoryId]
+                              : []
+
+                            return (
+                              <div key={`public-download-category-${categoryId}`} className="public-download-category-group">
+                                  <div
+                                    className={`manager-permission-item public-download-category-item ${hasSubcategories ? 'expandable' : ''} ${isCategorySelected ? 'selected' : ''}`}
+                                    role={hasSubcategories ? 'button' : undefined}
+                                    tabIndex={hasSubcategories ? 0 : undefined}
+                                    onClick={hasSubcategories ? () => togglePublicExerciseDownloadCategoryExpanded(categoryId) : undefined}
+                                    onKeyDown={hasSubcategories ? (event) => {
+                                      if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault()
+                                        togglePublicExerciseDownloadCategoryExpanded(categoryId)
+                                      }
+                                    } : undefined}
+                                  >
+                                    <span className="public-download-category-title-wrap">
+                                      <span>{categoryName}</span>
+                                    </span>
+                                    {hasSubcategories ? (
+                                      <span className="material-icons-round public-download-category-chevron" aria-hidden="true">
+                                        {isExpanded ? 'expand_more' : 'chevron_right'}
+                                      </span>
+                                    ) : (
+                                      <input
+                                        id={`public-download-category-checkbox-${categoryId}`}
+                                        type="checkbox"
+                                        checked={isCategorySelected}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={() => togglePublicExerciseDownloadCategory(categoryId)}
+                                      />
+                                    )}
+                                  </div>
+
+                                  {hasSubcategories && isExpanded ? (
+                                  <div className="public-download-subcategory-list">
+                                    {subcategories.map((subcategoryName, subIndex) => {
+                                      const isSubcategorySelected = selectedSubcategories.includes(subcategoryName)
+                                      const subId = `public-download-subcategory-${categoryId}-${subIndex}`
+                                      return (
+                                        <label key={subId} className="manager-permission-item public-download-subcategory-item" htmlFor={subId}>
+                                          <span>{subcategoryName}</span>
+                                          <input
+                                            id={subId}
+                                            type="checkbox"
+                                            checked={isSubcategorySelected}
+                                            onChange={() => togglePublicExerciseDownloadSubcategory(categoryId, subcategoryName)}
+                                          />
+                                        </label>
+                                      )
+                                    })}
+                                  </div>
+                                ) : null}
+                              </div>
+                            )
+                            })
+                          })()}
+                        </div>
+                      </div>
+
+                      <div className="confirm-modal-actions">
                         <button
                           type="button"
-                          className="manager-add-btn"
-                          onClick={() => editExerciseFromDetail(openedExerciseDetailItem)}
+                          className="btn-secondary"
+                          onClick={closePublicExerciseDownloadDialog}
                         >
-                          Upraviť
+                          Zrušiť
                         </button>
                         <button
                           type="button"
-                          className="manager-add-btn category-form-toggle-cancel"
-                          onClick={() => removeExerciseFromDetail(openedExerciseDetailItem)}
+                          className="manager-add-btn"
+                          onClick={confirmPublicExerciseDownload}
                         >
-                          Odstrániť
+                          Pridať do zoznamu
                         </button>
                       </div>
                     </div>
@@ -6978,7 +7806,7 @@ function MyClub() {
                             <button
                               type="button"
                               className="role-action-btn role-action-delete"
-                              onClick={() => removeExerciseCategory(category)}
+                              onClick={() => openRemovalConfirm('exerciseCategory', category)}
                               aria-label={`Odstrániť kategóriu cvičení ${category.name}`}
                               title="Odstrániť kategóriu"
                             >
