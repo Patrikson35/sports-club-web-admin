@@ -168,6 +168,27 @@ class APIClient {
     localStorage.removeItem('authToken');
   }
 
+  handleAuthFailure(error) {
+    const status = Number(error?.status || 0);
+    const message = String(error?.payload?.error || error?.message || '').toLowerCase();
+    const isAuthFailure = (
+      status === 401
+      || status === 403
+      || message.includes('access token required')
+      || message.includes('invalid or expired token')
+      || message.includes('jwt expired')
+    );
+
+    if (!isAuthFailure) return;
+
+    this.clearToken();
+    localStorage.removeItem('user');
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth-expired'));
+    }
+  }
+
   async request(endpoint, options = {}) {
     const buildUrl = (base) => `${base}${endpoint}`;
     const isFormData = options.body instanceof FormData;
@@ -238,11 +259,13 @@ class APIClient {
         try {
           return await executeRequest(fallbackBase);
         } catch (fallbackError) {
+          this.handleAuthFailure(fallbackError);
           console.error('API Error:', fallbackError);
           throw fallbackError;
         }
       }
 
+      this.handleAuthFailure(error);
       console.error('API Error:', error);
       throw error;
     }
@@ -1949,6 +1972,40 @@ class APIClient {
     return this.request('/exercises', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async previewExerciseChannelImport(data) {
+    if (USE_MOCK_DATA) {
+      return {
+        channel: {
+          id: 'UC_MOCK_CHANNEL',
+          title: 'Mock YouTube Channel',
+          sourceUrl: String(data?.channelUrl || '')
+        },
+        total: 0,
+        videos: []
+      };
+    }
+
+    return this.request('/exercises/import/channel/preview', {
+      method: 'POST',
+      body: JSON.stringify(data && typeof data === 'object' ? data : {}),
+    });
+  }
+
+  async importExercisesFromChannel(data) {
+    if (USE_MOCK_DATA) {
+      return {
+        createdCount: Array.isArray(data?.selectedVideoIds) ? data.selectedVideoIds.length : 0,
+        skippedExistingCount: 0,
+        message: 'Bulk import completed (mock)'
+      };
+    }
+
+    return this.request('/exercises/import/channel', {
+      method: 'POST',
+      body: JSON.stringify(data && typeof data === 'object' ? data : {}),
     });
   }
 

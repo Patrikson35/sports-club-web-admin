@@ -40,6 +40,7 @@ const resolveApiOrigin = () => {
 }
 
 const API_ORIGIN = resolveApiOrigin()
+const ADMIN_VISIBLE_SECTIONS_STORAGE_KEY = 'adminVisibleSidebarSections'
 
 const normalizeClubLogoUrl = (value) => {
   const raw = String(value || '').trim()
@@ -66,6 +67,26 @@ const roleSections = {
   admin: ['clubs', 'categories', 'coaches', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'membershipFees', 'communication', 'registrations']
 }
 
+const readAdminVisibleSections = () => {
+  const fallback = [...(roleSections.admin || [])]
+
+  try {
+    const raw = localStorage.getItem(ADMIN_VISIBLE_SECTIONS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!Array.isArray(parsed)) {
+      return fallback
+    }
+
+    const normalized = parsed
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+
+    return normalized.length > 0 ? normalized : fallback
+  } catch {
+    return fallback
+  }
+}
+
 const getRoleSections = (role, remoteSections) => {
   const normalizedRole = normalizeRole(role)
   const fallback = roleSections[normalizedRole] || []
@@ -86,6 +107,7 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [remoteVisibleRole, setRemoteVisibleRole] = useState(null)
   const [remoteVisibleSections, setRemoteVisibleSections] = useState(null)
+  const [adminVisibleSections, setAdminVisibleSections] = useState(() => readAdminVisibleSections())
   const location = useLocation()
   const isCompleteProfileRoute = location.pathname.startsWith('/complete-profile/')
   const currentRole = normalizeRole(currentUser?.role)
@@ -103,7 +125,9 @@ function AppContent() {
     (currentRole === 'assistant' && remoteVisibleRole === 'coach') ||
     remoteVisibleRole === currentRole
   )
-  const allowedSections = getRoleSections(currentRole, canUseRemoteSections ? remoteVisibleSections : null)
+  const allowedSections = currentRole === 'admin'
+    ? getRoleSections('admin', adminVisibleSections)
+    : getRoleSections(currentRole, canUseRemoteSections ? remoteVisibleSections : null)
   const canAccessSection = (sectionKey) => allowedSections.includes(sectionKey)
 
   const sidebarSections = [
@@ -142,6 +166,18 @@ function AppContent() {
       }
     }
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setCurrentUser(null)
+      setIsAuthenticated(false)
+    }
+
+    window.addEventListener('auth-expired', handleAuthExpired)
+    return () => {
+      window.removeEventListener('auth-expired', handleAuthExpired)
+    }
   }, [])
 
   useEffect(() => {
@@ -186,6 +222,32 @@ function AppContent() {
   useEffect(() => {
     setIsSidebarOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (currentRole !== 'admin') {
+      return
+    }
+
+    const syncAdminSections = () => {
+      setAdminVisibleSections(readAdminVisibleSections())
+    }
+
+    const handleStorage = (event) => {
+      if (event.key && event.key !== ADMIN_VISIBLE_SECTIONS_STORAGE_KEY) {
+        return
+      }
+      syncAdminSections()
+    }
+
+    window.addEventListener('admin-visible-sections-updated', syncAdminSections)
+    window.addEventListener('storage', handleStorage)
+    syncAdminSections()
+
+    return () => {
+      window.removeEventListener('admin-visible-sections-updated', syncAdminSections)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [currentRole])
 
   useEffect(() => {
     const refreshVisibleSections = async () => {
@@ -241,13 +303,17 @@ function AppContent() {
       refreshVisibleSections()
     }
 
+    if (currentRole === 'admin') {
+      return undefined
+    }
+
     window.addEventListener('visible-sections-updated', handleSectionsUpdate)
     refreshVisibleSections()
 
     return () => {
       window.removeEventListener('visible-sections-updated', handleSectionsUpdate)
     }
-  }, [isAuthenticated, currentUser?.id, currentUser?.role])
+  }, [isAuthenticated, currentRole, currentUser?.id, currentUser?.role])
 
   useEffect(() => {
     if (!isSidebarOpen) return
