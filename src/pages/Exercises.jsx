@@ -1548,7 +1548,7 @@ function Exercises({ webSettingsSection = '' }) {
         {clubsError && (
           <div style={{ color: '#ff6b6b', marginBottom: 12 }}>{clubsError}</div>
         )}
-        <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
+        <div className={`exercise-db-filters ${currentRole === 'admin' ? 'exercise-library-filters' : ''}`.trim()} role="region" aria-label="Filtre zoznamu cvičení">
           {currentRole === 'admin' ? (
             <>
               <div className="form-group" style={{ marginBottom: 0 }}>
