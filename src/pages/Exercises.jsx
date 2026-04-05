@@ -306,6 +306,38 @@ function Exercises({ webSettingsSection = '' }) {
     })
     }
 
+    const mapMyClubExerciseItem = (item, fallbackSportKey, clubId, userId) => {
+      const youtube = item?.youtube && typeof item.youtube === 'object' ? item.youtube : {}
+      const youtubeUrl = String(youtube?.url || item?.youtubeUrl || item?.youtube_url || '').trim()
+      const youtubeVideoId = String(youtube?.videoId || item?.youtubeVideoId || item?.youtube_video_id || extractYoutubeVideoId(youtubeUrl)).trim()
+
+      return {
+        id: String(item?.id || '').trim(),
+        name: String(item?.name || item?.title || '').trim(),
+        description: String(item?.description || '').trim(),
+        sportKey: String(item?.sportKey || fallbackSportKey || '').trim(),
+        intensity: String(item?.intensity || item?.difficulty || 'Stredná').trim() || 'Stredná',
+        playersCount: normalizeExercisePlayersCount(item?.playersCount),
+        selectedCategoryIds: Array.isArray(item?.selectedCategoryIds)
+          ? item.selectedCategoryIds.map((categoryId) => String(categoryId || '').trim()).filter(Boolean)
+          : [],
+        categorySelections: item?.categorySelections && typeof item.categorySelections === 'object' ? item.categorySelections : {},
+        youtube: { url: youtubeUrl, videoId: youtubeVideoId },
+        rating: normalizeExerciseRating(item?.rating),
+        isFavorite: normalizeExerciseFavorite(item?.isFavorite),
+        // Klubový pohľad má zobrazovať iba klubový zoznam cvičení.
+        isSystem: false,
+        clubId: clubId || null,
+        createdByUserId: userId || null,
+        categoryName: String(item?.categoryName || '').trim(),
+        imageUrl: resolveMediaUrl(item?.imageUrl || ''),
+        imageName: String(item?.imageName || '').trim(),
+        customLabels: normalizeCustomLabels(item?.customLabels),
+        createdAt: String(item?.createdAt || '').trim(),
+        updatedAt: String(item?.updatedAt || '').trim()
+      }
+    }
+
     const loadExerciseLibrary = async () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
       const normalizedRole = String(user?.role || '').trim().toLowerCase()
@@ -314,9 +346,11 @@ function Exercises({ webSettingsSection = '' }) {
         ? 'admin'
         : (normalizedRoleKey === 'club_admin' ? 'club' : normalizedRoleKey)
       const userId = String(user?.id || '').trim()
-      const [categoryResponse, exerciseResponse, sportsResponsePrimary, sportsResponseFallback] = await Promise.all([
+      const isAdminView = role === 'admin'
+      const [categoryResponse, exerciseResponse, myClubResponse, sportsResponsePrimary, sportsResponseFallback] = await Promise.all([
         api.getExerciseCategories(),
-        api.getExercises(),
+        isAdminView ? api.getExercises() : Promise.resolve({ exercises: [] }),
+        isAdminView ? Promise.resolve({}) : api.getMyClub().catch(() => ({})),
         api.getWebSettingsSports().catch(() => ({ sports: [] })),
         api.getRegistrationSports().catch(() => ({ sports: [] }))
       ])
@@ -357,8 +391,16 @@ function Exercises({ webSettingsSection = '' }) {
         }))
         .filter((item) => item.id && item.name)
 
-      const exercisesRaw = Array.isArray(exerciseResponse?.exercises) ? exerciseResponse.exercises : []
-      const normalizedExercises = normalizeExerciseItems(exercisesRaw.map(mapApiExerciseItem))
+      const myClubSportKey = normalizeSportFilterKey(myClubResponse?.sportKey || myClubResponse?.sport || '')
+      const clubId = myClubResponse?.id || null
+      const exercisesRaw = isAdminView
+        ? (Array.isArray(exerciseResponse?.exercises) ? exerciseResponse.exercises : [])
+        : (Array.isArray(myClubResponse?.exerciseDatabaseItems) ? myClubResponse.exerciseDatabaseItems : [])
+      const normalizedExercises = normalizeExerciseItems(
+        isAdminView
+          ? exercisesRaw.map(mapApiExerciseItem)
+          : exercisesRaw.map((item) => mapMyClubExerciseItem(item, myClubSportKey, clubId, userId))
+      )
 
       setExerciseCategories(normalizedCategories)
       setExerciseDatabaseItems(normalizedExercises)
