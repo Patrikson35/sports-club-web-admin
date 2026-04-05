@@ -704,7 +704,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  padding-left: 0.35rem;
+  padding-left: 0.2rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .evidence-metric-toggle-group {
@@ -717,6 +719,15 @@
   border-radius: 0.72rem;
   overflow: hidden;
   background: rgba(18, 21, 28, 0.9);
+  max-width: 100%;
+}
+
+.evidence-metric-toggle-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+  white-space: nowrap;
 }
 
 .evidence-metric-toggle-btn {
@@ -748,6 +759,34 @@
 .evidence-metric-toggle-btn.active {
   background: #4a83e3;
   color: #0b1220;
+}
+
+.evidence-metric-dropdown-wrap {
+  width: auto;
+  max-width: 124px;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.35rem;
+}
+
+.evidence-metric-dropdown {
+  width: 124px;
+  min-width: 0;
+  height: 26px;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  border-radius: 0.52rem;
+  background: rgba(18, 21, 28, 0.92);
+  color: #dbe6ff;
+  padding: 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.evidence-metric-dropdown:focus-visible {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
 }
 
 .evidence-date-control-col {
@@ -782,7 +821,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-right: 0.45rem;
+  padding-right: 0;
+  min-width: 92px;
 }
 
 .evidence-time-row-value {
@@ -1104,6 +1144,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.38rem;
+  min-width: 108px;
+  white-space: nowrap;
 }
 
 .evidence-time-input {
@@ -1178,6 +1220,17 @@
 .evidence-metric-col {
   text-align: right;
   justify-self: end;
+  min-width: 0;
+  padding-right: 0.2rem;
+}
+
+.evidence-min-col-cell {
+  min-width: 108px;
+  overflow: hidden;
+}
+
+.evidence-min-col-cell .evidence-minutes-cell-wrap {
+  min-width: 98px;
 }
 
 .evidence-minutes-input {

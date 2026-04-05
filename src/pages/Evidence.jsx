@@ -826,6 +826,7 @@ function Evidence() {
   const [evidenceSessionTime, setEvidenceSessionTime] = useState('')
   const [evidenceSaveNotice, setEvidenceSaveNotice] = useState('')
   const [evidenceTableMode, setEvidenceTableMode] = useState('attendance')
+  const [useEvidenceMetricDropdown, setUseEvidenceMetricDropdown] = useState(false)
   const [evidenceConfirmDialog, setEvidenceConfirmDialog] = useState({
     open: false,
     type: null,
@@ -838,6 +839,8 @@ function Evidence() {
   const [plannedSessions, setPlannedSessions] = useState([])
   const monthsScrollRef = useRef(null)
   const monthsWrapRef = useRef(null)
+  const evidenceMetricHeadRef = useRef(null)
+  const evidenceMetricToggleMeasureRef = useRef(null)
   const evidenceDraftHydratedRef = useRef(false)
   const evidenceDraftSaveTimeoutRef = useRef(null)
   const lastEvidenceDraftSignatureRef = useRef('')
@@ -1099,11 +1102,11 @@ function Evidence() {
   const rosterGridTemplateColumns = useMemo(() => {
     if (isEvidenceMode) {
       return [
-        'minmax(0, 1.6fr)',
-        'minmax(0, 1.15fr)',
-        'minmax(0, 0.95fr)',
-        'minmax(0, 1.7fr)',
-        'minmax(0, 0.7fr)'
+        'minmax(180px, 1.6fr)',
+        'minmax(112px, 1.05fr)',
+        'minmax(96px, 0.9fr)',
+        'minmax(88px, 1.2fr)',
+        'minmax(112px, 0.95fr)'
       ].join(' ')
     }
 
@@ -2255,6 +2258,64 @@ function Evidence() {
 
   const activeEvidenceMetricId = String(activeEvidenceMetric?.id || '')
   const activeEvidenceMetricLabel = activeEvidenceMetric ? toMetricShortLabel(activeEvidenceMetric) : '-'
+
+  const activateEvidenceMetric = (metricId) => {
+    const normalizedMetricId = String(metricId || '')
+    if (!normalizedMetricId) return
+
+    const next = {}
+    metricsForEvidenceTable.forEach((item) => {
+      const itemId = String(item?.id || '')
+      if (!itemId) return
+      next[itemId] = itemId === normalizedMetricId
+    })
+    setEvidenceMetricSwitches(next)
+  }
+
+  const evidenceMetricIdsSignature = useMemo(
+    () => metricsForEvidenceTable.map((metric) => String(metric?.id || '')).filter(Boolean).join('|'),
+    [metricsForEvidenceTable]
+  )
+
+  useEffect(() => {
+    if (!isEvidenceMode) {
+      setUseEvidenceMetricDropdown(false)
+      return
+    }
+
+    const recomputeMetricHeadLayout = () => {
+      const container = evidenceMetricHeadRef.current
+      const measure = evidenceMetricToggleMeasureRef.current
+      if (!container || !measure) {
+        setUseEvidenceMetricDropdown(false)
+        return
+      }
+
+      const availableWidth = Math.max(0, container.clientWidth - 8)
+      const requiredWidth = Math.ceil(measure.scrollWidth)
+      const shouldUseDropdown = requiredWidth > availableWidth
+      setUseEvidenceMetricDropdown((prev) => (prev === shouldUseDropdown ? prev : shouldUseDropdown))
+    }
+
+    const rafId = requestAnimationFrame(recomputeMetricHeadLayout)
+    let resizeObserver = null
+    if (typeof ResizeObserver !== 'undefined' && evidenceMetricHeadRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        recomputeMetricHeadLayout()
+      })
+      resizeObserver.observe(evidenceMetricHeadRef.current)
+    }
+
+    window.addEventListener('resize', recomputeMetricHeadLayout)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', recomputeMetricHeadLayout)
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
+    }
+  }, [isEvidenceMode, evidenceMetricIdsSignature, rosterGridTemplateColumns])
 
   const getEvidenceEntry = (playerId, metricId = activeEvidenceMetricId) => {
     if (!resolvedEvidenceCategoryId || !metricId) return null
@@ -3438,30 +3499,54 @@ function Evidence() {
 
                 {isEvidenceMode
                   ? (
-                    <span className="evidence-metric-col evidence-metric-head-toggle">
-                      <span className="evidence-metric-toggle-group">
+                    <span className="evidence-metric-col evidence-metric-head-toggle" ref={evidenceMetricHeadRef}>
+                      <span className="evidence-metric-toggle-group evidence-metric-toggle-measure" ref={evidenceMetricToggleMeasureRef} aria-hidden="true">
                         {metricsForEvidenceTable.map((metric) => (
-                          <button
-                            key={`metric-head-evidence-${metric.id}`}
-                            type="button"
-                            className={`evidence-metric-toggle-btn ${evidenceMetricSwitches[String(metric?.id || '')] !== false ? 'active' : ''}`}
-                            aria-label={`Prepínač ukazovateľa ${toMetricShortLabel(metric)}`}
-                            onClick={() => {
-                              const metricId = String(metric?.id || '')
-                              if (!metricId) return
-                              const next = {}
-                              metricsForEvidenceTable.forEach((item) => {
-                                const itemId = String(item?.id || '')
-                                if (!itemId) return
-                                next[itemId] = itemId === metricId
-                              })
-                              setEvidenceMetricSwitches(next)
-                            }}
+                          <span
+                            key={`metric-head-measure-${metric.id}`}
+                            className="evidence-metric-toggle-btn"
                           >
                             {toMetricShortLabel(metric)}
-                          </button>
+                          </span>
                         ))}
                       </span>
+
+                      {useEvidenceMetricDropdown ? (
+                        <label className="evidence-metric-dropdown-wrap" aria-label="Výber ukazovateľa">
+                          <select
+                            className="evidence-metric-dropdown"
+                            value={activeEvidenceMetricId}
+                            onChange={(event) => activateEvidenceMetric(event.target.value)}
+                          >
+                            {metricsForEvidenceTable.map((metric) => {
+                              const metricId = String(metric?.id || '')
+                              return (
+                                <option key={`metric-head-dropdown-${metricId}`} value={metricId}>
+                                  {toMetricShortLabel(metric)}
+                                </option>
+                              )
+                            })}
+                          </select>
+                        </label>
+                      ) : (
+                        <span className="evidence-metric-toggle-group">
+                          {metricsForEvidenceTable.map((metric) => (
+                            <button
+                              key={`metric-head-evidence-${metric.id}`}
+                              type="button"
+                              className={`evidence-metric-toggle-btn ${evidenceMetricSwitches[String(metric?.id || '')] !== false ? 'active' : ''}`}
+                              aria-label={`Prepínač ukazovateľa ${toMetricShortLabel(metric)}`}
+                              onClick={() => {
+                                const metricId = String(metric?.id || '')
+                                if (!metricId) return
+                                activateEvidenceMetric(metricId)
+                              }}
+                            >
+                              {toMetricShortLabel(metric)}
+                            </button>
+                          ))}
+                        </span>
+                      )}
                     </span>
                   )
                   : (
@@ -3524,7 +3609,7 @@ function Evidence() {
                   {isEvidenceMode
                     ? (
                       <span className="evidence-metric-col evidence-empty-metric-cell" aria-label="Prázdna hodnota pre ukazovateľ">
-                        {activeEvidenceMetricLabel}
+                        
                       </span>
                     )
                     : (
@@ -3542,7 +3627,7 @@ function Evidence() {
                       </>
                     )}
                   {isEvidenceMode ? (
-                    <span className="evidence-metric-col">
+                    <span className="evidence-metric-col evidence-min-col-cell">
                       <span className="evidence-minutes-cell-wrap">
                         <label className="evidence-row-switch" aria-label={`Účasť hráča ${row.name}`}>
                           <input
