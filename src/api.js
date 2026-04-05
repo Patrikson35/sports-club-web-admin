@@ -171,13 +171,16 @@ class APIClient {
   handleAuthFailure(error) {
     const status = Number(error?.status || 0);
     const message = String(error?.payload?.error || error?.message || '').toLowerCase();
-    const isAuthFailure = (
-      status === 401
-      || status === 403
-      || message.includes('access token required')
+    const hasTokenFailureMessage = (
+      message.includes('access token required')
       || message.includes('invalid or expired token')
       || message.includes('jwt expired')
+      || message.includes('invalid token')
+      || message.includes('token expired')
     );
+
+    // 403 can be a normal RBAC deny; do not force logout unless token is actually invalid.
+    const isAuthFailure = status === 401 || hasTokenFailureMessage;
 
     if (!isAuthFailure) return;
 
