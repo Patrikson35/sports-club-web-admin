@@ -429,22 +429,69 @@ function Exercises({ webSettingsSection = '' }) {
   }, [exerciseListFilters?.categoryId, exerciseListFilters?.subcategory, exerciseListSubcategoryOptions])
 
   const filteredExerciseDatabaseItems = useMemo(() => {
-    const { sportKey, libraryType, clubId } = exerciseLibraryFilters;
-    return exerciseDatabaseItems.filter((item) => {
-      const createdBy = String(item?.createdByUserId || '').trim()
-      const isOwnPrivate = Boolean(currentUserId) && createdBy === String(currentUserId)
+    const isAdminView = currentRole === 'admin'
 
-      if (sportKey !== 'all' && String(item?.sportKey || '') !== sportKey) return false;
-      if (libraryType === 'public' && !item.isSystem) return false;
-      if (libraryType === 'private') {
-        if (item.isSystem) return false
-        if (currentRole !== 'admin' && !isOwnPrivate) return false
+    if (isAdminView) {
+      const { sportKey, libraryType, clubId } = exerciseLibraryFilters
+      return exerciseDatabaseItems.filter((item) => {
+        const createdBy = String(item?.createdByUserId || '').trim()
+        const isOwnPrivate = Boolean(currentUserId) && createdBy === String(currentUserId)
+
+        if (sportKey !== 'all' && String(item?.sportKey || '') !== sportKey) return false
+        if (libraryType === 'public' && !item.isSystem) return false
+        if (libraryType === 'private') {
+          if (item.isSystem) return false
+          if (currentRole !== 'admin' && !isOwnPrivate) return false
+        }
+
+        const shouldApplyClubFilter = clubId !== 'all' && libraryType !== 'all'
+        if (shouldApplyClubFilter && String(item?.clubId || '') !== clubId) return false
+
+        return true
+      })
+    }
+
+    const selectedCategoryId = String(exerciseListFilters?.categoryId || 'all')
+    const selectedSubcategory = String(exerciseListFilters?.subcategory || 'all')
+    const selectedPlayersCount = String(exerciseListFilters?.playersCount || 'all')
+    const selectedIntensity = String(exerciseListFilters?.intensity || 'all')
+
+    return exerciseDatabaseItems.filter((item) => {
+      if (selectedIntensity !== 'all' && String(item?.intensity || 'Stredná') !== selectedIntensity) {
+        return false
       }
-      const shouldApplyClubFilter = clubId !== 'all' && libraryType !== 'all'
-      if (shouldApplyClubFilter && String(item?.clubId || '') !== clubId) return false;
-      return true;
-    });
-  }, [exerciseDatabaseItems, exerciseLibraryFilters, currentRole, currentUserId]);
+
+      if (selectedPlayersCount !== 'all') {
+        const normalizedPlayers = normalizeExercisePlayersCount(item?.playersCount)
+        if (!normalizedPlayers.includes(selectedPlayersCount)) {
+          return false
+        }
+      }
+
+      if (selectedCategoryId !== 'all') {
+        const selectedCategoryIds = resolveSelectedExerciseCategoryIds(item?.selectedCategoryIds, item?.categorySelections)
+        const directCategoryMatch = selectedCategoryIds.includes(selectedCategoryId)
+        const selectedCategory = exerciseCategories.find((category) => String(category?.id || '') === selectedCategoryId)
+        const legacyCategoryNameMatch = String(item?.categoryName || '').trim().toLowerCase() === String(selectedCategory?.name || '').trim().toLowerCase()
+
+        if (!directCategoryMatch && !legacyCategoryNameMatch) {
+          return false
+        }
+
+        if (selectedSubcategory !== 'all') {
+          const selectedSubcategories = Array.isArray(item?.categorySelections?.[selectedCategoryId])
+            ? item.categorySelections[selectedCategoryId].map((sub) => String(sub || '').trim())
+            : []
+
+          if (!selectedSubcategories.includes(selectedSubcategory)) {
+            return false
+          }
+        }
+      }
+
+      return true
+    })
+  }, [exerciseDatabaseItems, exerciseLibraryFilters, currentRole, currentUserId, exerciseListFilters, exerciseCategories]);
 
   const getExercisePreviewImage = (item) => {
     const uploadedImage = String(item?.imageUrl || '').trim()
@@ -487,6 +534,14 @@ function Exercises({ webSettingsSection = '' }) {
       subcategory: 'all',
       level: 'all',
       favorite: 'all'
+    })
+  }
+
+  const resetExerciseLibraryFilters = () => {
+    setExerciseLibraryFilters({
+      sportKey: 'all',
+      libraryType: 'all',
+      clubId: 'all'
     })
   }
 
@@ -1494,60 +1549,137 @@ function Exercises({ webSettingsSection = '' }) {
           <div style={{ color: '#ff6b6b', marginBottom: 12 }}>{clubsError}</div>
         )}
         <div className="exercise-db-filters exercise-library-filters" role="region" aria-label="Filtre zoznamu cvičení">
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-library-filter-sport">Vyber športu</label>
-            <select
-              id="exercise-library-filter-sport"
-              value={exerciseLibraryFilters.sportKey}
-              onChange={e => setExerciseLibraryFilters(f => ({ ...f, sportKey: e.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              {sportOptions.map((sport) => (
-                <option key={`exercise-library-filter-sport-${sport.key}`} value={sport.key}>{sport.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-library-filter-type">Vyber knižnice</label>
-            <select
-              id="exercise-library-filter-type"
-              value={exerciseLibraryFilters.libraryType}
-              onChange={e => setExerciseLibraryFilters(f => ({ ...f, libraryType: e.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              <option value="public">Verejné</option>
-              <option value="private">Privátne</option>
-            </select>
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="exercise-library-filter-club">Vyber klubu</label>
-            <select
-              id="exercise-library-filter-club"
-              value={exerciseLibraryFilters.clubId}
-              onChange={e => setExerciseLibraryFilters(f => ({ ...f, clubId: e.target.value }))}
-            >
-              <option value="all">Všetky</option>
-              {clubs
-                .filter((club) => {
-                  if (exerciseLibraryFilters.sportKey === 'all') return true
+          {currentRole === 'admin' ? (
+            <>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-library-filter-sport">Vyber športu</label>
+                <select
+                  id="exercise-library-filter-sport"
+                  value={exerciseLibraryFilters.sportKey}
+                  onChange={e => setExerciseLibraryFilters(f => ({ ...f, sportKey: e.target.value }))}
+                >
+                  <option value="all">Všetky</option>
+                  {sportOptions.map((sport) => (
+                    <option key={`exercise-library-filter-sport-${sport.key}`} value={sport.key}>{sport.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-library-filter-type">Vyber knižnice</label>
+                <select
+                  id="exercise-library-filter-type"
+                  value={exerciseLibraryFilters.libraryType}
+                  onChange={e => setExerciseLibraryFilters(f => ({ ...f, libraryType: e.target.value }))}
+                >
+                  <option value="all">Všetky</option>
+                  <option value="public">Verejné</option>
+                  <option value="private">Privátne</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-library-filter-club">Vyber klubu</label>
+                <select
+                  id="exercise-library-filter-club"
+                  value={exerciseLibraryFilters.clubId}
+                  onChange={e => setExerciseLibraryFilters(f => ({ ...f, clubId: e.target.value }))}
+                >
+                  <option value="all">Všetky</option>
+                  {clubs
+                    .filter((club) => {
+                      if (exerciseLibraryFilters.sportKey === 'all') return true
 
-                  const clubSportKey = normalizeSportFilterKey(
-                    club?.sportKey || club?.sport_key || club?.sport
-                  )
-                  const selectedSportKey = normalizeSportFilterKey(exerciseLibraryFilters.sportKey)
+                      const clubSportKey = normalizeSportFilterKey(
+                        club?.sportKey || club?.sport_key || club?.sport
+                      )
+                      const selectedSportKey = normalizeSportFilterKey(exerciseLibraryFilters.sportKey)
 
-                  return clubSportKey === selectedSportKey
-                })
-                .map(club => (
-                  <option key={`exercise-library-filter-club-${club.id}`} value={club.id}>{club.name}</option>
-                ))}
-            </select>
-          </div>
+                      return clubSportKey === selectedSportKey
+                    })
+                    .map(club => (
+                      <option key={`exercise-library-filter-club-${club.id}`} value={club.id}>{club.name}</option>
+                    ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-list-filter-category">Kategória</label>
+                <select
+                  id="exercise-list-filter-category"
+                  value={exerciseListFilters.categoryId}
+                  onChange={(event) => {
+                    const nextCategoryId = event.target.value
+                    setExerciseListFilters((prev) => ({
+                      ...prev,
+                      categoryId: nextCategoryId,
+                      subcategory: 'all'
+                    }))
+                  }}
+                >
+                  <option value="all">Všetky</option>
+                  {exerciseCategories.map((category) => (
+                    <option key={`exercise-list-filter-category-${category.id}`} value={String(category.id)}>
+                      {String(category.name || 'Kategória')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-list-filter-subcategory">Podkategória</label>
+                <select
+                  id="exercise-list-filter-subcategory"
+                  value={exerciseListFilters.subcategory}
+                  onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, subcategory: event.target.value }))}
+                  disabled={exerciseListFilters.categoryId === 'all' || exerciseListSubcategoryOptions.length === 0}
+                >
+                  <option value="all">Všetky</option>
+                  {exerciseListSubcategoryOptions.map((subcategory) => (
+                    <option key={`exercise-list-filter-subcategory-${subcategory}`} value={subcategory}>
+                      {subcategory}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-list-filter-players">Počet hráčov</label>
+                <select
+                  id="exercise-list-filter-players"
+                  value={exerciseListFilters.playersCount}
+                  onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, playersCount: event.target.value }))}
+                >
+                  <option value="all">Všetky</option>
+                  {EXERCISE_PLAYERS_COUNT_OPTIONS.map((countValue) => (
+                    <option key={`exercise-list-filter-players-${countValue}`} value={countValue}>
+                      {countValue}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="exercise-list-filter-intensity">Intenzita</label>
+                <select
+                  id="exercise-list-filter-intensity"
+                  value={exerciseListFilters.intensity}
+                  onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, intensity: event.target.value }))}
+                >
+                  <option value="all">Všetky</option>
+                  <option value="Nízka">Nízka</option>
+                  <option value="Stredná">Stredná</option>
+                  <option value="Vysoká">Vysoká</option>
+                  <option value="Maximálna">Maximálna</option>
+                </select>
+              </div>
+            </>
+          )}
 
           <button
             type="button"
             className="btn-secondary exercise-db-filter-reset-btn"
-            onClick={resetExerciseListFilters}
+            onClick={currentRole === 'admin' ? resetExerciseLibraryFilters : resetExerciseListFilters}
           >
             Reset filtra
           </button>
