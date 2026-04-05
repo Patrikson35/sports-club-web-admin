@@ -1644,7 +1644,6 @@ function Exercises({ webSettingsSection = '' }) {
                 {/* Karty Počet hráčov a Intenzita byly odstraněny na přání uživatele */}
 
                 <div className="exercise-db-card-rating" aria-label="Hodnotenie cvičenia">
-                  <small>Úroveň cvičenia</small>
                   <div className="exercise-db-card-rating-stars" role="group" aria-label={`Hodnotenie cvičenia ${item.name}`}>
                     {[1, 2, 3, 4, 5].map((starValue) => (
                       <button
