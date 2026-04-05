@@ -7209,7 +7209,6 @@ function MyClub() {
                             <div className="exercise-db-card-stat-item" aria-label="Počet hráčov">
                               <span className="material-icons-round" aria-hidden="true">groups</span>
                               <div>
-                                <small>Počet hráčov</small>
                                 <strong>{formatExercisePlayersCount(item.playersCount) || '—'}</strong>
                               </div>
                             </div>
@@ -7217,7 +7216,6 @@ function MyClub() {
                             <div className="exercise-db-card-stat-item" aria-label="Intenzita">
                               <span className="material-icons-round" aria-hidden="true">whatshot</span>
                               <div>
-                                <small>Intenzita</small>
                                 <strong>{item.intensity || '—'}</strong>
                               </div>
                             </div>
