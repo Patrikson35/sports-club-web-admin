@@ -1410,11 +1410,16 @@ button,
 .exercise-db-card-stat-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   border: 1px solid rgba(51, 65, 85, 0.9);
   border-radius: 10px;
   background: rgba(2, 6, 23, 0.48);
   padding: 0.45rem 0.5rem;
+}
+
+.exercise-db-card-stat-item > div {
+  text-align: center;
 }
 
 .exercise-db-card-stat-item .material-icons-round {
@@ -1434,9 +1439,6 @@ button,
   color: #e2e8f0;
   font-size: 0.79rem;
   line-height: 1.2;
-}
-
-.exercise-db-card-stat-item:first-child strong {
   text-align: center;
 }
 
