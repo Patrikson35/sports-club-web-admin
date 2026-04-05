@@ -27,6 +27,45 @@ const DEFAULT_SPORT_OPTIONS = [
   { key: 'tennis', label: 'Tenis', sortOrder: 6, isActive: true }
 ]
 
+const SPORT_KEY_ALIASES = {
+  futbal: 'football',
+  football: 'football',
+  hokej: 'hockey',
+  hockey: 'hockey',
+  basketbal: 'basketball',
+  basketball: 'basketball',
+  hadzana: 'handball',
+  handball: 'handball',
+  volejbal: 'volleyball',
+  volleyball: 'volleyball',
+  tenis: 'tennis',
+  tennis: 'tennis'
+}
+
+const normalizeSportFilterKey = (value) => {
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s-]+/g, '_')
+
+  return SPORT_KEY_ALIASES[raw] || raw
+}
+
+const ADMIN_ROLE_KEYS = ['admin', 'system_admin', 'super_admin', 'founder']
+
+const isAdminCreator = (item) => {
+  const creatorRole = String(item?.creatorRole || item?.creator_role || '').trim().toLowerCase()
+  return ADMIN_ROLE_KEYS.includes(creatorRole)
+}
+
+const resolveExerciseIsPublic = (item) => {
+  return Boolean(item?.isSystem)
+    || Boolean(item?.is_system)
+    || isAdminCreator(item)
+}
+
 const normalizeExercisePlayersCount = (value) => {
   const toList = Array.isArray(value)
     ? value
@@ -74,6 +113,10 @@ const normalizeExerciseItems = (value) => {
         name: String(item?.name || '').trim(),
         description: String(item?.description || '').trim(),
         sportKey: String(item?.sportKey || '').trim(),
+        isSystem: Boolean(item?.isSystem),
+        clubId: item?.clubId || null,
+        createdByUserId: item?.createdByUserId || null,
+        categoryName: String(item?.categoryName || '').trim(),
         intensity: String(item?.intensity || 'Stredná').trim(),
         rating: normalizeExerciseRating(item?.rating),
         isFavorite: normalizeExerciseFavorite(item?.isFavorite),
@@ -163,16 +206,21 @@ function Exercises({ webSettingsSection = '' }) {
   const showCreateExerciseSection = !isEmbeddedWebSettingsView || webSettingsSection === 'createExercise'
   const showExerciseCategoriesSection = !isEmbeddedWebSettingsView || webSettingsSection === 'exerciseCategories'
   const [currentRole, setCurrentRole] = useState('')
+  const [currentUserId, setCurrentUserId] = useState('')
   const [sportOptions, setSportOptions] = useState(DEFAULT_SPORT_OPTIONS)
   const [exerciseCategories, setExerciseCategories] = useState([])
   const [exerciseDatabaseItems, setExerciseDatabaseItems] = useState([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showCategoryCreateForm, setShowCategoryCreateForm] = useState(false)
   const [isCreatingExercise, setIsCreatingExercise] = useState(false)
+  const [isLoadingBulkPreview, setIsLoadingBulkPreview] = useState(false)
+  const [isImportingBulkSelection, setIsImportingBulkSelection] = useState(false)
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
   const [isSavingCustomLabels, setIsSavingCustomLabels] = useState(false)
   const [createExerciseError, setCreateExerciseError] = useState('')
   const [createExerciseSuccess, setCreateExerciseSuccess] = useState('')
+  const [bulkCreateError, setBulkCreateError] = useState('')
+  const [bulkCreateSuccess, setBulkCreateSuccess] = useState('')
   const [detailActionError, setDetailActionError] = useState('')
   const [detailActionSuccess, setDetailActionSuccess] = useState('')
   const [isEditingExerciseDetail, setIsEditingExerciseDetail] = useState(false)
@@ -194,6 +242,15 @@ function Exercises({ webSettingsSection = '' }) {
     isSystem: false,
     customLabels: ''
   })
+  const [showBulkCreateForm, setShowBulkCreateForm] = useState(false)
+  const [bulkCreateForm, setBulkCreateForm] = useState({
+    sportKey: '',
+    channelUrl: '',
+    maxResults: '50'
+  })
+  const [bulkPreviewChannel, setBulkPreviewChannel] = useState(null)
+  const [bulkPreviewVideos, setBulkPreviewVideos] = useState([])
+  const [bulkSelectedVideoIds, setBulkSelectedVideoIds] = useState([])
   const [createCategoryForm, setCreateCategoryForm] = useState({
     name: '',
     description: '',
@@ -241,8 +298,9 @@ function Exercises({ webSettingsSection = '' }) {
       youtube: { url: youtubeUrl, videoId: youtubeVideoId },
       rating: 0,
       isFavorite: false,
-      isSystem: Boolean(item?.isSystem),
+      isSystem: resolveExerciseIsPublic(item),
       clubId: item?.clubId || null,
+      createdByUserId: item?.createdByUserId || item?.created_by_user_id || null,
       categoryName: String(item?.category?.name || '').trim(),
       customLabels: normalizeCustomLabels(item?.customLabels)
     })
@@ -255,6 +313,7 @@ function Exercises({ webSettingsSection = '' }) {
       const role = ['admin', 'system_admin', 'super_admin', 'founder'].includes(normalizedRoleKey)
         ? 'admin'
         : (normalizedRoleKey === 'club_admin' ? 'club' : normalizedRoleKey)
+      const userId = String(user?.id || '').trim()
       const [categoryResponse, exerciseResponse, sportsResponsePrimary, sportsResponseFallback] = await Promise.all([
         api.getExerciseCategories(),
         api.getExercises(),
@@ -265,6 +324,7 @@ function Exercises({ webSettingsSection = '' }) {
       if (!isMounted) return
 
       setCurrentRole(role)
+  setCurrentUserId(userId)
 
       const sportsRawPrimary = Array.isArray(sportsResponsePrimary?.sports) ? sportsResponsePrimary.sports : []
       const sportsRawFallback = Array.isArray(sportsResponseFallback?.sports) ? sportsResponseFallback.sports : []
@@ -310,6 +370,7 @@ function Exercises({ webSettingsSection = '' }) {
       } catch {
         if (!isMounted) return
         setCurrentRole('')
+        setCurrentUserId('')
         setSportOptions(DEFAULT_SPORT_OPTIONS)
         setExerciseCategories([])
         setExerciseDatabaseItems([])
@@ -327,6 +388,7 @@ function Exercises({ webSettingsSection = '' }) {
 
     if (webSettingsSection === 'createExercise') {
       setShowCreateForm(true)
+      setShowBulkCreateForm(false)
       setShowCategoryCreateForm(false)
       return
     }
@@ -369,13 +431,20 @@ function Exercises({ webSettingsSection = '' }) {
   const filteredExerciseDatabaseItems = useMemo(() => {
     const { sportKey, libraryType, clubId } = exerciseLibraryFilters;
     return exerciseDatabaseItems.filter((item) => {
+      const createdBy = String(item?.createdByUserId || '').trim()
+      const isOwnPrivate = Boolean(currentUserId) && createdBy === String(currentUserId)
+
       if (sportKey !== 'all' && String(item?.sportKey || '') !== sportKey) return false;
       if (libraryType === 'public' && !item.isSystem) return false;
-      if (libraryType === 'private' && item.isSystem) return false;
-      if (clubId !== 'all' && String(item?.clubId || '') !== clubId) return false;
+      if (libraryType === 'private') {
+        if (item.isSystem) return false
+        if (currentRole !== 'admin' && !isOwnPrivate) return false
+      }
+      const shouldApplyClubFilter = clubId !== 'all' && libraryType !== 'all'
+      if (shouldApplyClubFilter && String(item?.clubId || '') !== clubId) return false;
       return true;
     });
-  }, [exerciseDatabaseItems, exerciseLibraryFilters]);
+  }, [exerciseDatabaseItems, exerciseLibraryFilters, currentRole, currentUserId]);
 
   const getExercisePreviewImage = (item) => {
     const uploadedImage = String(item?.imageUrl || '').trim()
@@ -494,12 +563,45 @@ function Exercises({ webSettingsSection = '' }) {
   const openCreateExerciseInMyClub = () => {
     setCreateExerciseError('')
     setCreateExerciseSuccess('')
+    setBulkCreateError('')
+    setBulkCreateSuccess('')
+    setShowBulkCreateForm(false)
     setShowCreateForm((prev) => !prev)
+  }
+
+  const openBulkCreateInMyClub = () => {
+    setCreateExerciseError('')
+    setCreateExerciseSuccess('')
+    setBulkCreateError('')
+    setBulkCreateSuccess('')
+    setBulkPreviewChannel(null)
+    setBulkPreviewVideos([])
+    setBulkSelectedVideoIds([])
+    setShowCreateForm(false)
+    setShowBulkCreateForm((prev) => !prev)
+  }
+
+  const switchToSingleCreateForm = () => {
+    setBulkCreateError('')
+    setBulkCreateSuccess('')
+    setBulkPreviewChannel(null)
+    setBulkPreviewVideos([])
+    setBulkSelectedVideoIds([])
+    setShowBulkCreateForm(false)
+    setShowCreateForm(true)
+  }
+
+  const switchToBulkCreateForm = () => {
+    setCreateExerciseError('')
+    setCreateExerciseSuccess('')
+    setShowCreateForm(false)
+    setShowBulkCreateForm(true)
   }
 
   const canCreateSystemExercise = currentRole === 'admin'
   const canManageExerciseCategories = currentRole === 'admin' || currentRole === 'club' || currentRole === 'coach'
   const shouldRequireSportSelection = currentRole === 'admin' || isEmbeddedWebSettingsView
+  const bulkPreviewSelectableVideos = bulkPreviewVideos.filter((video) => !video.alreadyExists)
 
   const categoryOptionsForExercise = useMemo(() => {
     const selectedSportKey = String(createExerciseForm.sportKey || '').trim()
@@ -547,8 +649,9 @@ function Exercises({ webSettingsSection = '' }) {
       },
       rating: 0,
       isFavorite: false,
-      isSystem: Boolean(item?.isSystem),
+      isSystem: resolveExerciseIsPublic(item),
       clubId: item?.clubId || null,
+      createdByUserId: item?.createdByUserId || item?.created_by_user_id || null,
       categoryName: String(item?.category?.name || '').trim(),
       customLabels: normalizeCustomLabels(item?.customLabels)
     })))
@@ -689,6 +792,160 @@ function Exercises({ webSettingsSection = '' }) {
     }
   }
 
+  const handleBulkCreateExercises = async (event) => {
+    event.preventDefault()
+
+    const normalizedSportKey = String(bulkCreateForm.sportKey || '').trim()
+    const normalizedChannelUrl = String(bulkCreateForm.channelUrl || '').trim()
+    const normalizedMaxResults = Number.parseInt(String(bulkCreateForm.maxResults || '50'), 10)
+
+    if (!normalizedSportKey) {
+      setBulkCreateError('Výber športu je povinný.')
+      setBulkCreateSuccess('')
+      return
+    }
+
+    if (!normalizedChannelUrl) {
+      setBulkCreateError('Link na YouTube kanál je povinný.')
+      setBulkCreateSuccess('')
+      return
+    }
+
+    if (!Number.isInteger(normalizedMaxResults) || normalizedMaxResults < 1 || normalizedMaxResults > 200) {
+      setBulkCreateError('Počet videí musí byť číslo od 1 do 200.')
+      setBulkCreateSuccess('')
+      return
+    }
+
+    setIsLoadingBulkPreview(true)
+    setBulkCreateError('')
+    setBulkCreateSuccess('')
+
+    try {
+      const response = await api.previewExerciseChannelImport({
+        sportKey: normalizedSportKey,
+        channelUrl: normalizedChannelUrl,
+        maxResults: normalizedMaxResults
+      })
+
+      const previewChannel = response?.channel && typeof response.channel === 'object'
+        ? {
+            id: String(response.channel.id || '').trim(),
+            title: String(response.channel.title || '').trim(),
+            sourceUrl: String(response.channel.sourceUrl || normalizedChannelUrl).trim()
+          }
+        : null
+
+      const previewVideos = Array.isArray(response?.videos)
+        ? response.videos
+            .map((video) => ({
+              videoId: String(video?.videoId || '').trim(),
+              title: String(video?.title || '').trim(),
+              youtubeUrl: String(video?.youtubeUrl || '').trim(),
+              thumbnailUrl: resolveMediaUrl(String(video?.thumbnailUrl || '').trim()),
+              publishedAt: String(video?.publishedAt || '').trim(),
+              publishedText: String(video?.publishedText || '').trim(),
+              description: String(video?.description || '').trim(),
+              alreadyExists: Boolean(video?.alreadyExists)
+            }))
+            .filter((video) => video.videoId && video.title)
+        : []
+
+      setBulkPreviewChannel(previewChannel)
+      setBulkPreviewVideos(previewVideos)
+      setBulkSelectedVideoIds(previewVideos.filter((video) => !video.alreadyExists).map((video) => video.videoId))
+      const importableVideosCount = previewVideos.filter((video) => !video.alreadyExists).length
+
+      if (previewVideos.length === 0) {
+        setBulkCreateSuccess('Kanál bol načítaný, ale neobsahuje žiadne videá pre import.')
+      } else if (importableVideosCount === 0) {
+        setBulkCreateSuccess(`Kanál načítaný. Všetkých ${previewVideos.length} videí už je v knižnici.`)
+      } else {
+        setBulkCreateSuccess(`Kanál načítaný. Nové videá na import: ${importableVideosCount} z ${previewVideos.length}.`)
+      }
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setBulkCreateError(message || 'Hromadné vytváranie sa nepodarilo spustiť.')
+      setBulkCreateSuccess('')
+      setBulkPreviewChannel(null)
+      setBulkPreviewVideos([])
+      setBulkSelectedVideoIds([])
+    } finally {
+      setIsLoadingBulkPreview(false)
+    }
+  }
+
+  const toggleBulkVideoSelection = (videoId) => {
+    const resolved = String(videoId || '').trim()
+    if (!resolved) return
+
+    setBulkSelectedVideoIds((prev) => {
+      const source = Array.isArray(prev) ? prev : []
+      if (source.includes(resolved)) {
+        return source.filter((item) => item !== resolved)
+      }
+      return [...source, resolved]
+    })
+  }
+
+  const selectAllBulkVideos = () => {
+    setBulkSelectedVideoIds(bulkPreviewVideos.filter((video) => !video.alreadyExists).map((video) => video.videoId))
+  }
+
+  const clearBulkVideoSelection = () => {
+    setBulkSelectedVideoIds([])
+  }
+
+  const handleBulkImportSelected = async () => {
+    const normalizedSportKey = String(bulkCreateForm.sportKey || '').trim()
+    const normalizedChannelUrl = String(bulkCreateForm.channelUrl || '').trim()
+    const normalizedMaxResults = Number.parseInt(String(bulkCreateForm.maxResults || '50'), 10)
+    const selectedIds = Array.isArray(bulkSelectedVideoIds)
+      ? bulkSelectedVideoIds.map((item) => String(item || '').trim()).filter(Boolean)
+      : []
+
+    if (!normalizedSportKey || !normalizedChannelUrl) {
+      setBulkCreateError('Najprv vyplň šport a link na kanál.')
+      return
+    }
+
+    if (selectedIds.length === 0) {
+      setBulkCreateError('Vyber aspoň jedno video na import.')
+      return
+    }
+
+    setIsImportingBulkSelection(true)
+    setBulkCreateError('')
+    setBulkCreateSuccess('')
+
+    try {
+      const response = await api.importExercisesFromChannel({
+        sportKey: normalizedSportKey,
+        channelUrl: normalizedChannelUrl,
+        maxResults: Number.isInteger(normalizedMaxResults) ? normalizedMaxResults : 200,
+        selectedVideoIds: selectedIds
+      })
+
+      await reloadExerciseLibrary()
+      const createdCount = Number(response?.createdCount || 0)
+      const skippedCount = Number(response?.skippedExistingCount || 0)
+      setBulkCreateSuccess(`Import dokončený. Vytvorené: ${createdCount}, preskočené (už existovali): ${skippedCount}.`)
+
+      const importedSet = new Set(selectedIds)
+      setBulkPreviewVideos((prev) => (Array.isArray(prev)
+        ? prev.map((video) => importedSet.has(video.videoId)
+          ? { ...video, alreadyExists: true }
+          : video)
+        : []))
+      setBulkSelectedVideoIds([])
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setBulkCreateError(message || 'Vybrané videá sa nepodarilo importovať.')
+    } finally {
+      setIsImportingBulkSelection(false)
+    }
+  }
+
   const openedExerciseCategorySummary = openedExerciseDetailItem
     ? getExerciseCategorySummary(openedExerciseDetailItem)
     : ''
@@ -820,23 +1077,13 @@ function Exercises({ webSettingsSection = '' }) {
   }
 
   return (
-    <div className="members-categories-stack">
+    <div className="members-categories-stack exercises-page-stack">
       {!isEmbeddedWebSettingsView ? (
         <>
           <div className="exercise-library-head">
             <h2>Knižnica cvičení</h2>
-            <button type="button" className="manager-add-btn" onClick={openCreateExerciseInMyClub}>
-              {showCreateForm ? 'Zavrieť formulár' : 'Vytvoriť cvičenie'}
-            </button>
           </div>
 
-          {canManageExerciseCategories ? (
-            <div className="exercise-library-head" style={{ marginTop: '-0.5rem' }}>
-              <button type="button" className="btn-secondary" onClick={() => setShowCategoryCreateForm((prev) => !prev)}>
-                {showCategoryCreateForm ? 'Zavrieť kategórie' : 'Vytvoriť kategóriu'}
-              </button>
-            </div>
-          ) : null}
         </>
       ) : null}
 
@@ -1104,6 +1351,140 @@ function Exercises({ webSettingsSection = '' }) {
         </>
       ) : null}
 
+      {(showBulkCreateForm && showCreateExerciseSection) ? (
+        <>
+          {bulkCreateSuccess ? (
+            <div className="success-message" style={{ marginBottom: '0.75rem' }}>{bulkCreateSuccess}</div>
+          ) : null}
+          <div className="card settings-placeholder-card metrics-section-card" style={{ marginBottom: '1rem' }}>
+            <form className={`exercise-db-filters${isEmbeddedWebSettingsView ? ' exercise-db-filters--single-column' : ''}`} onSubmit={handleBulkCreateExercises}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="bulk-create-exercise-sport">Výber športu</label>
+                <select
+                  id="bulk-create-exercise-sport"
+                  value={bulkCreateForm.sportKey}
+                  onChange={(event) => setBulkCreateForm((prev) => ({ ...prev, sportKey: event.target.value }))}
+                  required
+                >
+                  <option value="">Vyber šport</option>
+                  {sportOptions.map((sport) => (
+                    <option key={`bulk-create-sport-${sport.key}`} value={sport.key}>
+                      {sport.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="bulk-create-exercise-max-results">Počet videí (max)</label>
+                <input
+                  id="bulk-create-exercise-max-results"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={bulkCreateForm.maxResults}
+                  onChange={(event) => setBulkCreateForm((prev) => ({ ...prev, maxResults: event.target.value }))}
+                  placeholder="50"
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                <label htmlFor="bulk-create-exercise-channel-url">Link na YouTube kanál</label>
+                <input
+                  id="bulk-create-exercise-channel-url"
+                  type="url"
+                  value={bulkCreateForm.channelUrl}
+                  onChange={(event) => setBulkCreateForm((prev) => ({ ...prev, channelUrl: event.target.value }))}
+                  placeholder="https://www.youtube.com/@nazovkanala"
+                  required
+                />
+              </div>
+
+              <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0 }}>
+                Tento formulár je pripravený na hromadné vytváranie. V ďalšom kroku napojíme načítanie videí z YouTube kanála, ich výber a hromadné uloženie do knižnice.
+              </p>
+
+              {bulkCreateError ? (
+                <p className="manager-empty-text" style={{ gridColumn: '1 / -1', margin: 0 }}>{bulkCreateError}</p>
+              ) : null}
+
+              <button
+                type="submit"
+                className="btn-secondary exercise-db-filter-reset-btn"
+                disabled={isLoadingBulkPreview || isImportingBulkSelection}
+              >
+                {isLoadingBulkPreview ? 'Načítavam videá...' : 'Načítať videá z kanála'}
+              </button>
+            </form>
+
+            {bulkPreviewVideos.length > 0 ? (
+              <div className="exercise-bulk-preview">
+                <div className="exercise-bulk-preview-head">
+                  <strong>
+                    {bulkPreviewChannel?.title
+                      ? `${bulkPreviewChannel.title} (${bulkPreviewSelectableVideos.length} nové)`
+                      : `Nájdené nové videá (${bulkPreviewSelectableVideos.length})`}
+                  </strong>
+                  <div className="exercise-bulk-preview-actions">
+                    <button type="button" className="btn-secondary" onClick={selectAllBulkVideos} disabled={bulkPreviewSelectableVideos.length === 0}>Vybrať všetky nové</button>
+                    <button type="button" className="btn-secondary" onClick={clearBulkVideoSelection} disabled={bulkPreviewSelectableVideos.length === 0}>Zrušiť výber</button>
+                  </div>
+                </div>
+
+                {bulkPreviewSelectableVideos.length > 0 ? (
+                <div className="exercise-bulk-preview-list" role="list" aria-label="Zoznam videí z kanála">
+                  {bulkPreviewSelectableVideos.map((video) => {
+                    const isSelected = bulkSelectedVideoIds.includes(video.videoId)
+                    const parsedDate = video.publishedAt ? new Date(video.publishedAt) : null
+                    const hasValidDate = parsedDate instanceof Date && !Number.isNaN(parsedDate.getTime())
+                    const publishedLabel = hasValidDate
+                      ? parsedDate.toLocaleDateString('sk-SK')
+                      : (String(video.publishedText || '').trim() || '')
+                    return (
+                      <label key={`bulk-video-${video.videoId}`} className="exercise-bulk-preview-item" role="listitem">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleBulkVideoSelection(video.videoId)}
+                        />
+                        {video.thumbnailUrl ? (
+                          <img src={video.thumbnailUrl} alt={video.title} className="exercise-bulk-preview-thumb" />
+                        ) : null}
+                        <span className="exercise-bulk-preview-item-content">
+                          <span className="exercise-bulk-preview-item-title">{video.title}</span>
+                          <span className="exercise-bulk-preview-item-meta">
+                            Nové video
+                            {publishedLabel ? ` | ${publishedLabel}` : ''}
+                          </span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+                ) : (
+                  <p className="manager-empty-text" style={{ margin: 0 }}>
+                    Všetky načítané videá už sú v knižnici, preto sa v zozname nezobrazujú.
+                  </p>
+                )}
+
+                <div className="exercise-bulk-preview-footer">
+                  <span>Vybrané videá: {bulkSelectedVideoIds.length}</span>
+                  <button
+                    type="button"
+                    className="btn-edit"
+                    onClick={handleBulkImportSelected}
+                    disabled={isImportingBulkSelection || bulkSelectedVideoIds.length === 0}
+                  >
+                    {isImportingBulkSelection ? 'Importujem...' : 'Importovať vybrané videá'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+
       {showExerciseListSection ? (
 
 
@@ -1147,45 +1528,21 @@ function Exercises({ webSettingsSection = '' }) {
             >
               <option value="all">Všetky</option>
               {clubs
-                .filter(club => exerciseLibraryFilters.sportKey === 'all' || String(club.sportKey) === String(exerciseLibraryFilters.sportKey))
+                .filter((club) => {
+                  if (exerciseLibraryFilters.sportKey === 'all') return true
+
+                  const clubSportKey = normalizeSportFilterKey(
+                    club?.sportKey || club?.sport_key || club?.sport
+                  )
+                  const selectedSportKey = normalizeSportFilterKey(exerciseLibraryFilters.sportKey)
+
+                  return clubSportKey === selectedSportKey
+                })
                 .map(club => (
                   <option key={`exercise-library-filter-club-${club.id}`} value={club.id}>{club.name}</option>
                 ))}
             </select>
           </div>
-
-          {!isEmbeddedWebSettingsView ? (
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="exercise-list-filter-level">Úroveň</label>
-              <select
-                id="exercise-list-filter-level"
-                value={exerciseListFilters.level}
-                onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, level: event.target.value }))}
-              >
-                <option value="all">Všetky</option>
-                <option value="1">1 hviezda</option>
-                <option value="2">2 hviezdy</option>
-                <option value="3">3 hviezdy</option>
-                <option value="4">4 hviezdy</option>
-                <option value="5">5 hviezd</option>
-              </select>
-            </div>
-          ) : null}
-
-          {!isEmbeddedWebSettingsView ? (
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="exercise-list-filter-favorite">Obľúbenosť</label>
-              <select
-                id="exercise-list-filter-favorite"
-                value={exerciseListFilters.favorite}
-                onChange={(event) => setExerciseListFilters((prev) => ({ ...prev, favorite: event.target.value }))}
-              >
-                <option value="all">Všetky</option>
-                <option value="favorite">Obľúbené</option>
-                <option value="not-favorite">Neobľúbené</option>
-              </select>
-            </div>
-          ) : null}
 
           <button
             type="button"
