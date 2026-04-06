@@ -1263,6 +1263,7 @@ button,
   min-width: 120px;
   font-size: 0.8rem;
   align-self: end;
+  justify-self: end;
   display: inline-flex;
   align-items: center;
   justify-content: center;
