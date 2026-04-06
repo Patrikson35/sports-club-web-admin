@@ -260,6 +260,8 @@ function Exercises({ webSettingsSection = '' }) {
   })
   const [openedExerciseDetailItem, setOpenedExerciseDetailItem] = useState(null)
   const [isExerciseDetailVideoPlaying, setIsExerciseDetailVideoPlaying] = useState(false)
+  const [isExerciseSortOpen, setIsExerciseSortOpen] = useState(false)
+  const [exerciseSortMode, setExerciseSortMode] = useState('popularity')
   const [exerciseListFilters, setExerciseListFilters] = useState({
     intensity: 'all',
     playersCount: 'all',
@@ -536,6 +538,38 @@ function Exercises({ webSettingsSection = '' }) {
       return true
     })
   }, [exerciseDatabaseItems, exerciseLibraryFilters, currentRole, currentUserId, exerciseListFilters, exerciseCategories]);
+
+  const sortedExerciseDatabaseItems = useMemo(() => {
+    const source = Array.isArray(filteredExerciseDatabaseItems) ? [...filteredExerciseDatabaseItems] : []
+
+    const byName = (left, right) => String(left?.name || '').localeCompare(String(right?.name || ''), 'sk', { sensitivity: 'base' })
+
+    if (exerciseSortMode === 'level') {
+      source.sort((left, right) => {
+        const ratingDelta = normalizeExerciseRating(right?.rating) - normalizeExerciseRating(left?.rating)
+        if (ratingDelta !== 0) return ratingDelta
+
+        const favoriteDelta = Number(normalizeExerciseFavorite(right?.isFavorite)) - Number(normalizeExerciseFavorite(left?.isFavorite))
+        if (favoriteDelta !== 0) return favoriteDelta
+
+        return byName(left, right)
+      })
+
+      return source
+    }
+
+    source.sort((left, right) => {
+      const favoriteDelta = Number(normalizeExerciseFavorite(right?.isFavorite)) - Number(normalizeExerciseFavorite(left?.isFavorite))
+      if (favoriteDelta !== 0) return favoriteDelta
+
+      const ratingDelta = normalizeExerciseRating(right?.rating) - normalizeExerciseRating(left?.rating)
+      if (ratingDelta !== 0) return ratingDelta
+
+      return byName(left, right)
+    })
+
+    return source
+  }, [filteredExerciseDatabaseItems, exerciseSortMode])
 
   const getExercisePreviewImage = (item) => {
     const uploadedImage = String(item?.imageUrl || '').trim()
@@ -1736,19 +1770,46 @@ function Exercises({ webSettingsSection = '' }) {
             <span className="material-icons-round section-icon" aria-hidden="true">format_list_bulleted</span>
             <h3 className="manager-section-title">Zoznam cvičení</h3>
           </div>
+
+          <div className="exercise-db-sort-controls">
+            <button
+              type="button"
+              className={`exercise-db-sort-toggle ${isExerciseSortOpen ? 'active' : ''}`}
+              onClick={() => setIsExerciseSortOpen((prev) => !prev)}
+              aria-expanded={isExerciseSortOpen}
+              aria-controls="exercise-sort-select"
+              aria-label="Zoradenie cvičení"
+              title="Zoradenie"
+            >
+              <span className="material-icons-round" aria-hidden="true">sort</span>
+            </button>
+
+            {isExerciseSortOpen ? (
+              <select
+                id="exercise-sort-select"
+                className="exercise-db-sort-select"
+                value={exerciseSortMode}
+                onChange={(event) => setExerciseSortMode(String(event.target.value || 'popularity'))}
+                aria-label="Výber zoradenia cvičení"
+              >
+                <option value="popularity">podľa obľúbenosti</option>
+                <option value="level">podľa úrovni cvičenia</option>
+              </select>
+            ) : null}
+          </div>
         </div>
 
         {exerciseDatabaseItems.length === 0 ? (
           <p className="manager-empty-text" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
             Databáza cvičení je zatiaľ prázdna.
           </p>
-        ) : filteredExerciseDatabaseItems.length === 0 ? (
+        ) : sortedExerciseDatabaseItems.length === 0 ? (
           <p className="manager-empty-text" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
             Žiadne cvičenie nezodpovedá filtru.
           </p>
         ) : (
           <div className="exercise-db-cards" style={{ marginTop: '0.8rem' }}>
-            {filteredExerciseDatabaseItems.map((item) => (
+            {sortedExerciseDatabaseItems.map((item) => (
               <div
                 key={`card-${item.id}`}
                 className="exercise-db-card"
