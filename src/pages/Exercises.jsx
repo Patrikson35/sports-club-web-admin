@@ -348,7 +348,7 @@ function Exercises({ webSettingsSection = '' }) {
       const userId = String(user?.id || '').trim()
       const isAdminView = role === 'admin'
       const [categoryResponse, exerciseResponse, myClubResponse, sportsResponsePrimary, sportsResponseFallback] = await Promise.all([
-        api.getExerciseCategories(),
+        isAdminView ? api.getExerciseCategories() : Promise.resolve({ categories: [] }),
         isAdminView ? api.getExercises() : Promise.resolve({ exercises: [] }),
         isAdminView ? Promise.resolve({}) : api.getMyClub().catch(() => ({})),
         api.getWebSettingsSports().catch(() => ({ sports: [] })),
@@ -375,14 +375,16 @@ function Exercises({ webSettingsSection = '' }) {
 
       setSportOptions(normalizedSports.length > 0 ? normalizedSports : DEFAULT_SPORT_OPTIONS)
 
-      const categoriesRaw = Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : []
+      const categoriesRaw = isAdminView
+        ? (Array.isArray(categoryResponse?.categories) ? categoryResponse.categories : [])
+        : (Array.isArray(myClubResponse?.exerciseCategories) ? myClubResponse.exerciseCategories : [])
       const normalizedCategories = categoriesRaw
         .map((item) => ({
           id: String(item?.id || '').trim(),
           name: String(item?.name || '').trim(),
           subcategories: Array.isArray(item?.subcategories)
             ? item.subcategories
-                .map((subcategory) => String(subcategory?.name || '').trim())
+                .map((subcategory) => String(subcategory?.name || subcategory || '').trim())
                 .filter(Boolean)
             : [],
           isSystem: Boolean(item?.isSystem),
