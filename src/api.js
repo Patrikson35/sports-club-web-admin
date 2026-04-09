@@ -1525,6 +1525,29 @@ class APIClient {
     return this.request(`/matches?${query}`);
   }
 
+  async getMatchCategoryIndicators(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/matches/settings/category-indicators${query ? `?${query}` : ''}`);
+  }
+
+  async updateMatchCategoryIndicators(data) {
+    return this.request('/matches/settings/category-indicators', {
+      method: 'PUT',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
+  async getMatchEvidence(matchId) {
+    return this.request(`/matches/${matchId}/evidence`);
+  }
+
+  async updateMatchEvidence(matchId, data) {
+    return this.request(`/matches/${matchId}/evidence`, {
+      method: 'PUT',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
   // Tests
   async getTestResults(params = {}) {
     if (USE_MOCK_DATA) {

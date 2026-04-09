@@ -79,10 +79,11 @@ function Matches() {
     try {
       setLoading(true)
       setError('')
-      const [matchesData, myClubData, clubsData] = await Promise.all([
+      const [matchesData, myClubData, clubsData, categorySettingsResponse] = await Promise.all([
         api.getMatches(),
         api.getMyClub().catch(() => ({})),
-        api.getClubs().catch(() => ({ clubs: [] }))
+        api.getClubs().catch(() => ({ clubs: [] })),
+        api.getMatchCategoryIndicators().catch(() => ({ settings: [] }))
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
@@ -90,9 +91,48 @@ function Matches() {
       setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
       setMyClubName(String(myClubData?.name || '').trim())
 
-      const serverIndicatorsRaw = myClubData?.matchesCategoryIndicators && typeof myClubData.matchesCategoryIndicators === 'object'
-        ? myClubData.matchesCategoryIndicators
-        : localIndicators
+      const evidences = await Promise.all(
+        fetchedMatches.map((match) => api.getMatchEvidence(match.id).catch(() => null))
+      )
+
+      const evidenceMap = {}
+      const pairingMap = {}
+
+      evidences.forEach((item) => {
+        if (!item || !item.matchId) return
+        const key = String(item.matchId)
+        evidenceMap[key] = {
+          homeScore: item?.evidence?.homeScore ?? '',
+          awayScore: item?.evidence?.awayScore ?? '',
+          scorers: Array.isArray(item?.evidence?.scorers) ? item.evidence.scorers : [],
+          cards: Array.isArray(item?.evidence?.cards) ? item.evidence.cards : []
+        }
+
+        if (item?.pairing && typeof item.pairing === 'object') {
+          pairingMap[key] = {
+            pairedClubId: String(item.pairing.pairedClubId || ''),
+            pairedClubName: String(item.pairing.pairedClubName || '').trim()
+          }
+        }
+      })
+
+      const apiCategorySettings = Array.isArray(categorySettingsResponse?.settings)
+        ? categorySettingsResponse.settings
+        : []
+      const normalizedIndicatorsFromApi = apiCategorySettings.reduce((acc, row) => {
+        const categoryKey = String(row?.categoryKey || '').trim()
+        if (!categoryKey) return acc
+        if (!acc[categoryKey]) {
+          acc[categoryKey] = normalizeIndicators(row?.indicators)
+        }
+        return acc
+      }, {})
+
+      const serverIndicatorsRaw = Object.keys(normalizedIndicatorsFromApi).length > 0
+        ? normalizedIndicatorsFromApi
+        : (myClubData?.matchesCategoryIndicators && typeof myClubData.matchesCategoryIndicators === 'object'
+          ? myClubData.matchesCategoryIndicators
+          : localIndicators)
       const normalizedIndicators = Object.entries(serverIndicatorsRaw).reduce((acc, [categoryKey, indicators]) => {
         const key = String(categoryKey || '').trim()
         if (!key) return acc
@@ -105,14 +145,18 @@ function Matches() {
         ...normalizedIndicators
       })
 
-      const serverRecordings = myClubData?.matchesRecordings && typeof myClubData.matchesRecordings === 'object'
-        ? myClubData.matchesRecordings
-        : localRecordings
+      const serverRecordings = Object.keys(evidenceMap).length > 0
+        ? evidenceMap
+        : (myClubData?.matchesRecordings && typeof myClubData.matchesRecordings === 'object'
+          ? myClubData.matchesRecordings
+          : localRecordings)
       setMatchRecordings(serverRecordings)
 
-      const serverPairings = myClubData?.matchesPairings && typeof myClubData.matchesPairings === 'object'
-        ? myClubData.matchesPairings
-        : localPairings
+      const serverPairings = Object.keys(pairingMap).length > 0
+        ? pairingMap
+        : (myClubData?.matchesPairings && typeof myClubData.matchesPairings === 'object'
+          ? myClubData.matchesPairings
+          : localPairings)
       setMatchPairings(serverPairings)
     } catch (loadError) {
       console.error('Chyba načítania zápasov:', loadError)
@@ -355,11 +399,12 @@ function Matches() {
       setMatchRecordings(nextRecordings)
       setMatchPairings(nextPairings)
 
-      await api.updateMyClub({
-        name: myClubName || 'Klub',
-        matchesCategoryIndicators: categoryIndicators,
-        matchesRecordings: nextRecordings,
-        matchesPairings: nextPairings
+      await api.updateMatchEvidence(openedMatch.id, {
+        homeScore: nextRecordings[matchIdKey]?.homeScore,
+        awayScore: nextRecordings[matchIdKey]?.awayScore,
+        scorers: Array.isArray(nextRecordings[matchIdKey]?.scorers) ? nextRecordings[matchIdKey].scorers : [],
+        cards: Array.isArray(nextRecordings[matchIdKey]?.cards) ? nextRecordings[matchIdKey].cards : [],
+        pairedClubId: selectedPairingClubId || null
       })
 
       setSuccess('Zápasové údaje boli uložené.')
@@ -380,12 +425,31 @@ function Matches() {
 
     try {
       writeLocalObject(MATCH_CATEGORY_INDICATORS_STORAGE_KEY, categoryIndicators)
-      await api.updateMyClub({
-        name: myClubName || 'Klub',
-        matchesCategoryIndicators: categoryIndicators,
-        matchesRecordings: matchRecordings,
-        matchesPairings: matchPairings
-      })
+
+      const targetTeamIds = Array.from(new Set(
+        matches
+          .filter((match) => {
+            if (selectedCategoryKey === 'default') return true
+            return getCategoryKey(match) === selectedCategoryKey
+          })
+          .map((match) => Number(match?.team?.id || 0))
+          .filter((teamId) => Number.isInteger(teamId) && teamId > 0)
+      ))
+
+      if (!targetTeamIds.length) {
+        setError('Pre zvolenú kategóriu sa nenašiel žiadny tím.')
+        setSaving(false)
+        return
+      }
+
+      await Promise.all(
+        targetTeamIds.map((teamId) => api.updateMatchCategoryIndicators({
+          teamId,
+          categoryKey: selectedCategoryKey,
+          indicators: getIndicatorsForCategory(selectedCategoryKey)
+        }))
+      )
+
       setSuccess('Nastavenie ukazovateľov podľa kategórií bolo uložené.')
     } catch (saveError) {
       console.error('Chyba pri ukladaní nastavení zápasov:', saveError)
