@@ -10,6 +10,39 @@
   min-width: 150px;
 }
 
+.matches-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.matches-stat-card {
+  padding: 0.9rem;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(19, 27, 43, 0.88);
+  border-radius: 0.9rem;
+}
+
+.matches-stat-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.matches-stat-card strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.matches-stat-card small {
+  display: inline-block;
+  margin-top: 0.22rem;
+  color: #93c5fd;
+  font-size: 0.68rem;
+}
+
 .matches-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -46,6 +79,29 @@
 
 .matches-table-wrap {
   overflow-x: auto;
+}
+
+.matches-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+.matches-category-chip {
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.92);
+  color: #c5d0e7;
+  border-radius: 0.65rem;
+  padding: 0.3rem 0.72rem;
+  font-size: 0.73rem;
+  cursor: pointer;
+}
+
+.matches-category-chip.active {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(59, 130, 246, 0.2);
+  color: #dbeafe;
 }
 
 .matches-type-pill {
@@ -161,6 +217,7 @@
 }
 
 .matches-calendar-day {
+  position: relative;
   min-height: 38px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -171,6 +228,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.1rem;
+  overflow: visible;
 }
 
 .matches-calendar-day.muted {
@@ -193,9 +251,98 @@
   background: #f59e0b;
 }
 
-.matches-calendar-day.has-match {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.11);
+.matches-calendar-day.has-planned {
+  border-color: rgba(74, 131, 227, 0.72);
+  background: rgba(24, 43, 74, 0.62);
+}
+
+.matches-calendar-day.has-finished {
+  box-shadow: inset 0 -2px 0 0 rgba(34, 197, 94, 0.9);
+}
+
+.matches-calendar-day.has-cancelled {
+  box-shadow: inset 0 -2px 0 0 rgba(244, 63, 94, 0.9);
+}
+
+.matches-calendar-day-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.4rem);
+  transform: translateX(-50%) translateY(4px);
+  width: 16rem;
+  max-width: 16rem;
+  max-height: 11rem;
+  overflow-y: auto;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(8, 13, 22, 0.97);
+  box-shadow: 0 14px 30px -16px rgba(2, 6, 23, 0.85);
+  border-radius: 0.5rem;
+  padding: 0.42rem 0.5rem;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  z-index: 12;
+}
+
+.matches-calendar-day:hover .matches-calendar-day-tooltip,
+.matches-calendar-day:focus-visible .matches-calendar-day-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.matches-calendar-day-tooltip-row {
+  display: block;
+  font-size: 0.66rem;
+  line-height: 1.3;
+  color: #dbeafe;
+}
+
+.matches-calendar-day-tooltip-row + .matches-calendar-day-tooltip-row {
+  margin-top: 0.24rem;
+  padding-top: 0.24rem;
+  border-top: 1px solid rgba(96, 113, 147, 0.34);
+}
+
+.matches-calendar-day-tooltip-more {
+  margin-top: 0.28rem;
+  font-size: 0.63rem;
+  color: #93c5fd;
+}
+
+.matches-calendar-legend {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.matches-calendar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.matches-calendar-legend-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+}
+
+.matches-calendar-legend-dot.planned {
+  background: #4a83e3;
+}
+
+.matches-calendar-legend-dot.finished {
+  background: #22c55e;
+}
+
+.matches-calendar-legend-dot.cancelled {
+  background: #f43f5e;
 }
 
 .matches-create-modal {
@@ -259,6 +406,10 @@
 }
 
 @media (max-width: 920px) {
+  .matches-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .matches-main-grid {
     grid-template-columns: 1fr;
   }
@@ -273,6 +424,10 @@
 }
 
 @media (max-width: 640px) {
+  .matches-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
   .matches-page-header {
     flex-direction: column;
     align-items: stretch;

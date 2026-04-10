@@ -114,7 +114,7 @@ function Matches() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [categoryIndicators, setCategoryIndicators] = useState({ default: { ...DEFAULT_INDICATORS } })
-  const [selectedCategoryKey, setSelectedCategoryKey] = useState('default')
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [calendarDate, setCalendarDate] = useState(() => new Date())
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
@@ -249,14 +249,60 @@ function Matches() {
   const categoryKeys = useMemo(() => {
     const fromMatches = matches.map(getCategoryKey)
     const fromSettings = Object.keys(categoryIndicators || {})
-    return Array.from(new Set(['default', ...fromMatches, ...fromSettings]))
-  }, [matches, categoryIndicators])
+    const fromTeams = teams.map((team) => String(team?.ageGroup || '').trim()).filter(Boolean)
+    return Array.from(new Set(['default', ...fromMatches, ...fromSettings, ...fromTeams]))
+  }, [matches, categoryIndicators, teams])
 
   useEffect(() => {
-    if (!categoryKeys.includes(selectedCategoryKey)) {
-      setSelectedCategoryKey('default')
+    if (selectedCategoryKey !== 'all' && !categoryKeys.includes(selectedCategoryKey)) {
+      setSelectedCategoryKey('all')
     }
   }, [categoryKeys, selectedCategoryKey])
+
+  const filteredMatches = useMemo(() => {
+    if (selectedCategoryKey === 'all') return matches
+    return matches.filter((match) => getCategoryKey(match) === selectedCategoryKey)
+  }, [matches, selectedCategoryKey])
+
+  const matchesStats = useMemo(() => {
+    const source = Array.isArray(filteredMatches) ? filteredMatches : []
+    let wins = 0
+    let draws = 0
+    let losses = 0
+    let goalsFor = 0
+    let goalsAgainst = 0
+    let decidedMatches = 0
+
+    source.forEach((match) => {
+      const resultRaw = String(getMatchResult(match) || '').trim()
+      const parts = resultRaw.split(':').map((value) => Number(value))
+      if (parts.length !== 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) return
+
+      const home = parts[0]
+      const away = parts[1]
+      goalsFor += home
+      goalsAgainst += away
+      decidedMatches += 1
+
+      if (home > away) wins += 1
+      else if (home === away) draws += 1
+      else losses += 1
+    })
+
+    const points = (wins * 3) + draws
+    const maxPoints = decidedMatches * 3
+    const successRate = maxPoints > 0 ? Math.round((points / maxPoints) * 100) : 0
+
+    return {
+      total: source.length,
+      wins,
+      draws,
+      losses,
+      goalsFor,
+      goalsAgainst,
+      successRate
+    }
+  }, [filteredMatches])
 
   const getIndicatorsForCategory = (categoryKey) => {
     const resolvedKey = String(categoryKey || 'default').trim() || 'default'
@@ -698,7 +744,7 @@ function Matches() {
   const calendarCells = useMemo(() => getCalendarCells(calendarDate), [calendarDate])
 
   const matchesByDateKey = useMemo(() => {
-    const source = Array.isArray(matches) ? matches : []
+    const source = Array.isArray(filteredMatches) ? filteredMatches : []
     return source.reduce((acc, match) => {
       const dateKey = toDateKey(match?.matchDate)
       if (!dateKey) return acc
@@ -706,7 +752,7 @@ function Matches() {
       acc[dateKey].push(match)
       return acc
     }, {})
-  }, [matches])
+  }, [filteredMatches])
 
   const calendarTitle = useMemo(
     () => new Intl.DateTimeFormat('sk-SK', { month: 'long', year: 'numeric' }).format(calendarDate),
@@ -750,7 +796,6 @@ function Matches() {
     return <div className="loading">Načítanie...</div>
   }
 
-  const selectedCategoryIndicators = getIndicatorsForCategory(selectedCategoryKey)
   const openedIndicators = openedMatch ? getIndicatorsForMatch(openedMatch) : DEFAULT_INDICATORS
   const openedRecording = openedMatch ? getRecordingForMatch(openedMatch.id) : { scorers: [], assists: [], cards: [] }
 
@@ -769,72 +814,23 @@ function Matches() {
       {error ? <div className="error-message">{error}</div> : null}
       {success ? <div className="success-message">{success}</div> : null}
 
-      <div className="card" style={{ marginBottom: '16px' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Nastavenie ukazovateľov podľa kategórie</h3>
-        <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'minmax(180px, 240px) repeat(5, minmax(120px, 1fr)) auto', alignItems: 'end' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label htmlFor="match-category-settings">Kategória</label>
-            <select
-              id="match-category-settings"
-              value={selectedCategoryKey}
-              onChange={(event) => setSelectedCategoryKey(String(event.target.value || 'default'))}
-            >
-              {categoryKeys.map((key) => (
-                <option key={`match-category-settings-${key}`} value={key}>
-                  {key === 'default' ? 'Predvolené' : key}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={selectedCategoryIndicators.result}
-              onChange={(event) => updateCategoryIndicators('result', event.target.checked)}
-            />
-            <span>Výsledok</span>
-          </label>
-
-          <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={selectedCategoryIndicators.scorers}
-              onChange={(event) => updateCategoryIndicators('scorers', event.target.checked)}
-            />
-            <span>Strelci</span>
-          </label>
-
-          <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={selectedCategoryIndicators.assists}
-              onChange={(event) => updateCategoryIndicators('assists', event.target.checked)}
-            />
-            <span>Asistencie</span>
-          </label>
-
-          <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={selectedCategoryIndicators.yellowCards}
-              onChange={(event) => updateCategoryIndicators('yellowCards', event.target.checked)}
-            />
-            <span>Žlté karty</span>
-          </label>
-
-          <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={selectedCategoryIndicators.redCards}
-              onChange={(event) => updateCategoryIndicators('redCards', event.target.checked)}
-            />
-            <span>Červené karty</span>
-          </label>
-
-          <button type="button" className="btn" onClick={saveCategorySettings} disabled={saving}>
-            {saving ? 'Ukladám...' : 'Uložiť'}
-          </button>
+      <div className="matches-stats-grid" style={{ marginBottom: '16px' }}>
+        <div className="card matches-stat-card">
+          <p>Počet zápasov</p>
+          <strong>{matchesStats.total}</strong>
+        </div>
+        <div className="card matches-stat-card">
+          <p>Štatistiky</p>
+          <strong>{matchesStats.wins}-{matchesStats.draws}-{matchesStats.losses}</strong>
+          <small>V-R-P</small>
+        </div>
+        <div className="card matches-stat-card">
+          <p>Skóre</p>
+          <strong>{matchesStats.goalsFor}:{matchesStats.goalsAgainst}</strong>
+        </div>
+        <div className="card matches-stat-card">
+          <p>Úspešnosť</p>
+          <strong>{matchesStats.successRate}%</strong>
         </div>
       </div>
 
@@ -842,7 +838,27 @@ function Matches() {
         <div className="card matches-list-panel">
           <div className="matches-panel-head">
             <h3>Zoznam zápasov</h3>
-            <span>{matches.length} položiek</span>
+            <span>{filteredMatches.length} položiek</span>
+          </div>
+
+          <div className="matches-category-chips">
+            <button
+              type="button"
+              className={`matches-category-chip ${selectedCategoryKey === 'all' ? 'active' : ''}`}
+              onClick={() => setSelectedCategoryKey('all')}
+            >
+              Všetky
+            </button>
+            {categoryKeys.filter((key) => key !== 'default').map((key) => (
+              <button
+                key={`matches-category-chip-${key}`}
+                type="button"
+                className={`matches-category-chip ${selectedCategoryKey === key ? 'active' : ''}`}
+                onClick={() => setSelectedCategoryKey(key)}
+              >
+                {key}
+              </button>
+            ))}
           </div>
 
           <div className="matches-table-wrap">
@@ -857,14 +873,14 @@ function Matches() {
                 </tr>
               </thead>
               <tbody>
-                {matches.length === 0 ? (
+                {filteredMatches.length === 0 ? (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                       Žiadne zápasy
                     </td>
                   </tr>
                 ) : (
-                  matches.map((match) => {
+                  filteredMatches.map((match) => {
                     const indicators = getIndicatorsForMatch(match)
                     return (
                       <tr key={match.id}>
@@ -950,19 +966,49 @@ function Matches() {
           <div className="matches-calendar-grid">
             {calendarCells.map((cell) => {
               const dayMatches = matchesByDateKey[cell.dateKey] || []
+              const hasFinished = dayMatches.some((item) => String(item?.status || '').trim().toLowerCase() === 'finished')
+              const hasCancelled = dayMatches.some((item) => String(item?.status || '').trim().toLowerCase() === 'cancelled')
+              const hasPlanned = dayMatches.some((item) => !['finished', 'cancelled'].includes(String(item?.status || '').trim().toLowerCase()))
               return (
                 <div
                   key={cell.id}
-                  className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${dayMatches.length > 0 ? 'has-match' : ''}`.trim()}
+                  className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${hasPlanned ? 'has-planned' : ''} ${hasFinished ? 'has-finished' : ''} ${hasCancelled ? 'has-cancelled' : ''}`.trim()}
                   title={dayMatches.length > 0
                     ? `${cell.dayLabel}. ${calendarTitle}: ${dayMatches.length} zápas(y)`
                     : `${cell.dayLabel}. ${calendarTitle}`}
                 >
                   <span className="matches-calendar-day-number">{cell.dayLabel}</span>
                   {dayMatches.length > 0 ? <span className="matches-calendar-day-dot" aria-hidden="true" /> : null}
+                  {dayMatches.length > 0 ? (
+                    <span className="matches-calendar-day-tooltip">
+                      {dayMatches.slice(0, 3).map((item) => (
+                        <span key={`calendar-match-tip-${item.id}`} className="matches-calendar-day-tooltip-row">
+                          {formatMatchTypeShort(item.matchType)}: {myClubName || 'Môj klub'} vs {item.opponent || '-'}
+                        </span>
+                      ))}
+                      {dayMatches.length > 3 ? (
+                        <span className="matches-calendar-day-tooltip-more">+{dayMatches.length - 3} ďalších</span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </div>
               )
             })}
+          </div>
+
+          <div className="matches-calendar-legend">
+            <span className="matches-calendar-legend-item">
+              <span className="matches-calendar-legend-dot planned" aria-hidden="true" />
+              Plánované
+            </span>
+            <span className="matches-calendar-legend-item">
+              <span className="matches-calendar-legend-dot finished" aria-hidden="true" />
+              Ukončené
+            </span>
+            <span className="matches-calendar-legend-item">
+              <span className="matches-calendar-legend-dot cancelled" aria-hidden="true" />
+              Zrušené
+            </span>
           </div>
         </div>
       </div>
