@@ -9752,60 +9752,56 @@ function MyClub() {
                           >
                             {matchEvidenceSettingsSaving ? 'Ukladám...' : 'Uložiť nastavenia zobrazenia'}
                           </button>
-                          <button
-                            type="button"
-                            className={`manager-add-btn ${showAddMatchIndicatorCard ? 'category-form-toggle-cancel' : ''}`}
-                            onClick={() => {
-                              setShowAddMatchIndicatorCard((prev) => !prev)
-                              setNewMatchIndicatorName('')
-                            }}
-                          >
-                            {showAddMatchIndicatorCard ? 'Zrušiť formulár' : 'Pridať ukazovateľ'}
-                          </button>
                         </div>
-
-                        {showAddMatchIndicatorCard ? (
-                          <div className="card settings-placeholder-card metrics-editor-card" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
-                            <div className="manager-role-heading" style={{ marginBottom: '0.6rem' }}>
-                              <span className="material-icons-round section-icon" aria-hidden="true">playlist_add</span>
-                              <h3 className="manager-section-title">Pridať nový ukazovateľ</h3>
-                            </div>
-
-                            <div className="form-group" style={{ maxWidth: '460px', marginBottom: 0 }}>
-                              <label htmlFor="match-evidence-new-indicator">Názov ukazovateľa</label>
-                              <input
-                                id="match-evidence-new-indicator"
-                                type="text"
-                                value={newMatchIndicatorName}
-                                onChange={(event) => setNewMatchIndicatorName(event.target.value)}
-                                placeholder="napr. získané rohy"
-                              />
-                            </div>
-
-                            <div className="form-actions" style={{ marginTop: '0.9rem', gap: '0.6rem', justifyContent: 'flex-start' }}>
-                              <button
-                                type="button"
-                                className="manager-role-save-btn"
-                                onClick={addCustomMatchEvidenceIndicator}
-                              >
-                                Pridať
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-secondary"
-                                onClick={() => {
-                                  setShowAddMatchIndicatorCard(false)
-                                  setNewMatchIndicatorName('')
-                                }}
-                              >
-                                Zrušiť
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
                       </>
                     )}
                   </div>
+
+                  {matchEvidenceSettingOptions.length > 0 ? (
+                    <div className="members-categories-actions">
+                      <button
+                        type="button"
+                        className={`manager-add-btn ${showAddMatchIndicatorCard ? 'category-form-toggle-cancel' : ''}`}
+                        onClick={() => {
+                          if (showAddMatchIndicatorCard) {
+                            setShowAddMatchIndicatorCard(false)
+                            setNewMatchIndicatorName('')
+                          } else {
+                            setShowAddMatchIndicatorCard(true)
+                          }
+                        }}
+                      >
+                        {showAddMatchIndicatorCard ? 'Zrušiť formulár' : 'Pridať ukazovateľ'}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {showAddMatchIndicatorCard ? (
+                    <div className="card settings-placeholder-card" style={{ marginBottom: 0 }}>
+                      <div className="form-row" style={{ marginBottom: '0.9rem' }}>
+                        <div className="form-group trainer-photo-full-row">
+                          <label htmlFor="match-evidence-new-indicator">Názov ukazovateľa</label>
+                          <input
+                            id="match-evidence-new-indicator"
+                            type="text"
+                            value={newMatchIndicatorName}
+                            onChange={(event) => setNewMatchIndicatorName(event.target.value)}
+                            placeholder="napr. získané rohy"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-actions" style={{ marginBottom: '0.2rem' }}>
+                        <button
+                          type="button"
+                          className="manager-role-save-btn"
+                          onClick={addCustomMatchEvidenceIndicator}
+                        >
+                          Pridať ukazovateľ
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
               </div>
             )}
 
