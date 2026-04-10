@@ -59,6 +59,49 @@ const writeLocalObject = (key, value) => {
 
 const getCategoryKey = (match) => String(match?.team?.ageGroup || 'default').trim() || 'default'
 
+const formatMatchTypeShort = (value) => {
+  const source = String(value || '').trim().toLowerCase()
+  if (!source) return 'MZ'
+  if (source.includes('poh') || source.includes('cup')) return 'CUP'
+  if (source.includes('priat') || source.includes('friend') || source === 'pz') return 'PZ'
+  if (source.includes('liga') || source.includes('majstr') || source === 'mz') return 'MZ'
+  return String(value || '').trim().slice(0, 4).toUpperCase() || 'MZ'
+}
+
+const toDateKey = (input) => {
+  if (!input) return ''
+  const value = new Date(input)
+  if (Number.isNaN(value.getTime())) return ''
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getCalendarCells = (baseDate) => {
+  const year = baseDate.getFullYear()
+  const monthIndex = baseDate.getMonth()
+  const firstDay = new Date(year, monthIndex, 1)
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+  const dayOffset = (firstDay.getDay() + 6) % 7
+  const cells = []
+
+  for (let index = 0; index < 42; index += 1) {
+    const dayNumber = index - dayOffset + 1
+    const date = new Date(year, monthIndex, dayNumber)
+    cells.push({
+      id: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
+      date,
+      dateKey: toDateKey(date),
+      dayLabel: date.getDate(),
+      inCurrentMonth: dayNumber >= 1 && dayNumber <= daysInMonth,
+      isToday: toDateKey(date) === toDateKey(new Date())
+    })
+  }
+
+  return cells
+}
+
 function Matches() {
   const [matches, setMatches] = useState([])
   const [teams, setTeams] = useState([])
@@ -73,9 +116,11 @@ function Matches() {
   const [categoryIndicators, setCategoryIndicators] = useState({ default: { ...DEFAULT_INDICATORS } })
   const [selectedCategoryKey, setSelectedCategoryKey] = useState('default')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [calendarDate, setCalendarDate] = useState(() => new Date())
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
   const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
+  const [matchPendingDelete, setMatchPendingDelete] = useState(null)
   const [matchRecordings, setMatchRecordings] = useState({})
   const [matchPairings, setMatchPairings] = useState({})
   const [openedMatch, setOpenedMatch] = useState(null)
@@ -650,6 +695,57 @@ function Matches() {
     }
   }
 
+  const calendarCells = useMemo(() => getCalendarCells(calendarDate), [calendarDate])
+
+  const matchesByDateKey = useMemo(() => {
+    const source = Array.isArray(matches) ? matches : []
+    return source.reduce((acc, match) => {
+      const dateKey = toDateKey(match?.matchDate)
+      if (!dateKey) return acc
+      if (!acc[dateKey]) acc[dateKey] = []
+      acc[dateKey].push(match)
+      return acc
+    }, {})
+  }, [matches])
+
+  const calendarTitle = useMemo(
+    () => new Intl.DateTimeFormat('sk-SK', { month: 'long', year: 'numeric' }).format(calendarDate),
+    [calendarDate]
+  )
+
+  const shiftCalendarMonth = (delta) => {
+    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1))
+  }
+
+  const requestDeleteMatch = (match) => {
+    setMatchPendingDelete(match)
+  }
+
+  const cancelDeleteMatch = () => {
+    setMatchPendingDelete(null)
+  }
+
+  const deleteMatch = async () => {
+    const matchId = Number(matchPendingDelete?.id || 0)
+    if (!matchId) return
+
+    setSaving(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      await api.deleteMatch(matchId)
+      setMatches((prev) => (Array.isArray(prev) ? prev.filter((item) => Number(item?.id || 0) !== matchId) : []))
+      setMatchPendingDelete(null)
+      setSuccess('Zápas bol odstránený.')
+    } catch (deleteError) {
+      console.error('Chyba pri mazaní zápasu:', deleteError)
+      setError(deleteError?.message || 'Zápas sa nepodarilo odstrániť.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return <div className="loading">Načítanie...</div>
   }
@@ -742,73 +838,133 @@ function Matches() {
         </div>
       </div>
 
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Dátum</th>
-              <th>Súper</th>
-              <th>Kategória</th>
-              <th>Výsledok</th>
-              <th>Strelci</th>
-              <th>Asistencie</th>
-              <th>Karty</th>
-              <th>Párovanie</th>
-              <th>Stav</th>
-              <th>Akcie</th>
-            </tr>
-          </thead>
-          <tbody>
-            {matches.length === 0 ? (
-              <tr>
-                <td colSpan="10" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  Žiadne zápasy
-                </td>
-              </tr>
-            ) : (
-              matches.map((match) => {
-                const indicators = getIndicatorsForMatch(match)
-                return (
-                  <tr key={match.id}>
-                    <td>{match.matchDate ? new Date(match.matchDate).toLocaleDateString('sk-SK') : '-'}</td>
-                    <td>
-                      <strong>{myClubName || 'Môj klub'} vs {match.opponent}</strong>
-                    </td>
-                    <td>{getCategoryKey(match)}</td>
-                    <td>
-                      {indicators.result ? (
-                        <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent)' }}>
-                          {getMatchResult(match) || '-'}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td>{indicators.scorers ? getScorersSummary(match) : '-'}</td>
-                    <td>{indicators.assists ? getAssistsSummary(match) : '-'}</td>
-                    <td>{(indicators.yellowCards || indicators.redCards) ? getCardsSummary(match) : '-'}</td>
-                    <td>{getPairingLabel(match)}</td>
-                    <td>
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        background: match.status === 'finished' ? 'var(--success)' : 'var(--accent)',
-                        color: match.status === 'finished' ? '#fff' : '#000'
-                      }}>
-                        {match.status === 'finished' ? 'Ukončený' : 'Plánovaný'}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => openMatchDetail(match)}>
-                        Evidencia
-                      </button>
+      <div className="matches-main-grid">
+        <div className="card matches-list-panel">
+          <div className="matches-panel-head">
+            <h3>Zoznam zápasov</h3>
+            <span>{matches.length} položiek</span>
+          </div>
+
+          <div className="matches-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Druh zápasu</th>
+                  <th>Domáce mužstvo</th>
+                  <th>Hostia</th>
+                  <th>Výsledok</th>
+                  <th>Akcie</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matches.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      Žiadne zápasy
                     </td>
                   </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
+                ) : (
+                  matches.map((match) => {
+                    const indicators = getIndicatorsForMatch(match)
+                    return (
+                      <tr key={match.id}>
+                        <td>
+                          <span className="matches-type-pill">{formatMatchTypeShort(match.matchType)}</span>
+                        </td>
+                        <td>
+                          <strong>{myClubName || 'Môj klub'}</strong>
+                        </td>
+                        <td>
+                          <strong>{match.opponent || '-'}</strong>
+                          <div className="matches-subline">{match.matchDate ? new Date(match.matchDate).toLocaleDateString('sk-SK') : '-'}</div>
+                        </td>
+                        <td>
+                          {indicators.result ? (
+                            <span className="matches-result-value">{getMatchResult(match) || '-'}</span>
+                          ) : '-'}
+                        </td>
+                        <td>
+                          <div className="matches-actions">
+                            <button
+                              type="button"
+                              className="matches-action-icon"
+                              onClick={() => openMatchDetail(match)}
+                              title="Detail"
+                              aria-label="Detail"
+                            >
+                              <span className="material-icons-round" aria-hidden="true">visibility</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="matches-action-icon"
+                              onClick={() => openMatchDetail(match)}
+                              title="Upraviť"
+                              aria-label="Upraviť"
+                            >
+                              <span className="material-icons-round" aria-hidden="true">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="matches-action-icon danger"
+                              onClick={() => requestDeleteMatch(match)}
+                              title="Odstrániť"
+                              aria-label="Odstrániť"
+                            >
+                              <span className="material-icons-round" aria-hidden="true">delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card matches-calendar-panel">
+          <div className="matches-panel-head">
+            <h3>Kalendár</h3>
+            <div className="matches-calendar-controls">
+              <button type="button" className="matches-calendar-nav" onClick={() => shiftCalendarMonth(-1)} aria-label="Predchádzajúci mesiac">
+                <span className="material-icons-round" aria-hidden="true">chevron_left</span>
+              </button>
+              <strong>{calendarTitle}</strong>
+              <button type="button" className="matches-calendar-nav" onClick={() => shiftCalendarMonth(1)} aria-label="Nasledujúci mesiac">
+                <span className="material-icons-round" aria-hidden="true">chevron_right</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="matches-calendar-weekdays" aria-hidden="true">
+            <span>Po</span>
+            <span>Ut</span>
+            <span>St</span>
+            <span>Št</span>
+            <span>Pi</span>
+            <span>So</span>
+            <span>Ne</span>
+          </div>
+
+          <div className="matches-calendar-grid">
+            {calendarCells.map((cell) => {
+              const dayMatches = matchesByDateKey[cell.dateKey] || []
+              return (
+                <div
+                  key={cell.id}
+                  className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${dayMatches.length > 0 ? 'has-match' : ''}`.trim()}
+                  title={dayMatches.length > 0
+                    ? `${cell.dayLabel}. ${calendarTitle}: ${dayMatches.length} zápas(y)`
+                    : `${cell.dayLabel}. ${calendarTitle}`}
+                >
+                  <span className="matches-calendar-day-number">{cell.dayLabel}</span>
+                  {dayMatches.length > 0 ? <span className="matches-calendar-day-dot" aria-hidden="true" /> : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {openedMatch ? (
@@ -1170,6 +1326,23 @@ function Matches() {
               <button type="button" className="btn-secondary" onClick={closeCreateMatchModal} disabled={creating}>Zavrieť</button>
               <button type="button" className="manager-add-btn" onClick={submitCreateMatch} disabled={creating}>
                 {creating ? 'Ukladám...' : 'Pridať zápas'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {matchPendingDelete ? (
+        <div className="confirm-modal-overlay" onClick={cancelDeleteMatch} role="dialog" aria-modal="true" aria-label="Potvrdenie odstránenia zápasu">
+          <div className="confirm-modal-card" onClick={(event) => event.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: '8px' }}>Odstrániť zápas?</h3>
+            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+              Naozaj chcete odstrániť zápas proti tímu <strong>{matchPendingDelete.opponent || '-'}</strong>?
+            </p>
+            <div className="confirm-modal-actions">
+              <button type="button" className="btn-secondary" onClick={cancelDeleteMatch} disabled={saving}>Zrušiť</button>
+              <button type="button" className="manager-add-btn category-form-toggle-cancel" onClick={deleteMatch} disabled={saving}>
+                {saving ? 'Odstraňujem...' : 'Odstrániť'}
               </button>
             </div>
           </div>

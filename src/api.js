@@ -1551,6 +1551,12 @@ class APIClient {
     });
   }
 
+  async deleteMatch(matchId) {
+    return this.request(`/matches/${matchId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getMatchCategoryIndicators(params = {}) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/matches/settings/category-indicators${query ? `?${query}` : ''}`);
