@@ -1649,7 +1649,7 @@ function MyClub() {
     if (activeSettingsSection === 'attendance') {
       setAttendanceSettingsTab('periods')
     }
-    if (activeSettingsSection === 'trainings' && !['divisions', 'displaySettings', 'matches'].includes(trainingsSettingsTab)) {
+    if (activeSettingsSection === 'trainings' && !['divisions', 'displaySettings'].includes(trainingsSettingsTab)) {
       setTrainingsSettingsTab('divisions')
     }
   }, [activeSettingsSection, trainingsSettingsTab])
@@ -8230,15 +8230,15 @@ function MyClub() {
 
               <a
                 href="#"
-                className={`settings-submenu-item ${activeSettingsSection === 'trainings' && trainingsSettingsTab !== 'matches' ? 'active' : ''}`}
+                className={`settings-submenu-item ${activeSettingsSection === 'trainings' ? 'active' : ''}`}
                 onClick={(e) => {
                   e.preventDefault()
                   setActiveSettingsSection('trainings')
-                  if (!['divisions', 'displaySettings', 'matches'].includes(trainingsSettingsTab)) {
+                  if (!['divisions', 'displaySettings'].includes(trainingsSettingsTab)) {
                     setTrainingsSettingsTab('divisions')
                   }
                 }}
-                aria-current={activeSettingsSection === 'trainings' && trainingsSettingsTab !== 'matches' ? 'page' : undefined}
+                aria-current={activeSettingsSection === 'trainings' ? 'page' : undefined}
               >
                 <span className="material-icons-round" aria-hidden="true">sports</span>
                 <span>Tréningy</span>
@@ -8246,13 +8246,12 @@ function MyClub() {
 
               <a
                 href="#"
-                className={`settings-submenu-item settings-submenu-subitem ${activeSettingsSection === 'trainings' && trainingsSettingsTab === 'matches' ? 'active' : ''}`}
+                className={`settings-submenu-item ${activeSettingsSection === 'matches' ? 'active' : ''}`}
                 onClick={(e) => {
                   e.preventDefault()
-                  setActiveSettingsSection('trainings')
-                  setTrainingsSettingsTab('matches')
+                  setActiveSettingsSection('matches')
                 }}
-                aria-current={activeSettingsSection === 'trainings' && trainingsSettingsTab === 'matches' ? 'page' : undefined}
+                aria-current={activeSettingsSection === 'matches' ? 'page' : undefined}
               >
                 <span className="material-icons-round" aria-hidden="true">sports_score</span>
                 <span>Zápasy</span>
@@ -9400,16 +9399,6 @@ function MyClub() {
                     >
                       Nastavenia zobrazenia tréningov
                     </button>
-                    <span className="attendance-settings-menu-divider" aria-hidden="true" />
-                    <button
-                      type="button"
-                      className={`attendance-settings-menu-item ${trainingsSettingsTab === 'matches' ? 'active' : ''}`}
-                      onClick={() => setTrainingsSettingsTab('matches')}
-                      role="tab"
-                      aria-selected={trainingsSettingsTab === 'matches'}
-                    >
-                      Zápasy
-                    </button>
                   </div>
                 </div>
 
@@ -9542,7 +9531,7 @@ function MyClub() {
                       </div>
                     ) : null}
                   </>
-                ) : trainingsSettingsTab === 'displaySettings' ? (
+                ) : (
                   <div className="card settings-placeholder-card metrics-section-card training-display-settings-card">
                     <div className="manager-role-heading">
                       <span className="material-icons-round section-icon" aria-hidden="true">analytics</span>
@@ -9618,7 +9607,12 @@ function MyClub() {
                       </button>
                     </div>
                   </div>
-                ) : (
+                )}
+              </div>
+            )}
+
+            {activeSettingsSection === 'matches' && (
+              <div className="members-categories-stack">
                   <div className="card settings-placeholder-card metrics-section-card training-display-settings-card">
                     <div className="manager-role-heading">
                       <span className="material-icons-round section-icon" aria-hidden="true">scoreboard</span>
@@ -9738,7 +9732,6 @@ function MyClub() {
                       </>
                     )}
                   </div>
-                )}
               </div>
             )}
 
