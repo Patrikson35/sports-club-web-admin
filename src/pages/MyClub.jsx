@@ -1649,10 +1649,10 @@ function MyClub() {
     if (activeSettingsSection === 'attendance') {
       setAttendanceSettingsTab('periods')
     }
-    if (activeSettingsSection === 'trainings') {
+    if (activeSettingsSection === 'trainings' && !['divisions', 'displaySettings', 'matches'].includes(trainingsSettingsTab)) {
       setTrainingsSettingsTab('divisions')
     }
-  }, [activeSettingsSection])
+  }, [activeSettingsSection, trainingsSettingsTab])
 
   const matchEvidenceSettingOptions = useMemo(() => {
     const optionsFromCategories = (Array.isArray(categories) ? categories : []).map((category) => {
@@ -8230,15 +8230,32 @@ function MyClub() {
 
               <a
                 href="#"
-                className={`settings-submenu-item ${activeSettingsSection === 'trainings' ? 'active' : ''}`}
+                className={`settings-submenu-item ${activeSettingsSection === 'trainings' && trainingsSettingsTab !== 'matches' ? 'active' : ''}`}
                 onClick={(e) => {
                   e.preventDefault()
                   setActiveSettingsSection('trainings')
+                  if (!['divisions', 'displaySettings', 'matches'].includes(trainingsSettingsTab)) {
+                    setTrainingsSettingsTab('divisions')
+                  }
                 }}
-                aria-current={activeSettingsSection === 'trainings' ? 'page' : undefined}
+                aria-current={activeSettingsSection === 'trainings' && trainingsSettingsTab !== 'matches' ? 'page' : undefined}
               >
                 <span className="material-icons-round" aria-hidden="true">sports</span>
                 <span>Tréningy</span>
+              </a>
+
+              <a
+                href="#"
+                className={`settings-submenu-item settings-submenu-subitem ${activeSettingsSection === 'trainings' && trainingsSettingsTab === 'matches' ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setActiveSettingsSection('trainings')
+                  setTrainingsSettingsTab('matches')
+                }}
+                aria-current={activeSettingsSection === 'trainings' && trainingsSettingsTab === 'matches' ? 'page' : undefined}
+              >
+                <span className="material-icons-round" aria-hidden="true">sports_score</span>
+                <span>Zápasy</span>
               </a>
             </nav>
           </aside>
