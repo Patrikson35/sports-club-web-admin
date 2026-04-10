@@ -8,6 +8,7 @@ const MATCH_PAIRINGS_STORAGE_KEY = 'matchesPairings'
 const DEFAULT_INDICATORS = {
   result: true,
   scorers: true,
+  assists: false,
   yellowCards: false,
   redCards: false
 }
@@ -17,6 +18,7 @@ const normalizeIndicators = (value) => {
   return {
     result: source.result !== false,
     scorers: source.scorers !== false,
+    assists: Boolean(source.assists),
     yellowCards: Boolean(source.yellowCards),
     redCards: Boolean(source.redCards)
   }
@@ -61,6 +63,8 @@ function Matches() {
     awayScore: '',
     scorerName: '',
     scorerMinute: '',
+    assistName: '',
+    assistMinute: '',
     cardName: '',
     cardMinute: '',
     cardType: 'yellow',
@@ -105,6 +109,7 @@ function Matches() {
           homeScore: item?.evidence?.homeScore ?? '',
           awayScore: item?.evidence?.awayScore ?? '',
           scorers: Array.isArray(item?.evidence?.scorers) ? item.evidence.scorers : [],
+          assists: Array.isArray(item?.evidence?.assists) ? item.evidence.assists : [],
           cards: Array.isArray(item?.evidence?.cards) ? item.evidence.cards : []
         }
 
@@ -193,7 +198,7 @@ function Matches() {
     const source = key ? matchRecordings?.[key] : null
     return source && typeof source === 'object'
       ? source
-      : { homeScore: '', awayScore: '', scorers: [], cards: [] }
+      : { homeScore: '', awayScore: '', scorers: [], assists: [], cards: [] }
   }
 
   const getMatchResult = (match) => {
@@ -219,6 +224,13 @@ function Matches() {
     const yellow = cards.filter((item) => item.type === 'yellow').length
     const red = cards.filter((item) => item.type === 'red').length
     return `Ž ${yellow} | Č ${red}`
+  }
+
+  const getAssistsSummary = (match) => {
+    const recording = getRecordingForMatch(match?.id)
+    const assists = Array.isArray(recording?.assists) ? recording.assists : []
+    if (assists.length === 0) return '-'
+    return assists.map((item) => `${item.name}${item.minute ? ` (${item.minute}')` : ''}`).join(', ')
   }
 
   const getPairingLabel = (match) => {
@@ -250,6 +262,8 @@ function Matches() {
       awayScore: recording.awayScore ?? '',
       scorerName: '',
       scorerMinute: '',
+      assistName: '',
+      assistMinute: '',
       cardName: '',
       cardMinute: '',
       cardType: 'yellow',
@@ -264,6 +278,8 @@ function Matches() {
       awayScore: '',
       scorerName: '',
       scorerMinute: '',
+      assistName: '',
+      assistMinute: '',
       cardName: '',
       cardMinute: '',
       cardType: 'yellow',
@@ -280,7 +296,7 @@ function Matches() {
     setMatchRecordings((prev) => {
       const key = String(openedMatch.id)
       const source = prev && typeof prev === 'object' ? prev : {}
-      const current = source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], cards: [] }
+      const current = source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], assists: [], cards: [] }
       const next = {
         ...source,
         [key]: {
@@ -298,6 +314,33 @@ function Matches() {
     setMatchDraft((prev) => ({ ...prev, scorerName: '', scorerMinute: '' }))
   }
 
+  const addAssistToDraft = () => {
+    if (!openedMatch?.id) return
+    const resolvedName = String(matchDraft.assistName || '').trim()
+    if (!resolvedName) return
+    const resolvedMinute = String(matchDraft.assistMinute || '').trim()
+
+    setMatchRecordings((prev) => {
+      const key = String(openedMatch.id)
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const current = source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], assists: [], cards: [] }
+      const next = {
+        ...source,
+        [key]: {
+          ...current,
+          assists: [
+            ...(Array.isArray(current.assists) ? current.assists : []),
+            { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: resolvedName, minute: resolvedMinute }
+          ]
+        }
+      }
+      writeLocalObject(MATCH_RECORDINGS_STORAGE_KEY, next)
+      return next
+    })
+
+    setMatchDraft((prev) => ({ ...prev, assistName: '', assistMinute: '' }))
+  }
+
   const addCardToDraft = () => {
     if (!openedMatch?.id) return
     const resolvedName = String(matchDraft.cardName || '').trim()
@@ -308,7 +351,7 @@ function Matches() {
     setMatchRecordings((prev) => {
       const key = String(openedMatch.id)
       const source = prev && typeof prev === 'object' ? prev : {}
-      const current = source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], cards: [] }
+      const current = source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], assists: [], cards: [] }
       const next = {
         ...source,
         [key]: {
@@ -324,6 +367,23 @@ function Matches() {
     })
 
     setMatchDraft((prev) => ({ ...prev, cardName: '', cardMinute: '', cardType: 'yellow' }))
+  }
+
+  const removeAssist = (matchId, assistId) => {
+    setMatchRecordings((prev) => {
+      const key = String(matchId || '')
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const current = source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], assists: [], cards: [] }
+      const next = {
+        ...source,
+        [key]: {
+          ...current,
+          assists: (Array.isArray(current.assists) ? current.assists : []).filter((item) => String(item?.id || '') !== String(assistId || ''))
+        }
+      }
+      writeLocalObject(MATCH_RECORDINGS_STORAGE_KEY, next)
+      return next
+    })
   }
 
   const removeScorer = (matchId, scorerId) => {
@@ -403,6 +463,7 @@ function Matches() {
         homeScore: nextRecordings[matchIdKey]?.homeScore,
         awayScore: nextRecordings[matchIdKey]?.awayScore,
         scorers: Array.isArray(nextRecordings[matchIdKey]?.scorers) ? nextRecordings[matchIdKey].scorers : [],
+        assists: Array.isArray(nextRecordings[matchIdKey]?.assists) ? nextRecordings[matchIdKey].assists : [],
         cards: Array.isArray(nextRecordings[matchIdKey]?.cards) ? nextRecordings[matchIdKey].cards : [],
         pairedClubId: selectedPairingClubId || null
       })
@@ -465,13 +526,13 @@ function Matches() {
 
   const selectedCategoryIndicators = getIndicatorsForCategory(selectedCategoryKey)
   const openedIndicators = openedMatch ? getIndicatorsForMatch(openedMatch) : DEFAULT_INDICATORS
-  const openedRecording = openedMatch ? getRecordingForMatch(openedMatch.id) : { scorers: [], cards: [] }
+  const openedRecording = openedMatch ? getRecordingForMatch(openedMatch.id) : { scorers: [], assists: [], cards: [] }
 
   return (
     <div>
       <div className="page-header">
         <h2>Zápasy</h2>
-        <p>Evidencia výsledkov, strelcov, kariet a párovania súpera</p>
+        <p>Evidencia výsledkov, strelcov, asistencií, kariet a párovania súpera</p>
       </div>
 
       {error ? <div className="error-message">{error}</div> : null}
@@ -479,7 +540,7 @@ function Matches() {
 
       <div className="card" style={{ marginBottom: '16px' }}>
         <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Nastavenie ukazovateľov podľa kategórie</h3>
-        <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'minmax(180px, 240px) repeat(4, minmax(120px, 1fr)) auto', alignItems: 'end' }}>
+        <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'minmax(180px, 240px) repeat(5, minmax(120px, 1fr)) auto', alignItems: 'end' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label htmlFor="match-category-settings">Kategória</label>
             <select
@@ -516,6 +577,15 @@ function Matches() {
           <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
             <input
               type="checkbox"
+              checked={selectedCategoryIndicators.assists}
+              onChange={(event) => updateCategoryIndicators('assists', event.target.checked)}
+            />
+            <span>Asistencie</span>
+          </label>
+
+          <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
+            <input
+              type="checkbox"
               checked={selectedCategoryIndicators.yellowCards}
               onChange={(event) => updateCategoryIndicators('yellowCards', event.target.checked)}
             />
@@ -546,6 +616,7 @@ function Matches() {
               <th>Kategória</th>
               <th>Výsledok</th>
               <th>Strelci</th>
+              <th>Asistencie</th>
               <th>Karty</th>
               <th>Párovanie</th>
               <th>Stav</th>
@@ -555,7 +626,7 @@ function Matches() {
           <tbody>
             {matches.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <td colSpan="10" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                   Žiadne zápasy
                 </td>
               </tr>
@@ -577,6 +648,7 @@ function Matches() {
                       ) : '-'}
                     </td>
                     <td>{indicators.scorers ? getScorersSummary(match) : '-'}</td>
+                    <td>{indicators.assists ? getAssistsSummary(match) : '-'}</td>
                     <td>{(indicators.yellowCards || indicators.redCards) ? getCardsSummary(match) : '-'}</td>
                     <td>{getPairingLabel(match)}</td>
                     <td>
@@ -675,6 +747,42 @@ function Matches() {
                       <li key={`scorer-${item.id}`} style={{ marginBottom: '4px' }}>
                         {item.name} {item.minute ? `(${item.minute}')` : ''}
                         <button type="button" className="btn btn-secondary" style={{ marginLeft: '8px', padding: '2px 8px' }} onClick={() => removeScorer(openedMatch.id, item.id)}>Odstrániť</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+
+            {openedIndicators.assists ? (
+              <div className="card" style={{ marginBottom: '10px' }}>
+                <h4 style={{ marginTop: 0 }}>Asistencie (náš tím)</h4>
+                <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: 'minmax(0, 1fr) 120px auto', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Meno hráča"
+                    value={matchDraft.assistName}
+                    onChange={(event) => setMatchDraft((prev) => ({ ...prev, assistName: event.target.value }))}
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="130"
+                    placeholder="Minúta"
+                    value={matchDraft.assistMinute}
+                    onChange={(event) => setMatchDraft((prev) => ({ ...prev, assistMinute: event.target.value }))}
+                  />
+                  <button type="button" className="btn btn-secondary" onClick={addAssistToDraft}>Pridať asistenciu</button>
+                </div>
+
+                {(openedRecording.assists || []).length === 0 ? (
+                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Zatiaľ bez asistencií.</p>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                    {openedRecording.assists.map((item) => (
+                      <li key={`assist-${item.id}`} style={{ marginBottom: '4px' }}>
+                        {item.name} {item.minute ? `(${item.minute}')` : ''}
+                        <button type="button" className="btn btn-secondary" style={{ marginLeft: '8px', padding: '2px 8px' }} onClick={() => removeAssist(openedMatch.id, item.id)}>Odstrániť</button>
                       </li>
                     ))}
                   </ul>

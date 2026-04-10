@@ -175,6 +175,7 @@ const EXERCISE_PLAYERS_COUNT_OPTIONS = Array.from({ length: 20 }, (_, index) => 
 const DEFAULT_MATCH_EVIDENCE_INDICATORS = {
   result: true,
   scorers: true,
+  assists: false,
   yellowCards: false,
   redCards: false
 }
@@ -184,6 +185,7 @@ const normalizeMatchEvidenceIndicators = (value) => {
   return {
     result: source.result !== false,
     scorers: source.scorers !== false,
+    assists: Boolean(source.assists),
     yellowCards: Boolean(source.yellowCards),
     redCards: Boolean(source.redCards)
   }
@@ -9680,6 +9682,22 @@ function MyClub() {
                                   type="checkbox"
                                   checked={selectedMatchEvidenceIndicators.scorers}
                                   onChange={(event) => updateSelectedMatchEvidenceIndicator('scorers', event.target.checked)}
+                                />
+                                <span className="metrics-switch-track" aria-hidden="true" />
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="manager-table-row">
+                            <div className="training-display-division-name">
+                              <strong>Asistencie</strong>
+                            </div>
+                            <div className="metrics-col-center">
+                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu asistencií">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMatchEvidenceIndicators.assists}
+                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('assists', event.target.checked)}
                                 />
                                 <span className="metrics-switch-track" aria-hidden="true" />
                               </label>
