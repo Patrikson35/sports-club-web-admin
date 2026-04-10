@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import './Matches.css'
 
 const MATCH_CATEGORY_INDICATORS_STORAGE_KEY = 'matchesCategoryIndicators'
 const MATCH_RECORDINGS_STORAGE_KEY = 'matchesRecordings'
@@ -11,6 +12,19 @@ const DEFAULT_INDICATORS = {
   assists: false,
   yellowCards: false,
   redCards: false
+}
+
+const CREATE_MATCH_INITIAL_DRAFT = {
+  teamId: '',
+  opponent: '',
+  matchDate: '',
+  matchTime: '',
+  location: '',
+  matchType: 'liga',
+  status: 'scheduled',
+  homeScore: '',
+  awayScore: '',
+  notes: ''
 }
 
 const normalizeIndicators = (value) => {
@@ -47,14 +61,21 @@ const getCategoryKey = (match) => String(match?.team?.ageGroup || 'default').tri
 
 function Matches() {
   const [matches, setMatches] = useState([])
+  const [teams, setTeams] = useState([])
+  const [players, setPlayers] = useState([])
   const [clubs, setClubs] = useState([])
   const [myClubName, setMyClubName] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [categoryIndicators, setCategoryIndicators] = useState({ default: { ...DEFAULT_INDICATORS } })
   const [selectedCategoryKey, setSelectedCategoryKey] = useState('default')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
+  const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
   const [matchRecordings, setMatchRecordings] = useState({})
   const [matchPairings, setMatchPairings] = useState({})
   const [openedMatch, setOpenedMatch] = useState(null)
@@ -83,15 +104,21 @@ function Matches() {
     try {
       setLoading(true)
       setError('')
-      const [matchesData, myClubData, clubsData, categorySettingsResponse] = await Promise.all([
+      const [matchesData, teamsData, playersData, myClubData, clubsData, categorySettingsResponse] = await Promise.all([
         api.getMatches(),
+        api.getTeams().catch(() => ({ teams: [] })),
+        api.getPlayers().catch(() => ({ players: [] })),
         api.getMyClub().catch(() => ({})),
         api.getClubs().catch(() => ({ clubs: [] })),
         api.getMatchCategoryIndicators().catch(() => ({ settings: [] }))
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
+      const fetchedTeams = Array.isArray(teamsData?.teams) ? teamsData.teams : []
+      const fetchedPlayers = Array.isArray(playersData?.players) ? playersData.players : []
       setMatches(fetchedMatches)
+      setTeams(fetchedTeams)
+      setPlayers(fetchedPlayers)
       setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
       setMyClubName(String(myClubData?.name || '').trim())
 
@@ -251,6 +278,109 @@ function Matches() {
       writeLocalObject(MATCH_CATEGORY_INDICATORS_STORAGE_KEY, next)
       return next
     })
+  }
+
+  const openCreateMatchModal = () => {
+    const defaultTeam = teams[0] || null
+    const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : ''
+    const resolvedCategory = String(defaultTeam?.ageGroup || 'default').trim() || 'default'
+
+    setCreateDraft({
+      ...CREATE_MATCH_INITIAL_DRAFT,
+      teamId: resolvedTeamId,
+      matchDate: new Date().toISOString().slice(0, 10)
+    })
+    setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
+    setSelectedPlayerIds([])
+    setShowCreateModal(true)
+  }
+
+  const closeCreateMatchModal = () => {
+    setShowCreateModal(false)
+    setCreateDraft({ ...CREATE_MATCH_INITIAL_DRAFT })
+    setCreateIndicators({ ...DEFAULT_INDICATORS })
+    setSelectedPlayerIds([])
+  }
+
+  const selectedCreateTeam = useMemo(
+    () => teams.find((team) => String(team?.id || '') === String(createDraft.teamId || '')) || null,
+    [teams, createDraft.teamId]
+  )
+
+  const createCategoryKey = String(selectedCreateTeam?.ageGroup || 'default').trim() || 'default'
+
+  const availablePlayersForCreate = useMemo(() => {
+    const selectedTeamId = String(createDraft.teamId || '')
+    if (!selectedTeamId) return []
+    return players.filter((player) => String(player?.team?.id || '') === selectedTeamId)
+  }, [players, createDraft.teamId])
+
+  const toggleCreatePlayer = (userId) => {
+    const resolvedId = String(userId || '').trim()
+    if (!resolvedId) return
+    setSelectedPlayerIds((prev) => {
+      const has = prev.includes(resolvedId)
+      return has ? prev.filter((item) => item !== resolvedId) : [...prev, resolvedId]
+    })
+  }
+
+  const handleCreateTeamChange = (teamId) => {
+    const resolvedTeam = teams.find((team) => String(team?.id || '') === String(teamId || '')) || null
+    const resolvedCategory = String(resolvedTeam?.ageGroup || 'default').trim() || 'default'
+    setCreateDraft((prev) => ({ ...prev, teamId: String(teamId || '') }))
+    setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
+    setSelectedPlayerIds([])
+  }
+
+  const submitCreateMatch = async () => {
+    const payloadTeamId = Number(createDraft.teamId || 0)
+    const payloadOpponent = String(createDraft.opponent || '').trim()
+    const payloadMatchDate = String(createDraft.matchDate || '').trim()
+
+    if (!payloadTeamId || !payloadOpponent || !payloadMatchDate) {
+      setError('Vyplňte kategóriu, súpera a dátum zápasu.')
+      return
+    }
+
+    setCreating(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await api.createMatch({
+        teamId: payloadTeamId,
+        categoryKey: createCategoryKey,
+        opponent: payloadOpponent,
+        matchDate: payloadMatchDate,
+        matchTime: String(createDraft.matchTime || '').trim() || null,
+        location: String(createDraft.location || '').trim() || null,
+        matchType: String(createDraft.matchType || '').trim() || null,
+        status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
+        notes: String(createDraft.notes || '').trim() || null,
+        indicators: createIndicators,
+        selectedPlayers: selectedPlayerIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
+        homeScore: createIndicators.result ? createDraft.homeScore : null,
+        awayScore: createIndicators.result ? createDraft.awayScore : null,
+        scorers: [],
+        assists: [],
+        cards: []
+      })
+
+      const createdMatch = response?.match
+      if (createdMatch && typeof createdMatch === 'object') {
+        setMatches((prev) => [createdMatch, ...(Array.isArray(prev) ? prev : [])])
+      } else {
+        await loadMatches()
+      }
+
+      setSuccess('Zápas bol úspešne pridaný.')
+      closeCreateMatchModal()
+    } catch (createError) {
+      console.error('Chyba pri vytváraní zápasu:', createError)
+      setError(createError?.message || 'Zápas sa nepodarilo vytvoriť.')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const openMatchDetail = (match) => {
@@ -530,9 +660,14 @@ function Matches() {
 
   return (
     <div>
-      <div className="page-header">
-        <h2>Zápasy</h2>
-        <p>Evidencia výsledkov, strelcov, asistencií, kariet a párovania súpera</p>
+      <div className="page-header matches-page-header">
+        <div>
+          <h2>Zápasy</h2>
+          <p>Evidencia výsledkov, strelcov, asistencií, kariet a párovania súpera</p>
+        </div>
+        <button type="button" className="manager-add-btn" onClick={openCreateMatchModal}>
+          Pridať zápas
+        </button>
       </div>
 
       {error ? <div className="error-message">{error}</div> : null}
@@ -837,6 +972,204 @@ function Matches() {
               <button type="button" className="btn-secondary" onClick={closeMatchDetail} disabled={saving}>Zavrieť</button>
               <button type="button" className="manager-add-btn" onClick={saveMatchEnhancements} disabled={saving}>
                 {saving ? 'Ukladám...' : 'Uložiť evidenciu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showCreateModal ? (
+        <div className="confirm-modal-overlay" onClick={closeCreateMatchModal} role="dialog" aria-modal="true" aria-label="Pridať zápas">
+          <div className="confirm-modal-card matches-create-modal" onClick={(event) => event.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: '8px' }}>Pridať zápas</h3>
+            <p className="matches-create-modal-note">Vyplňte základné údaje, nastavte ukazovatele a vyberte hráčov pre zápas.</p>
+
+            <div className="matches-create-grid">
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-match-team">Kategória</label>
+                <select
+                  id="create-match-team"
+                  value={createDraft.teamId}
+                  onChange={(event) => handleCreateTeamChange(event.target.value)}
+                >
+                  <option value="">Vyberte kategóriu</option>
+                  {teams.map((team) => (
+                    <option key={`create-match-team-${team.id}`} value={String(team.id)}>
+                      {team.name} {team.ageGroup ? `(${team.ageGroup})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-match-opponent">Súper</label>
+                <input
+                  id="create-match-opponent"
+                  type="text"
+                  value={createDraft.opponent}
+                  onChange={(event) => setCreateDraft((prev) => ({ ...prev, opponent: event.target.value }))}
+                  placeholder="Názov súpera"
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-match-date">Dátum</label>
+                <input
+                  id="create-match-date"
+                  type="date"
+                  value={createDraft.matchDate}
+                  onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchDate: event.target.value }))}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-match-time">Čas</label>
+                <input
+                  id="create-match-time"
+                  type="time"
+                  value={createDraft.matchTime}
+                  onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchTime: event.target.value }))}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-match-location">Miesto</label>
+                <input
+                  id="create-match-location"
+                  type="text"
+                  value={createDraft.location}
+                  onChange={(event) => setCreateDraft((prev) => ({ ...prev, location: event.target.value }))}
+                  placeholder="Ihrisko / adresa"
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="create-match-type">Typ zápasu</label>
+                <input
+                  id="create-match-type"
+                  type="text"
+                  value={createDraft.matchType}
+                  onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchType: event.target.value }))}
+                  placeholder="Liga, pohár, priateľský"
+                />
+              </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: '10px' }}>
+              <h4 style={{ marginTop: 0 }}>Ukazovatele zápasu</h4>
+              <div className="matches-indicators-grid">
+                <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={createIndicators.result}
+                    onChange={(event) => setCreateIndicators((prev) => ({ ...prev, result: event.target.checked }))}
+                  />
+                  <span>Výsledok</span>
+                </label>
+                <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={createIndicators.scorers}
+                    onChange={(event) => setCreateIndicators((prev) => ({ ...prev, scorers: event.target.checked }))}
+                  />
+                  <span>Strelci</span>
+                </label>
+                <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={createIndicators.assists}
+                    onChange={(event) => setCreateIndicators((prev) => ({ ...prev, assists: event.target.checked }))}
+                  />
+                  <span>Asistencie</span>
+                </label>
+                <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={createIndicators.yellowCards}
+                    onChange={(event) => setCreateIndicators((prev) => ({ ...prev, yellowCards: event.target.checked }))}
+                  />
+                  <span>Žlté karty</span>
+                </label>
+                <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={createIndicators.redCards}
+                    onChange={(event) => setCreateIndicators((prev) => ({ ...prev, redCards: event.target.checked }))}
+                  />
+                  <span>Červené karty</span>
+                </label>
+              </div>
+
+              {createIndicators.result ? (
+                <div className="matches-score-grid">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="create-match-home-score">Domáce góly</label>
+                    <input
+                      id="create-match-home-score"
+                      type="number"
+                      min="0"
+                      value={createDraft.homeScore}
+                      onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="create-match-away-score">Hosťujúce góly</label>
+                    <input
+                      id="create-match-away-score"
+                      type="number"
+                      min="0"
+                      value={createDraft.awayScore}
+                      onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="card" style={{ marginBottom: '10px' }}>
+              <h4 style={{ marginTop: 0 }}>Zoznam hráčov</h4>
+              {!createDraft.teamId ? (
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Najprv vyberte kategóriu.</p>
+              ) : availablePlayersForCreate.length === 0 ? (
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Pre túto kategóriu sa nenašli žiadni hráči.</p>
+              ) : (
+                <div className="matches-player-list">
+                  {availablePlayersForCreate.map((player) => {
+                    const playerKey = String(player?.userId || '')
+                    const isSelected = selectedPlayerIds.includes(playerKey)
+                    return (
+                      <label key={`match-create-player-${playerKey}`} className="matches-player-row">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleCreatePlayer(playerKey)}
+                        />
+                        <span>
+                          {player.firstName} {player.lastName}
+                          {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '10px' }}>
+              <label htmlFor="create-match-notes">Poznámka</label>
+              <textarea
+                id="create-match-notes"
+                value={createDraft.notes}
+                onChange={(event) => setCreateDraft((prev) => ({ ...prev, notes: event.target.value }))}
+                rows={3}
+                placeholder="Voliteľná poznámka k zápasu"
+              />
+            </div>
+
+            <div className="confirm-modal-actions">
+              <button type="button" className="btn-secondary" onClick={closeCreateMatchModal} disabled={creating}>Zavrieť</button>
+              <button type="button" className="manager-add-btn" onClick={submitCreateMatch} disabled={creating}>
+                {creating ? 'Ukladám...' : 'Pridať zápas'}
               </button>
             </div>
           </div>

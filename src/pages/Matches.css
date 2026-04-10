@@ -1,0 +1,97 @@
+.matches-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.matches-page-header .manager-add-btn {
+  flex-shrink: 0;
+  min-width: 150px;
+}
+
+.matches-create-modal {
+  width: min(980px, 96vw);
+  max-height: 88vh;
+  overflow: auto;
+}
+
+.matches-create-modal-note {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.matches-create-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.matches-indicators-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.matches-score-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.matches-player-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(15, 17, 21, 0.5);
+}
+
+.matches-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.matches-player-row:last-child {
+  border-bottom: none;
+}
+
+.matches-player-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+@media (max-width: 920px) {
+  .matches-create-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matches-indicators-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .matches-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .matches-page-header .manager-add-btn {
+    width: 100%;
+  }
+
+  .matches-create-grid,
+  .matches-score-grid {
+    grid-template-columns: 1fr;
+  }
+}

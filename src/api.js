@@ -1525,6 +1525,32 @@ class APIClient {
     return this.request(`/matches?${query}`);
   }
 
+  async createMatch(data) {
+    if (USE_MOCK_DATA) {
+      return {
+        message: 'Match created (mock)',
+        match: {
+          id: Date.now(),
+          opponent: String(data?.opponent || '').trim(),
+          matchDate: data?.matchDate || null,
+          location: data?.location || null,
+          matchType: data?.matchType || null,
+          status: data?.status || 'scheduled',
+          team: {
+            id: Number(data?.teamId || 0),
+            name: data?.teamName || 'Kategória',
+            ageGroup: data?.categoryKey || 'default',
+          },
+        },
+      };
+    }
+
+    return this.request('/matches', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
   async getMatchCategoryIndicators(params = {}) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/matches/settings/category-indicators${query ? `?${query}` : ''}`);
