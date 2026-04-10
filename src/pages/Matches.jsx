@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
+import TimeClockPickerModal from '../components/TimeClockPickerModal'
 import './Matches.css'
 
 const MATCH_CATEGORY_INDICATORS_STORAGE_KEY = 'matchesCategoryIndicators'
@@ -158,6 +159,7 @@ function Matches() {
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
   const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
+  const [isMatchTimeClockOpen, setIsMatchTimeClockOpen] = useState(false)
   const [matchPendingDelete, setMatchPendingDelete] = useState(null)
   const [matchRecordings, setMatchRecordings] = useState({})
   const [matchPairings, setMatchPairings] = useState({})
@@ -519,9 +521,18 @@ function Matches() {
 
   const closeCreateMatchModal = () => {
     setShowCreateModal(false)
+    setIsMatchTimeClockOpen(false)
     setCreateDraft({ ...CREATE_MATCH_INITIAL_DRAFT })
     setCreateIndicators({ ...DEFAULT_INDICATORS })
     setSelectedPlayerIds([])
+  }
+
+  const openMatchTimePicker = () => {
+    setIsMatchTimeClockOpen(true)
+  }
+
+  const closeMatchTimePicker = () => {
+    setIsMatchTimeClockOpen(false)
   }
 
   const selectedCreateTeam = useMemo(
@@ -1209,13 +1220,16 @@ function Matches() {
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label htmlFor="create-match-time">Čas</label>
-                  <input
+                  <button
                     id="create-match-time"
-                    type="time"
-                    step="60"
-                    value={createDraft.matchTime}
-                    onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchTime: event.target.value }))}
-                  />
+                    type="button"
+                    className="matches-training-time-btn"
+                    onClick={openMatchTimePicker}
+                    aria-label="Nastaviť čas zápasu"
+                  >
+                    <span className="material-icons-round" aria-hidden="true">schedule</span>
+                    <span>{createDraft.matchTime || '--:--'}</span>
+                  </button>
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1761,6 +1775,16 @@ function Matches() {
           </div>
         </div>
       ) : null}
+
+      <TimeClockPickerModal
+        isOpen={isMatchTimeClockOpen}
+        value={createDraft.matchTime}
+        onClose={closeMatchTimePicker}
+        onApply={(nextValue) => {
+          setCreateDraft((prev) => ({ ...prev, matchTime: nextValue }))
+        }}
+        ariaLabel="Výber času zápasu"
+      />
     </div>
   )
 }
