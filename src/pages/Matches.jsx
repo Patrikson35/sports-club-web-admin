@@ -304,6 +304,30 @@ function Matches() {
     }
   }, [filteredMatches])
 
+  const orderedCategoryKeys = useMemo(() => {
+    const source = Array.isArray(categoryKeys) ? categoryKeys : []
+    const availableKeys = new Set(source.filter((key) => key && key !== 'default'))
+    const picked = new Set()
+
+    const sortedTeamKeys = [...teams]
+      .sort((left, right) => {
+        const leftOrder = Number(left?.sortOrder || 0)
+        const rightOrder = Number(right?.sortOrder || 0)
+        if (leftOrder !== rightOrder) return leftOrder - rightOrder
+        return Number(left?.id || 0) - Number(right?.id || 0)
+      })
+      .map((team) => String(team?.ageGroup || '').trim())
+      .filter((key) => key && availableKeys.has(key) && !picked.has(key))
+
+    sortedTeamKeys.forEach((key) => picked.add(key))
+
+    const remainingKeys = [...availableKeys]
+      .filter((key) => !picked.has(key))
+      .sort((left, right) => left.localeCompare(right, 'sk', { sensitivity: 'base' }))
+
+    return [...sortedTeamKeys, ...remainingKeys]
+  }, [categoryKeys, teams])
+
   const getIndicatorsForCategory = (categoryKey) => {
     const resolvedKey = String(categoryKey || 'default').trim() || 'default'
     return normalizeIndicators(categoryIndicators?.[resolvedKey] || categoryIndicators?.default || DEFAULT_INDICATORS)
@@ -798,6 +822,7 @@ function Matches() {
 
   const openedIndicators = openedMatch ? getIndicatorsForMatch(openedMatch) : DEFAULT_INDICATORS
   const openedRecording = openedMatch ? getRecordingForMatch(openedMatch.id) : { scorers: [], assists: [], cards: [] }
+  const showCategoryColumn = selectedCategoryKey === 'all'
 
   return (
     <div>
@@ -816,19 +841,23 @@ function Matches() {
 
       <div className="matches-stats-grid" style={{ marginBottom: '16px' }}>
         <div className="card matches-stat-card">
+          <span className="material-icons-round matches-stat-icon" aria-hidden="true">sports_soccer</span>
           <p>Počet zápasov</p>
           <strong>{matchesStats.total}</strong>
         </div>
         <div className="card matches-stat-card">
+          <span className="material-icons-round matches-stat-icon" aria-hidden="true">leaderboard</span>
           <p>Štatistiky</p>
           <strong>{matchesStats.wins}-{matchesStats.draws}-{matchesStats.losses}</strong>
           <small>V-R-P</small>
         </div>
         <div className="card matches-stat-card">
+          <span className="material-icons-round matches-stat-icon" aria-hidden="true">query_stats</span>
           <p>Skóre</p>
           <strong>{matchesStats.goalsFor}:{matchesStats.goalsAgainst}</strong>
         </div>
         <div className="card matches-stat-card">
+          <span className="material-icons-round matches-stat-icon" aria-hidden="true">military_tech</span>
           <p>Úspešnosť</p>
           <strong>{matchesStats.successRate}%</strong>
         </div>
@@ -849,7 +878,7 @@ function Matches() {
             >
               Všetky
             </button>
-            {categoryKeys.filter((key) => key !== 'default').map((key) => (
+            {orderedCategoryKeys.map((key) => (
               <button
                 key={`matches-category-chip-${key}`}
                 type="button"
@@ -866,8 +895,8 @@ function Matches() {
               <thead>
                 <tr>
                   <th>Druh zápasu</th>
-                  <th>Domáce mužstvo</th>
-                  <th>Hostia</th>
+                  <th>Zápas</th>
+                  {showCategoryColumn ? <th>Kategória</th> : null}
                   <th>Výsledok</th>
                   <th>Akcie</th>
                 </tr>
@@ -875,7 +904,7 @@ function Matches() {
               <tbody>
                 {filteredMatches.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <td colSpan={showCategoryColumn ? 5 : 4} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                       Žiadne zápasy
                     </td>
                   </tr>
@@ -888,12 +917,10 @@ function Matches() {
                           <span className="matches-type-pill">{formatMatchTypeShort(match.matchType)}</span>
                         </td>
                         <td>
-                          <strong>{myClubName || 'Môj klub'}</strong>
-                        </td>
-                        <td>
-                          <strong>{match.opponent || '-'}</strong>
+                          <strong>{myClubName || 'Môj klub'} vs {match.opponent || '-'}</strong>
                           <div className="matches-subline">{match.matchDate ? new Date(match.matchDate).toLocaleDateString('sk-SK') : '-'}</div>
                         </td>
+                        {showCategoryColumn ? <td>{getCategoryKey(match)}</td> : null}
                         <td>
                           {indicators.result ? (
                             <span className="matches-result-value">{getMatchResult(match) || '-'}</span>
