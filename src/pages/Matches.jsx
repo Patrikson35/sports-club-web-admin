@@ -158,7 +158,8 @@ function Matches() {
   const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState(() => toDateKey(new Date()))
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
   const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
+  const [createSessionTime, setCreateSessionTime] = useState('')
+  const [createPlayerAttendanceDraft, setCreatePlayerAttendanceDraft] = useState({})
   const [isMatchTimeClockOpen, setIsMatchTimeClockOpen] = useState(false)
   const [matchPendingDelete, setMatchPendingDelete] = useState(null)
   const [matchRecordings, setMatchRecordings] = useState({})
@@ -514,17 +515,19 @@ function Matches() {
       matchDate: resolvedDateKey,
       matchType: resolvedMatchType
     })
+    setCreateSessionTime('')
+    setCreatePlayerAttendanceDraft({})
     setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
-    setSelectedPlayerIds([])
     setShowCreateModal(true)
   }
 
   const closeCreateMatchModal = () => {
     setShowCreateModal(false)
     setIsMatchTimeClockOpen(false)
+    setCreateSessionTime('')
+    setCreatePlayerAttendanceDraft({})
     setCreateDraft({ ...CREATE_MATCH_INITIAL_DRAFT })
     setCreateIndicators({ ...DEFAULT_INDICATORS })
-    setSelectedPlayerIds([])
   }
 
   const openMatchTimePicker = () => {
@@ -548,12 +551,76 @@ function Matches() {
     return players.filter((player) => String(player?.team?.id || '') === selectedTeamId)
   }, [players, createDraft.teamId])
 
-  const toggleCreatePlayer = (userId) => {
+  const updateCreateSessionTime = (nextTime) => {
+    const normalized = String(nextTime || '').trim()
+    setCreateSessionTime(normalized)
+    setCreateDraft((prev) => ({ ...prev, matchTime: normalized }))
+    setCreatePlayerAttendanceDraft((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const next = { ...source }
+      Object.keys(next).forEach((playerKey) => {
+        const current = next[playerKey] && typeof next[playerKey] === 'object' ? next[playerKey] : { attended: true, time: '' }
+        if (current.attended === false) return
+        next[playerKey] = {
+          ...current,
+          time: normalized
+        }
+      })
+      return next
+    })
+  }
+
+  const getCreatePlayerAttendanceEntry = (userId) => {
+    const key = String(userId || '').trim()
+    const source = key ? createPlayerAttendanceDraft?.[key] : null
+    if (source && typeof source === 'object') {
+      return {
+        attended: source.attended !== false,
+        time: String(source.time || '').trim()
+      }
+    }
+    return {
+      attended: true,
+      time: String(createSessionTime || createDraft.matchTime || '').trim()
+    }
+  }
+
+  const toggleCreatePlayerAttendance = (userId, attended) => {
     const resolvedId = String(userId || '').trim()
     if (!resolvedId) return
-    setSelectedPlayerIds((prev) => {
-      const has = prev.includes(resolvedId)
-      return has ? prev.filter((item) => item !== resolvedId) : [...prev, resolvedId]
+    setCreatePlayerAttendanceDraft((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const current = source[resolvedId] && typeof source[resolvedId] === 'object'
+        ? source[resolvedId]
+        : { attended: true, time: String(createSessionTime || createDraft.matchTime || '').trim() }
+      return {
+        ...source,
+        [resolvedId]: {
+          attended: Boolean(attended),
+          time: attended
+            ? (String(current.time || '').trim() || String(createSessionTime || createDraft.matchTime || '').trim())
+            : ''
+        }
+      }
+    })
+  }
+
+  const updateCreatePlayerTime = (userId, nextTime) => {
+    const resolvedId = String(userId || '').trim()
+    if (!resolvedId) return
+    const normalized = String(nextTime || '').trim()
+    setCreatePlayerAttendanceDraft((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const current = source[resolvedId] && typeof source[resolvedId] === 'object'
+        ? source[resolvedId]
+        : { attended: true, time: String(createSessionTime || createDraft.matchTime || '').trim() }
+      return {
+        ...source,
+        [resolvedId]: {
+          ...current,
+          time: normalized
+        }
+      }
     })
   }
 
@@ -562,8 +629,44 @@ function Matches() {
     const resolvedCategory = String(resolvedTeam?.ageGroup || 'default').trim() || 'default'
     setCreateDraft((prev) => ({ ...prev, teamId: String(teamId || '') }))
     setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
-    setSelectedPlayerIds([])
+    setCreatePlayerAttendanceDraft({})
   }
+
+  useEffect(() => {
+    const sourcePlayers = Array.isArray(availablePlayersForCreate) ? availablePlayersForCreate : []
+    if (sourcePlayers.length === 0) {
+      setCreatePlayerAttendanceDraft({})
+      return
+    }
+
+    setCreatePlayerAttendanceDraft((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const next = {}
+      sourcePlayers.forEach((player) => {
+        const key = String(player?.userId || '').trim()
+        if (!key) return
+        const current = source[key] && typeof source[key] === 'object'
+          ? source[key]
+          : { attended: true, time: String(createSessionTime || createDraft.matchTime || '').trim() }
+        next[key] = {
+          attended: current.attended !== false,
+          time: String(current.time || '').trim()
+        }
+      })
+      return next
+    })
+  }, [availablePlayersForCreate, createSessionTime, createDraft.matchTime])
+
+  const selectedCreatePlayerIds = useMemo(() => {
+    return availablePlayersForCreate
+      .map((player) => String(player?.userId || '').trim())
+      .filter((playerId) => {
+        if (!playerId) return false
+        const attendance = getCreatePlayerAttendanceEntry(playerId)
+        return attendance.attended !== false
+      })
+  }
+  , [availablePlayersForCreate, createPlayerAttendanceDraft, createSessionTime, createDraft.matchTime])
 
   useEffect(() => {
     const current = String(quickCreateCategoryKey || '')
@@ -625,7 +728,7 @@ function Matches() {
         status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
         notes: String(createDraft.notes || '').trim() || null,
         indicators: createIndicators,
-        selectedPlayers: selectedPlayerIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
+        selectedPlayers: selectedCreatePlayerIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
         homeScore: createIndicators.result ? createDraft.homeScore : null,
         awayScore: createIndicators.result ? createDraft.awayScore : null,
         scorers: [],
@@ -1219,20 +1322,6 @@ function Matches() {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="create-match-time">Čas</label>
-                  <button
-                    id="create-match-time"
-                    type="button"
-                    className="matches-training-time-btn"
-                    onClick={openMatchTimePicker}
-                    aria-label="Nastaviť čas zápasu"
-                  >
-                    <span className="material-icons-round" aria-hidden="true">schedule</span>
-                    <span>{createDraft.matchTime || '--:--'}</span>
-                  </button>
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label htmlFor="create-match-location">Ihrisko</label>
                   <select
                     id="create-match-location"
@@ -1337,26 +1426,56 @@ function Matches() {
                 ) : availablePlayersForCreate.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Pre túto kategóriu sa nenašli žiadni hráči.</p>
                 ) : (
-                  <div className="matches-player-list">
+                  <div className="matches-player-attendance-head">
+                    <span>Hráč</span>
+                    <span className="matches-player-attendance-head-time">
+                      <button
+                        id="create-match-time"
+                        type="button"
+                        className="matches-training-time-btn matches-training-time-btn-compact"
+                        onClick={openMatchTimePicker}
+                        aria-label="Nastaviť čas zápasu"
+                      >
+                        <span className="material-icons-round" aria-hidden="true">schedule</span>
+                        <span>{createSessionTime || createDraft.matchTime || '--:--'}</span>
+                      </button>
+                    </span>
+                  </div>
+                )}
+                {createDraft.teamId && availablePlayersForCreate.length > 0 ? (
+                  <div className="matches-player-list matches-player-attendance-list">
                     {availablePlayersForCreate.map((player) => {
                       const playerKey = String(player?.userId || '')
-                      const isSelected = selectedPlayerIds.includes(playerKey)
+                      const attendance = getCreatePlayerAttendanceEntry(playerKey)
                       return (
-                        <label key={`match-create-player-${playerKey}`} className="matches-player-row">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleCreatePlayer(playerKey)}
-                          />
+                        <div key={`match-create-player-${playerKey}`} className="matches-player-row matches-player-attendance-row">
                           <span>
                             {player.firstName} {player.lastName}
                             {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
                           </span>
-                        </label>
+                          <span className="matches-player-attendance-controls">
+                            <label className="matches-row-switch" aria-label={`Účasť hráča ${player.firstName} ${player.lastName}`}>
+                              <input
+                                type="checkbox"
+                                checked={attendance.attended !== false}
+                                onChange={(event) => toggleCreatePlayerAttendance(playerKey, event.target.checked)}
+                              />
+                              <span className="matches-row-switch-slider" />
+                            </label>
+                            <input
+                              type="time"
+                              step="60"
+                              className="matches-player-time-input"
+                              value={attendance.time}
+                              onChange={(event) => updateCreatePlayerTime(playerKey, event.target.value)}
+                              disabled={attendance.attended === false}
+                            />
+                          </span>
+                        </div>
                       )
                     })}
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="form-group" style={{ marginBottom: '10px' }}>
@@ -1778,10 +1897,10 @@ function Matches() {
 
       <TimeClockPickerModal
         isOpen={isMatchTimeClockOpen}
-        value={createDraft.matchTime}
+        value={createSessionTime || createDraft.matchTime}
         onClose={closeMatchTimePicker}
         onApply={(nextValue) => {
-          setCreateDraft((prev) => ({ ...prev, matchTime: nextValue }))
+          updateCreateSessionTime(nextValue)
         }}
         ariaLabel="Výber času zápasu"
       />

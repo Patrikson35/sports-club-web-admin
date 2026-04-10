@@ -691,6 +691,117 @@
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
 }
 
+.matches-training-time-btn.matches-training-time-btn-compact {
+  width: 122px;
+  height: 34px;
+  font-size: 0.72rem;
+  border-radius: 0.55rem;
+  padding: 0 0.45rem;
+}
+
+.matches-player-attendance-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+  color: #cbd5e1;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.matches-player-attendance-head-time {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.matches-player-attendance-list {
+  max-height: 320px;
+}
+
+.matches-player-attendance-row {
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.matches-player-attendance-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.matches-player-time-input {
+  width: 96px;
+  height: 32px;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  border-radius: 0.5rem;
+  background: rgba(18, 21, 28, 0.92);
+  color: #dbe6ff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0 0.35rem;
+}
+
+.matches-player-time-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.matches-player-time-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.matches-row-switch {
+  position: relative;
+  width: 46px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.matches-row-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.matches-row-switch-slider {
+  width: 46px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(96, 113, 147, 0.45);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.matches-row-switch-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  left: 2px;
+  top: 2px;
+  background: #94a3b8;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.matches-row-switch input:checked + .matches-row-switch-slider {
+  background: rgba(30, 64, 175, 0.35);
+  border-color: rgba(96, 165, 250, 0.78);
+}
+
+.matches-row-switch input:checked + .matches-row-switch-slider::before {
+  transform: translateX(22px);
+  background: #60a5fa;
+}
+
 .matches-create-grid input[type='date']::-webkit-calendar-picker-indicator {
   filter: invert(1) brightness(1.4);
   opacity: 1;
