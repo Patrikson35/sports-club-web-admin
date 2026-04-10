@@ -537,7 +537,7 @@ function Matches() {
     const current = String(quickCreateCategoryKey || '')
     const exists = orderedCategoryKeys.includes(current)
     if (exists) return
-    setQuickCreateCategoryKey(orderedCategoryKeys[0] || '')
+    setQuickCreateCategoryKey('')
   }, [orderedCategoryKeys, quickCreateCategoryKey])
 
   const resolvedQuickCreateCategoryKey = selectedCategoryKey === 'all'
@@ -1053,9 +1053,6 @@ function Matches() {
           <h2>Zápasy</h2>
           <p>Evidencia výsledkov, strelcov, asistencií, kariet a párovania súpera</p>
         </div>
-        <button type="button" className="manager-add-btn" onClick={openCreateMatchModal}>
-          Pridať zápas
-        </button>
       </div>
 
       {error ? <div className="error-message">{error}</div> : null}
