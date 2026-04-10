@@ -423,8 +423,10 @@
 }
 
 .matches-manage-btn.btn:disabled {
-  background: #5a6478;
-  color: #cbd5e1;
+  background: #3b82f6;
+  color: #eaf1ff;
+  opacity: 0.68;
+  cursor: not-allowed;
 }
 
 .matches-manage-btn.btn.full {
