@@ -1027,10 +1027,6 @@ function Matches() {
 
           <div className="matches-calendar-legend">
             <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot tj" aria-hidden="true" />
-              TJ
-            </span>
-            <span className="matches-calendar-legend-item">
               <span className="matches-calendar-legend-dot mz" aria-hidden="true" />
               MZ
             </span>

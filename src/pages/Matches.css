@@ -89,22 +89,28 @@
 }
 
 .matches-table-wrap {
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: rgba(15, 18, 24, 0.94);
+}
+
+.matches-list-panel table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   overflow-x: auto;
 }
 
 .matches-list-panel table thead th {
   background: rgba(18, 21, 28, 0.96);
-  border-bottom: 1px solid rgba(96, 113, 147, 0.34);
+  border-bottom: 1px solid rgba(166, 189, 235, 0.46);
   color: #eef4ff;
-}
-
-.matches-list-panel table th,
-.matches-list-panel table td {
-  border: 1px solid rgba(96, 113, 147, 0.26);
 }
 
 .matches-list-panel table tbody td {
   color: #eef4ff;
+  border-top: 1px solid rgba(96, 113, 147, 0.24);
 }
 
 .matches-list-panel table tbody td strong,
