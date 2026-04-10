@@ -189,6 +189,7 @@ const MATCH_EVIDENCE_INDICATOR_LABELS = {
 }
 
 const MATCH_EVIDENCE_INDICATOR_ORDER = ['result', 'scorers', 'assists', 'yellowCards', 'redCards']
+const isDefaultMatchEvidenceIndicator = (indicatorKey) => MATCH_EVIDENCE_INDICATOR_ORDER.includes(String(indicatorKey || '').trim())
 
 const normalizeMatchEvidenceIndicators = (value) => {
   const source = value && typeof value === 'object' ? value : {}
@@ -936,6 +937,8 @@ function MyClub() {
   const [matchEvidenceSettingsSaving, setMatchEvidenceSettingsSaving] = useState(false)
   const [showAddMatchIndicatorCard, setShowAddMatchIndicatorCard] = useState(false)
   const [newMatchIndicatorName, setNewMatchIndicatorName] = useState('')
+  const [editingMatchIndicatorKey, setEditingMatchIndicatorKey] = useState('')
+  const [editMatchIndicatorName, setEditMatchIndicatorName] = useState('')
   const [showSeasonForm, setShowSeasonForm] = useState(false)
   const [seasonDraft, setSeasonDraft] = useState({ name: '', from: '', to: '' })
   const [attendanceSeasons, setAttendanceSeasons] = useState([])
@@ -1748,7 +1751,8 @@ function MyClub() {
           key: resolvedKey,
           label: MATCH_EVIDENCE_INDICATOR_LABELS[resolvedKey] || resolvedKey,
           checked: Boolean(isVisible),
-          orderIndex: MATCH_EVIDENCE_INDICATOR_ORDER.indexOf(resolvedKey)
+          orderIndex: MATCH_EVIDENCE_INDICATOR_ORDER.indexOf(resolvedKey),
+          isCustom: !isDefaultMatchEvidenceIndicator(resolvedKey)
         }
       })
       .filter(Boolean)
@@ -1761,6 +1765,42 @@ function MyClub() {
         return a.label.localeCompare(b.label, 'sk')
       })
   }, [selectedMatchEvidenceIndicators])
+
+  useEffect(() => {
+    if (matchEvidenceSettingOptions.length === 0) return
+
+    setMatchEvidenceIndicators((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const customKeys = Array.from(new Set(
+        Object.values(source)
+          .flatMap((indicators) => Object.keys(indicators && typeof indicators === 'object' ? indicators : {}))
+          .map((key) => String(key || '').trim())
+          .filter((key) => key && !isDefaultMatchEvidenceIndicator(key))
+      ))
+
+      if (customKeys.length === 0) return prev
+
+      const next = { ...source }
+      let changed = false
+
+      matchEvidenceSettingOptions.forEach((option) => {
+        const settingKey = buildMatchEvidenceSettingKey(option.teamId, option.categoryKey)
+        const current = normalizeMatchEvidenceIndicators(next?.[settingKey] || DEFAULT_MATCH_EVIDENCE_INDICATORS)
+        const updated = { ...current }
+
+        customKeys.forEach((customKey) => {
+          if (!Object.prototype.hasOwnProperty.call(updated, customKey)) {
+            updated[customKey] = false
+            changed = true
+          }
+        })
+
+        next[settingKey] = updated
+      })
+
+      return changed ? next : prev
+    })
+  }, [matchEvidenceSettingOptions])
 
   const fetchMyClub = async () => {
     try {
@@ -4064,23 +4104,34 @@ function MyClub() {
   }
 
   const saveMatchEvidenceSettings = async () => {
-    if (!selectedMatchEvidenceSettingOption) return
+    if (matchEvidenceSettingOptions.length === 0) return
 
     try {
       setMatchEvidenceSettingsSaving(true)
       setError('')
       setSuccess('')
 
-      const teamId = Number(selectedMatchEvidenceSettingOption.teamId)
-      if (!Number.isInteger(teamId) || teamId <= 0) {
+      const payloads = matchEvidenceSettingOptions
+        .map((option) => {
+          const teamId = Number(option.teamId)
+          if (!Number.isInteger(teamId) || teamId <= 0) return null
+          const settingKey = buildMatchEvidenceSettingKey(option.teamId, option.categoryKey)
+          const indicators = normalizeMatchEvidenceIndicators(
+            matchEvidenceIndicators?.[settingKey] || DEFAULT_MATCH_EVIDENCE_INDICATORS
+          )
+          return {
+            teamId,
+            categoryKey: option.categoryKey,
+            indicators
+          }
+        })
+        .filter(Boolean)
+
+      if (payloads.length === 0) {
         throw new Error('Chýba kategória tímu pre uloženie nastavení zápasov.')
       }
 
-      await api.updateMatchCategoryIndicators({
-        teamId,
-        categoryKey: selectedMatchEvidenceSettingOption.categoryKey,
-        indicators: selectedMatchEvidenceIndicators
-      })
+      await Promise.all(payloads.map((payload) => api.updateMatchCategoryIndicators(payload)))
 
       setSuccess('Nastavenie zobrazenia evidencie zápasov bolo uložené.')
     } catch (err) {
@@ -4091,7 +4142,7 @@ function MyClub() {
   }
 
   const addCustomMatchEvidenceIndicator = () => {
-    if (!selectedMatchEvidenceSettingOption) return
+    if (matchEvidenceSettingOptions.length === 0) return
 
     const indicatorKey = String(newMatchIndicatorName || '').trim()
     if (!indicatorKey) {
@@ -4104,11 +4155,111 @@ function MyClub() {
       return
     }
 
-    updateSelectedMatchEvidenceIndicator(indicatorKey, false)
+    setMatchEvidenceIndicators((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const next = { ...source }
+
+      matchEvidenceSettingOptions.forEach((option) => {
+        const settingKey = buildMatchEvidenceSettingKey(option.teamId, option.categoryKey)
+        const current = normalizeMatchEvidenceIndicators(next?.[settingKey] || DEFAULT_MATCH_EVIDENCE_INDICATORS)
+        next[settingKey] = {
+          ...current,
+          [indicatorKey]: false
+        }
+      })
+
+      return next
+    })
     setShowAddMatchIndicatorCard(false)
     setNewMatchIndicatorName('')
     setError('')
     setSuccess('Nový ukazovateľ bol pridaný. Uložte nastavenia zobrazenia.')
+  }
+
+  const startEditMatchEvidenceIndicator = (indicatorKey) => {
+    const resolvedKey = String(indicatorKey || '').trim()
+    if (!resolvedKey || isDefaultMatchEvidenceIndicator(resolvedKey)) return
+
+    setEditingMatchIndicatorKey(resolvedKey)
+    setEditMatchIndicatorName(resolvedKey)
+    setShowAddMatchIndicatorCard(false)
+    setNewMatchIndicatorName('')
+    setError('')
+    setSuccess('')
+  }
+
+  const cancelEditMatchEvidenceIndicator = () => {
+    setEditingMatchIndicatorKey('')
+    setEditMatchIndicatorName('')
+  }
+
+  const saveEditedMatchEvidenceIndicator = () => {
+    const oldKey = String(editingMatchIndicatorKey || '').trim()
+    const nextKey = String(editMatchIndicatorName || '').trim()
+    if (!oldKey) return
+
+    if (!nextKey) {
+      setError('Zadajte názov ukazovateľa.')
+      return
+    }
+
+    if (isDefaultMatchEvidenceIndicator(nextKey)) {
+      setError('Tento názov je rezervovaný pre systémový ukazovateľ.')
+      return
+    }
+
+    if (oldKey !== nextKey && Object.prototype.hasOwnProperty.call(selectedMatchEvidenceIndicators, nextKey)) {
+      setError('Ukazovateľ s týmto názvom už existuje.')
+      return
+    }
+
+    setMatchEvidenceIndicators((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const next = {}
+
+      Object.entries(source).forEach(([settingKey, indicators]) => {
+        const normalized = normalizeMatchEvidenceIndicators(indicators)
+        const hasOldKey = Object.prototype.hasOwnProperty.call(normalized, oldKey)
+        const oldValue = hasOldKey ? Boolean(normalized[oldKey]) : false
+        const { [oldKey]: _, ...rest } = normalized
+        next[settingKey] = {
+          ...rest,
+          [nextKey]: oldValue
+        }
+      })
+
+      return next
+    })
+
+    setEditingMatchIndicatorKey('')
+    setEditMatchIndicatorName('')
+    setError('')
+    setSuccess('Ukazovateľ bol upravený. Uložte nastavenia zobrazenia.')
+  }
+
+  const removeMatchEvidenceIndicator = (indicatorKey) => {
+    const resolvedKey = String(indicatorKey || '').trim()
+    if (!resolvedKey || isDefaultMatchEvidenceIndicator(resolvedKey)) return
+
+    setMatchEvidenceIndicators((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const next = {}
+
+      Object.entries(source).forEach(([settingKey, indicators]) => {
+        const normalized = normalizeMatchEvidenceIndicators(indicators)
+        const { [resolvedKey]: _, ...rest } = normalized
+        next[settingKey] = rest
+      })
+
+      return next
+    })
+
+    if (String(editingMatchIndicatorKey || '').trim() === resolvedKey) {
+      cancelEditMatchEvidenceIndicator()
+    }
+
+    setError('')
+    setSuccess('Ukazovateľ bol odstránený. Uložte nastavenia zobrazenia.')
   }
 
   const toggleMetricActive = async (metric, isActive) => {
@@ -4627,6 +4778,11 @@ function MyClub() {
 
     if (type === 'exerciseDatabaseItem' && payload?.id) {
       removeExerciseDatabaseItem(payload)
+      return
+    }
+
+    if (type === 'matchEvidenceIndicator' && payload?.key) {
+      removeMatchEvidenceIndicator(payload.key)
     }
   }
 
@@ -5518,6 +5674,14 @@ function MyClub() {
         title: 'Potvrdiť odstránenie kategórie cvičení',
         message: `Naozaj chcete odstrániť kategóriu cvičení „${payload.name || 'kategória'}“?`,
         confirmLabel: 'Odstrániť kategóriu'
+      }
+    }
+
+    if (confirmDialog.type === 'matchEvidenceIndicator') {
+      return {
+        title: 'Potvrdiť odstránenie ukazovateľa',
+        message: `Naozaj chcete odstrániť ukazovateľ „${payload.label || payload.key || 'ukazovateľ'}“?`,
+        confirmLabel: 'Odstrániť ukazovateľ'
       }
     }
 
@@ -9719,13 +9883,14 @@ function MyClub() {
                         </div>
 
                         <div className="manager-table training-display-settings-table" style={{ marginTop: 0 }}>
-                          <div className="manager-table-head">
+                          <div className="manager-table-head" style={{ gridTemplateColumns: 'minmax(260px, 1fr) 180px 92px' }}>
                             <div>Ukazovateľ</div>
                             <div className="metrics-col-center">Zobraziť</div>
+                            <div className="manager-table-actions-head">Akcie</div>
                           </div>
 
                           {matchEvidenceIndicatorRows.map((indicator) => (
-                            <div key={`match-evidence-indicator-row-${indicator.key}`} className="manager-table-row">
+                            <div key={`match-evidence-indicator-row-${indicator.key}`} className="manager-table-row" style={{ gridTemplateColumns: 'minmax(260px, 1fr) 180px 92px' }}>
                               <div className="training-display-division-name">
                                 <strong>{indicator.label}</strong>
                               </div>
@@ -9738,6 +9903,32 @@ function MyClub() {
                                   />
                                   <span className="metrics-switch-track" aria-hidden="true" />
                                 </label>
+                              </div>
+                              <div className="manager-table-actions">
+                                {indicator.isCustom ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="role-action-btn role-action-edit"
+                                      onClick={() => startEditMatchEvidenceIndicator(indicator.key)}
+                                      aria-label={`Upraviť ukazovateľ ${indicator.label}`}
+                                      title="Upraviť ukazovateľ"
+                                    >
+                                      <span className="material-icons-round" aria-hidden="true">edit</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="role-action-btn role-action-delete"
+                                      onClick={() => openRemovalConfirm('matchEvidenceIndicator', { key: indicator.key, label: indicator.label })}
+                                      aria-label={`Odstrániť ukazovateľ ${indicator.label}`}
+                                      title="Odstrániť ukazovateľ"
+                                    >
+                                      <span className="material-icons-round" aria-hidden="true">delete</span>
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="manager-empty-text" style={{ margin: 0 }}>—</span>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -9798,6 +9989,40 @@ function MyClub() {
                           onClick={addCustomMatchEvidenceIndicator}
                         >
                           Pridať ukazovateľ
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {editingMatchIndicatorKey ? (
+                    <div className="card settings-placeholder-card" style={{ marginBottom: 0 }}>
+                      <div className="form-row" style={{ marginBottom: '0.9rem' }}>
+                        <div className="form-group trainer-photo-full-row">
+                          <label htmlFor="match-evidence-edit-indicator">Názov ukazovateľa</label>
+                          <input
+                            id="match-evidence-edit-indicator"
+                            type="text"
+                            value={editMatchIndicatorName}
+                            onChange={(event) => setEditMatchIndicatorName(event.target.value)}
+                            placeholder="napr. získané rohy"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-actions" style={{ marginBottom: '0.2rem', gap: '0.6rem', justifyContent: 'flex-start' }}>
+                        <button
+                          type="button"
+                          className="manager-role-save-btn"
+                          onClick={saveEditedMatchEvidenceIndicator}
+                        >
+                          Uložiť ukazovateľ
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={cancelEditMatchEvidenceIndicator}
+                        >
+                          Zrušiť
                         </button>
                       </div>
                     </div>
