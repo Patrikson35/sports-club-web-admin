@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
 import './Matches.css'
 
@@ -25,6 +25,33 @@ const CREATE_MATCH_INITIAL_DRAFT = {
   homeScore: '',
   awayScore: '',
   notes: ''
+}
+
+const MONTH_NAMES = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
+const MONTH_SHORT_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
+
+const parseDayMonth = (value) => {
+  const input = String(value || '').trim()
+  const match = input.match(/^(\d{1,2})\.(\d{1,2})\.?$/)
+  if (!match) return null
+  const day = Number(match[1])
+  const month = Number(match[2])
+  if (!Number.isInteger(day) || !Number.isInteger(month)) return null
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null
+  return { day, month }
+}
+
+const isMonthDayInRange = (point, from, to) => {
+  if (!point || !from || !to) return false
+  const pointValue = (point.month * 100) + point.day
+  const fromValue = (from.month * 100) + from.day
+  const toValue = (to.month * 100) + to.day
+
+  if (fromValue <= toValue) {
+    return pointValue >= fromValue && pointValue <= toValue
+  }
+
+  return pointValue >= fromValue || pointValue <= toValue
 }
 
 const normalizeIndicators = (value) => {
@@ -115,8 +142,12 @@ function Matches() {
   const [success, setSuccess] = useState('')
   const [categoryIndicators, setCategoryIndicators] = useState({ default: { ...DEFAULT_INDICATORS } })
   const [selectedCategoryKey, setSelectedCategoryKey] = useState('all')
+  const [quickCreateCategoryKey, setQuickCreateCategoryKey] = useState('')
+  const [selectedTimeline, setSelectedTimeline] = useState(() => `month-${new Date().getMonth()}`)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [calendarDate, setCalendarDate] = useState(() => new Date())
+  const [attendanceSeasons, setAttendanceSeasons] = useState([])
+  const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState(() => toDateKey(new Date()))
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
   const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([])
@@ -136,6 +167,8 @@ function Matches() {
     cardType: 'yellow',
     pairingClubId: ''
   })
+  const monthsScrollRef = useRef(null)
+  const monthsWrapRef = useRef(null)
 
   useEffect(() => {
     loadMatches()
@@ -149,13 +182,14 @@ function Matches() {
     try {
       setLoading(true)
       setError('')
-      const [matchesData, teamsData, playersData, myClubData, clubsData, categorySettingsResponse] = await Promise.all([
+      const [matchesData, teamsData, playersData, myClubData, clubsData, categorySettingsResponse, attendanceSeasonsResponse] = await Promise.all([
         api.getMatches(),
         api.getTeams().catch(() => ({ teams: [] })),
         api.getPlayers().catch(() => ({ players: [] })),
         api.getMyClub().catch(() => ({})),
         api.getClubs().catch(() => ({ clubs: [] })),
-        api.getMatchCategoryIndicators().catch(() => ({ settings: [] }))
+        api.getMatchCategoryIndicators().catch(() => ({ settings: [] })),
+        api.getAttendanceSeasons().catch(() => ({ seasons: [] }))
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
@@ -163,6 +197,7 @@ function Matches() {
       const fetchedPlayers = Array.isArray(playersData?.players) ? playersData.players : []
       setMatches(fetchedMatches)
       setTeams(fetchedTeams)
+      setAttendanceSeasons(Array.isArray(attendanceSeasonsResponse?.seasons) ? attendanceSeasonsResponse.seasons : [])
       setPlayers(fetchedPlayers)
       setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
       setMyClubName(String(myClubData?.name || '').trim())
@@ -260,9 +295,53 @@ function Matches() {
   }, [categoryKeys, selectedCategoryKey])
 
   const filteredMatches = useMemo(() => {
-    if (selectedCategoryKey === 'all') return matches
-    return matches.filter((match) => getCategoryKey(match) === selectedCategoryKey)
-  }, [matches, selectedCategoryKey])
+    const monthMatch = String(selectedTimeline || '').match(/^month-(\d{1,2})$/)
+    const selectedSeasonId = String(selectedTimeline || '').startsWith('season-')
+      ? String(selectedTimeline || '').slice(7)
+      : null
+
+    const timelineMatches = (Array.isArray(matches) ? matches : []).filter((match) => {
+      const resolvedDate = new Date(match?.matchDate)
+      if (Number.isNaN(resolvedDate.getTime())) return false
+
+      if (monthMatch) {
+        const monthIndex = Number(monthMatch[1])
+        return resolvedDate.getMonth() === monthIndex
+      }
+
+      if (selectedSeasonId) {
+        const selectedSeason = (Array.isArray(attendanceSeasons) ? attendanceSeasons : []).find((item) => String(item?.id ?? '') === selectedSeasonId)
+        const seasonFrom = selectedSeason ? parseDayMonth(selectedSeason.from) : null
+        const seasonTo = selectedSeason ? parseDayMonth(selectedSeason.to) : null
+        if (!seasonFrom || !seasonTo) return true
+        return isMonthDayInRange({ day: resolvedDate.getDate(), month: resolvedDate.getMonth() + 1 }, seasonFrom, seasonTo)
+      }
+
+      return true
+    })
+
+    if (selectedCategoryKey === 'all') return timelineMatches
+    return timelineMatches.filter((match) => getCategoryKey(match) === selectedCategoryKey)
+  }, [matches, selectedCategoryKey, selectedTimeline, attendanceSeasons])
+
+  const monthTimelineButtons = useMemo(() => (
+    MONTH_NAMES.map((monthName, index) => ({
+      id: `month-${index}`,
+      type: 'month',
+      label: MONTH_SHORT_NAMES[index] || monthName,
+      monthIndex: index
+    }))
+  ), [])
+
+  const seasonTimelineButtons = useMemo(() => (
+    (Array.isArray(attendanceSeasons) ? attendanceSeasons : []).map((season) => ({
+      id: `season-${season.id}`,
+      type: 'season',
+      label: String(season?.name || 'Obdobie'),
+      from: String(season?.from || ''),
+      to: String(season?.to || '')
+    }))
+  ), [attendanceSeasons])
 
   const matchesStats = useMemo(() => {
     const source = Array.isArray(filteredMatches) ? filteredMatches : []
@@ -395,15 +474,22 @@ function Matches() {
     })
   }
 
-  const openCreateMatchModal = () => {
-    const defaultTeam = teams[0] || null
+  const openCreateMatchModal = (options = {}) => {
+    const requestedTeamId = String(options?.teamId || '').trim()
+    const requestedCategoryKey = String(options?.categoryKey || '').trim()
+    const defaultTeam = requestedTeamId
+      ? (teams.find((team) => String(team?.id || '') === requestedTeamId) || null)
+      : (requestedCategoryKey
+        ? (teams.find((team) => String(team?.ageGroup || '').trim() === requestedCategoryKey) || teams[0] || null)
+        : (teams[0] || null))
     const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : ''
     const resolvedCategory = String(defaultTeam?.ageGroup || 'default').trim() || 'default'
+    const resolvedDateKey = toDateKey(options?.matchDate) || toDateKey(new Date())
 
     setCreateDraft({
       ...CREATE_MATCH_INITIAL_DRAFT,
       teamId: resolvedTeamId,
-      matchDate: new Date().toISOString().slice(0, 10)
+      matchDate: resolvedDateKey
     })
     setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
     setSelectedPlayerIds([])
@@ -445,6 +531,40 @@ function Matches() {
     setCreateDraft((prev) => ({ ...prev, teamId: String(teamId || '') }))
     setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
     setSelectedPlayerIds([])
+  }
+
+  useEffect(() => {
+    const current = String(quickCreateCategoryKey || '')
+    const exists = orderedCategoryKeys.includes(current)
+    if (exists) return
+    setQuickCreateCategoryKey(orderedCategoryKeys[0] || '')
+  }, [orderedCategoryKeys, quickCreateCategoryKey])
+
+  const resolvedQuickCreateCategoryKey = selectedCategoryKey === 'all'
+    ? String(quickCreateCategoryKey || '')
+    : String(selectedCategoryKey || '')
+
+  const selectedCalendarDateLabel = useMemo(() => {
+    const resolvedDate = new Date(selectedCalendarDateKey)
+    if (Number.isNaN(resolvedDate.getTime())) return '-'
+    return resolvedDate.toLocaleDateString('sk-SK')
+  }, [selectedCalendarDateKey])
+
+  const handleQuickCreateMatch = () => {
+    if (!selectedCalendarDateKey) {
+      setError('Najprv vyberte deň v kalendári.')
+      return
+    }
+
+    if (!resolvedQuickCreateCategoryKey) {
+      setError('Vyberte kategóriu pre nový zápas.')
+      return
+    }
+
+    openCreateMatchModal({
+      categoryKey: resolvedQuickCreateCategoryKey,
+      matchDate: selectedCalendarDateKey
+    })
   }
 
   const submitCreateMatch = async () => {
@@ -784,8 +904,110 @@ function Matches() {
   )
 
   const shiftCalendarMonth = (delta) => {
-    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1))
+    setCalendarDate((prev) => {
+      const nextDate = new Date(prev.getFullYear(), prev.getMonth() + delta, 1)
+      setSelectedTimeline(`month-${nextDate.getMonth()}`)
+      return nextDate
+    })
   }
+
+  const selectMonthByIndex = (monthIndex) => {
+    if (!Number.isInteger(monthIndex)) return
+    const normalizedMonth = Math.max(0, Math.min(11, monthIndex))
+    setSelectedTimeline(`month-${normalizedMonth}`)
+    setCalendarDate((prev) => new Date(prev.getFullYear(), normalizedMonth, 1))
+  }
+
+  const handleTimelineSelect = (item) => {
+    setSelectedTimeline(item.id)
+    if (item.type === 'month' && Number.isInteger(item.monthIndex)) {
+      selectMonthByIndex(item.monthIndex)
+      return
+    }
+
+    if (item.type === 'season') {
+      const seasonFrom = parseDayMonth(item.from)
+      if (seasonFrom?.month) {
+        setCalendarDate((prev) => new Date(prev.getFullYear(), seasonFrom.month - 1, 1))
+      }
+    }
+  }
+
+  const getVisibleMonthCount = () => {
+    if (!monthsWrapRef.current) return 9
+    const raw = window.getComputedStyle(monthsWrapRef.current).getPropertyValue('--visible-months')
+    const parsed = parseInt(String(raw || '').trim(), 10)
+    if (!Number.isInteger(parsed)) return 9
+    return Math.max(1, Math.min(12, parsed))
+  }
+
+  const getOneMonthOffset = () => {
+    const monthsRow = monthsScrollRef.current?.querySelector('.matches-months-row')
+    const firstMonthButton = monthsRow?.querySelector('.matches-month-btn')
+    const buttonWidth = firstMonthButton ? firstMonthButton.getBoundingClientRect().width : 0
+    const rowStyles = monthsRow ? window.getComputedStyle(monthsRow) : null
+    const gapValue = rowStyles ? parseFloat(rowStyles.columnGap || rowStyles.gap || '0') : 0
+    return Math.max(1, Math.round(buttonWidth + (Number.isFinite(gapValue) ? gapValue : 0)))
+  }
+
+  const alignMonthsToMonth = (monthIndex) => {
+    if (!monthsScrollRef.current || !Number.isInteger(monthIndex)) return
+
+    const visibleCount = getVisibleMonthCount()
+    const oneMonthOffset = getOneMonthOffset()
+    const half = Math.floor(visibleCount / 2)
+    const maxStart = Math.max(0, 12 - visibleCount)
+    const startIndex = Math.min(maxStart, Math.max(0, monthIndex - half))
+    monthsScrollRef.current.scrollLeft = startIndex * oneMonthOffset
+  }
+
+  const scrollMonths = (direction) => {
+    if (!monthsScrollRef.current) return
+    const selectedMonthMatch = String(selectedTimeline || '').match(/^month-(\d{1,2})$/)
+    const currentMonthIndex = selectedMonthMatch ? Number(selectedMonthMatch[1]) : calendarDate.getMonth()
+    const nextMonthIndex = Math.max(0, Math.min(11, currentMonthIndex + direction))
+    if (nextMonthIndex !== currentMonthIndex) {
+      selectMonthByIndex(nextMonthIndex)
+    }
+
+    const oneMonthOffset = getOneMonthOffset()
+    const container = monthsScrollRef.current
+    container.scrollLeft += direction * oneMonthOffset
+  }
+
+  useEffect(() => {
+    const selectedSeasonId = String(selectedTimeline || '').startsWith('season-')
+      ? String(selectedTimeline || '').slice(7)
+      : null
+
+    if (!selectedSeasonId) return
+    const exists = seasonTimelineButtons.some((item) => String(item.id) === `season-${selectedSeasonId}`)
+    if (!exists) {
+      setSelectedTimeline(`month-${calendarDate.getMonth()}`)
+    }
+  }, [selectedTimeline, seasonTimelineButtons, calendarDate])
+
+  useEffect(() => {
+    const matched = String(selectedTimeline || '').match(/^month-(\d{1,2})$/)
+    const selectedMonthIndex = matched ? Number(matched[1]) : null
+    if (!Number.isInteger(selectedMonthIndex)) return
+    const rafId = window.requestAnimationFrame(() => {
+      alignMonthsToMonth(selectedMonthIndex)
+    })
+    return () => window.cancelAnimationFrame(rafId)
+  }, [selectedTimeline])
+
+  useEffect(() => {
+    const handleResize = () => {
+      const matched = String(selectedTimeline || '').match(/^month-(\d{1,2})$/)
+      const selectedMonthIndex = matched ? Number(matched[1]) : null
+      if (!Number.isInteger(selectedMonthIndex)) return
+      alignMonthsToMonth(selectedMonthIndex)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [selectedTimeline])
 
   const requestDeleteMatch = (match) => {
     setMatchPendingDelete(match)
@@ -860,6 +1082,50 @@ function Matches() {
           <span className="material-icons-round matches-stat-icon" aria-hidden="true">military_tech</span>
           <p>Úspešnosť</p>
           <strong>{matchesStats.successRate}%</strong>
+        </div>
+      </div>
+
+      <div className="matches-timeline-stack" style={{ marginBottom: '12px' }}>
+        <div className="matches-timeline-row">
+          <div className="matches-months-wrap" ref={monthsWrapRef}>
+            <button type="button" className="matches-month-nav" onClick={() => scrollMonths(-1)} aria-label="Predchádzajúci mesiac">
+              <span className="material-icons-round" aria-hidden="true">chevron_left</span>
+            </button>
+
+            <div className="matches-months-viewport" ref={monthsScrollRef}>
+              <div className="matches-months-row">
+                {monthTimelineButtons.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`card matches-timeline-btn matches-month-btn ${selectedTimeline === item.id ? 'active' : ''}`}
+                    onClick={() => handleTimelineSelect(item)}
+                  >
+                    <span className="matches-timeline-btn-label">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button type="button" className="matches-month-nav" onClick={() => scrollMonths(1)} aria-label="Nasledujúci mesiac">
+              <span className="material-icons-round" aria-hidden="true">chevron_right</span>
+            </button>
+          </div>
+
+          {seasonTimelineButtons.length > 0 ? (
+            <div className="matches-periods-fixed">
+              {seasonTimelineButtons.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`card matches-timeline-btn matches-month-btn matches-period-btn ${selectedTimeline === item.id ? 'active' : ''}`}
+                  onClick={() => handleTimelineSelect(item)}
+                >
+                  <span className="matches-timeline-btn-label">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -966,78 +1232,117 @@ function Matches() {
           </div>
         </div>
 
-        <div className="card matches-calendar-panel">
-          <div className="matches-panel-head">
-            <h3>Kalendár</h3>
-            <div className="matches-calendar-controls">
-              <button type="button" className="matches-calendar-nav" onClick={() => shiftCalendarMonth(-1)} aria-label="Predchádzajúci mesiac">
-                <span className="material-icons-round" aria-hidden="true">chevron_left</span>
-              </button>
-              <strong>{calendarTitle}</strong>
-              <button type="button" className="matches-calendar-nav" onClick={() => shiftCalendarMonth(1)} aria-label="Nasledujúci mesiac">
-                <span className="material-icons-round" aria-hidden="true">chevron_right</span>
-              </button>
+        <div className="matches-side-stack">
+          <div className="card matches-calendar-panel">
+            <div className="matches-panel-head">
+              <h3>Kalendár</h3>
+              <div className="matches-calendar-controls">
+                <button type="button" className="matches-calendar-nav" onClick={() => shiftCalendarMonth(-1)} aria-label="Predchádzajúci mesiac">
+                  <span className="material-icons-round" aria-hidden="true">chevron_left</span>
+                </button>
+                <strong>{calendarTitle}</strong>
+                <button type="button" className="matches-calendar-nav" onClick={() => shiftCalendarMonth(1)} aria-label="Nasledujúci mesiac">
+                  <span className="material-icons-round" aria-hidden="true">chevron_right</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="matches-calendar-weekdays" aria-hidden="true">
+              <span>Po</span>
+              <span>Ut</span>
+              <span>St</span>
+              <span>Št</span>
+              <span>Pi</span>
+              <span>So</span>
+              <span>Ne</span>
+            </div>
+
+            <div className="matches-calendar-grid">
+              {calendarCells.map((cell) => {
+                const dayMatches = matchesByDateKey[cell.dateKey] || []
+                const typeTokens = dayMatches.map((item) => formatMatchTypeShort(item?.matchType))
+                const hasTJ = typeTokens.includes('TJ')
+                const hasMZ = typeTokens.includes('MZ')
+                const hasPZ = typeTokens.includes('PZ')
+                const hasCUP = typeTokens.includes('CUP')
+                return (
+                  <button
+                    key={cell.id}
+                    type="button"
+                    className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${selectedCalendarDateKey === cell.dateKey ? 'active' : ''} ${hasTJ ? 'has-tj' : ''} ${hasMZ ? 'has-mz' : ''} ${hasPZ ? 'has-pz' : ''} ${hasCUP ? 'has-cup' : ''}`.trim()}
+                    title={dayMatches.length > 0
+                      ? `${cell.dayLabel}. ${calendarTitle}: ${dayMatches.length} zápas(y)`
+                      : `${cell.dayLabel}. ${calendarTitle}`}
+                    onClick={() => {
+                      setSelectedCalendarDateKey(cell.dateKey)
+                    }}
+                  >
+                    <span className="matches-calendar-day-number">{cell.dayLabel}</span>
+                    {dayMatches.length > 0 ? <span className="matches-calendar-day-dot" aria-hidden="true" /> : null}
+                    {dayMatches.length > 0 ? (
+                      <span className="matches-calendar-day-tooltip">
+                        {dayMatches.slice(0, 3).map((item) => (
+                          <span key={`calendar-match-tip-${item.id}`} className="matches-calendar-day-tooltip-row">
+                            {formatMatchTypeShort(item.matchType)}: {myClubName || 'Môj klub'} vs {item.opponent || '-'}
+                          </span>
+                        ))}
+                        {dayMatches.length > 3 ? (
+                          <span className="matches-calendar-day-tooltip-more">+{dayMatches.length - 3} ďalších</span>
+                        ) : null}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="matches-calendar-legend">
+              <span className="matches-calendar-legend-item">
+                <span className="matches-calendar-legend-dot mz" aria-hidden="true" />
+                MZ
+              </span>
+              <span className="matches-calendar-legend-item">
+                <span className="matches-calendar-legend-dot pz" aria-hidden="true" />
+                PZ
+              </span>
+              <span className="matches-calendar-legend-item">
+                <span className="matches-calendar-legend-dot cup" aria-hidden="true" />
+                CUP
+              </span>
             </div>
           </div>
 
-          <div className="matches-calendar-weekdays" aria-hidden="true">
-            <span>Po</span>
-            <span>Ut</span>
-            <span>St</span>
-            <span>Št</span>
-            <span>Pi</span>
-            <span>So</span>
-            <span>Ne</span>
-          </div>
+          <div className="card matches-panel matches-manage-panel">
+            <div className="matches-panel-head">
+              <h3>Pridať zápas</h3>
+              <span>{selectedCalendarDateLabel}</span>
+            </div>
 
-          <div className="matches-calendar-grid">
-            {calendarCells.map((cell) => {
-              const dayMatches = matchesByDateKey[cell.dateKey] || []
-              const typeTokens = dayMatches.map((item) => formatMatchTypeShort(item?.matchType))
-              const hasTJ = typeTokens.includes('TJ')
-              const hasMZ = typeTokens.includes('MZ')
-              const hasPZ = typeTokens.includes('PZ')
-              const hasCUP = typeTokens.includes('CUP')
-              return (
-                <div
-                  key={cell.id}
-                  className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${hasTJ ? 'has-tj' : ''} ${hasMZ ? 'has-mz' : ''} ${hasPZ ? 'has-pz' : ''} ${hasCUP ? 'has-cup' : ''}`.trim()}
-                  title={dayMatches.length > 0
-                    ? `${cell.dayLabel}. ${calendarTitle}: ${dayMatches.length} zápas(y)`
-                    : `${cell.dayLabel}. ${calendarTitle}`}
+            <div className={`matches-manage-controls ${selectedCategoryKey === 'all' ? '' : 'single'}`}>
+              {selectedCategoryKey === 'all' ? (
+                <select
+                  className="matches-manage-select"
+                  value={quickCreateCategoryKey}
+                  onChange={(event) => setQuickCreateCategoryKey(String(event.target.value || ''))}
                 >
-                  <span className="matches-calendar-day-number">{cell.dayLabel}</span>
-                  {dayMatches.length > 0 ? <span className="matches-calendar-day-dot" aria-hidden="true" /> : null}
-                  {dayMatches.length > 0 ? (
-                    <span className="matches-calendar-day-tooltip">
-                      {dayMatches.slice(0, 3).map((item) => (
-                        <span key={`calendar-match-tip-${item.id}`} className="matches-calendar-day-tooltip-row">
-                          {formatMatchTypeShort(item.matchType)}: {myClubName || 'Môj klub'} vs {item.opponent || '-'}
-                        </span>
-                      ))}
-                      {dayMatches.length > 3 ? (
-                        <span className="matches-calendar-day-tooltip-more">+{dayMatches.length - 3} ďalších</span>
-                      ) : null}
-                    </span>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
+                  <option value="">Vyber kategóriu</option>
+                  {orderedCategoryKeys.map((key) => (
+                    <option key={`match-manage-team-${key}`} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
 
-          <div className="matches-calendar-legend">
-            <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot mz" aria-hidden="true" />
-              MZ
-            </span>
-            <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot pz" aria-hidden="true" />
-              PZ
-            </span>
-            <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot cup" aria-hidden="true" />
-              CUP
-            </span>
+              <button
+                type="button"
+                className={`btn matches-manage-btn ${selectedCategoryKey === 'all' ? '' : 'full'}`}
+                onClick={handleQuickCreateMatch}
+                disabled={!selectedCalendarDateKey || !resolvedQuickCreateCategoryKey}
+              >
+                Pridať zápas
+              </button>
+            </div>
           </div>
         </div>
       </div>
