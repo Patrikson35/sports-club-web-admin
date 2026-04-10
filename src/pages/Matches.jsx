@@ -20,12 +20,18 @@ const CREATE_MATCH_INITIAL_DRAFT = {
   matchDate: '',
   matchTime: '',
   location: '',
-  matchType: 'liga',
+  matchType: 'MZ',
   status: 'scheduled',
   homeScore: '',
   awayScore: '',
   notes: ''
 }
+
+const DEFAULT_MATCH_TYPE_OPTIONS = [
+  { code: 'MZ', label: 'MZ' },
+  { code: 'PZ', label: 'PZ' },
+  { code: 'CUP', label: 'CUP' }
+]
 
 const MONTH_NAMES = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
 const MONTH_SHORT_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
@@ -134,6 +140,7 @@ function Matches() {
   const [teams, setTeams] = useState([])
   const [players, setPlayers] = useState([])
   const [clubs, setClubs] = useState([])
+  const [matchTypeOptions, setMatchTypeOptions] = useState(DEFAULT_MATCH_TYPE_OPTIONS)
   const [myClubName, setMyClubName] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -182,14 +189,15 @@ function Matches() {
     try {
       setLoading(true)
       setError('')
-      const [matchesData, teamsData, playersData, myClubData, clubsData, categorySettingsResponse, attendanceSeasonsResponse] = await Promise.all([
+      const [matchesData, teamsData, playersData, myClubData, clubsData, categorySettingsResponse, attendanceSeasonsResponse, metricsResponse] = await Promise.all([
         api.getMatches(),
         api.getTeams().catch(() => ({ teams: [] })),
         api.getPlayers().catch(() => ({ players: [] })),
         api.getMyClub().catch(() => ({})),
         api.getClubs().catch(() => ({ clubs: [] })),
         api.getMatchCategoryIndicators().catch(() => ({ settings: [] })),
-        api.getAttendanceSeasons().catch(() => ({ seasons: [] }))
+        api.getAttendanceSeasons().catch(() => ({ seasons: [] })),
+        api.getMetrics({ context: 'attendance' }).catch(() => ({ metrics: [] }))
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
@@ -201,6 +209,17 @@ function Matches() {
       setPlayers(fetchedPlayers)
       setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
       setMyClubName(String(myClubData?.name || '').trim())
+
+      const metricRows = Array.isArray(metricsResponse?.metrics) ? metricsResponse.metrics : []
+      const foundMatchTypes = metricRows
+        .map((metric) => String(metric?.shortName || metric?.name || '').trim().toUpperCase())
+        .filter((code) => code === 'MZ' || code === 'PZ' || code === 'CUP')
+      const uniqueTypes = Array.from(new Set(foundMatchTypes))
+      const normalizedTypeOrder = ['MZ', 'PZ', 'CUP'].filter((code) => uniqueTypes.includes(code))
+      const resolvedTypeOptions = normalizedTypeOrder.length > 0
+        ? normalizedTypeOrder.map((code) => ({ code, label: code }))
+        : DEFAULT_MATCH_TYPE_OPTIONS
+      setMatchTypeOptions(resolvedTypeOptions)
 
       const evidences = await Promise.all(
         fetchedMatches.map((match) => api.getMatchEvidence(match.id).catch(() => null))
@@ -485,11 +504,13 @@ function Matches() {
     const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : ''
     const resolvedCategory = String(defaultTeam?.ageGroup || 'default').trim() || 'default'
     const resolvedDateKey = toDateKey(options?.matchDate) || toDateKey(new Date())
+    const resolvedMatchType = String(options?.matchType || matchTypeOptions[0]?.code || 'MZ').trim().toUpperCase()
 
     setCreateDraft({
       ...CREATE_MATCH_INITIAL_DRAFT,
       teamId: resolvedTeamId,
-      matchDate: resolvedDateKey
+      matchDate: resolvedDateKey,
+      matchType: resolvedMatchType
     })
     setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
     setSelectedPlayerIds([])
@@ -1191,31 +1212,36 @@ function Matches() {
                   <input
                     id="create-match-time"
                     type="time"
+                    step="60"
                     value={createDraft.matchTime}
                     onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchTime: event.target.value }))}
                   />
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="create-match-location">Miesto</label>
-                  <input
+                  <label htmlFor="create-match-location">Ihrisko</label>
+                  <select
                     id="create-match-location"
-                    type="text"
                     value={createDraft.location}
                     onChange={(event) => setCreateDraft((prev) => ({ ...prev, location: event.target.value }))}
-                    placeholder="Ihrisko / adresa"
-                  />
+                  >
+                    <option value="">Vyberte</option>
+                    <option value="doma">Doma</option>
+                    <option value="vonku">Vonku</option>
+                  </select>
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label htmlFor="create-match-type">Typ zápasu</label>
-                  <input
+                  <select
                     id="create-match-type"
-                    type="text"
                     value={createDraft.matchType}
                     onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchType: event.target.value }))}
-                    placeholder="Liga, pohár, priateľský"
-                  />
+                  >
+                    {matchTypeOptions.map((item) => (
+                      <option key={`match-type-option-${item.code}`} value={item.code}>{item.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
