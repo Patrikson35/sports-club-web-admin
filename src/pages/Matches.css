@@ -235,6 +235,29 @@
   font-size: 0.8rem;
 }
 
+.matches-close-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.92);
+  color: #c5d0e7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.matches-close-btn .material-icons-round {
+  font-size: 0.95rem;
+}
+
+.matches-close-btn:hover {
+  color: #f3f6ff;
+  border-color: rgba(125, 151, 204, 0.55);
+}
+
 .matches-table-wrap {
   border: 1px solid rgba(96, 113, 147, 0.34);
   border-radius: 0.75rem;
