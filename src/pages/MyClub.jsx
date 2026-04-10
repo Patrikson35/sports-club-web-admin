@@ -172,6 +172,29 @@ const FORMULA_DIGIT_OPTIONS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
 const EXERCISE_PLAYERS_COUNT_OPTIONS = Array.from({ length: 20 }, (_, index) => String(index + 1))
 
+const DEFAULT_MATCH_EVIDENCE_INDICATORS = {
+  result: true,
+  scorers: true,
+  yellowCards: false,
+  redCards: false
+}
+
+const normalizeMatchEvidenceIndicators = (value) => {
+  const source = value && typeof value === 'object' ? value : {}
+  return {
+    result: source.result !== false,
+    scorers: source.scorers !== false,
+    yellowCards: Boolean(source.yellowCards),
+    redCards: Boolean(source.redCards)
+  }
+}
+
+const buildMatchEvidenceSettingKey = (teamId, categoryKey) => {
+  const resolvedTeamId = String(teamId || '').trim()
+  const resolvedCategoryKey = String(categoryKey || '').trim() || 'default'
+  return `${resolvedTeamId}::${resolvedCategoryKey}`
+}
+
 const normalizeExercisePlayersCount = (value) => {
   const toList = Array.isArray(value)
     ? value
@@ -887,6 +910,10 @@ function MyClub() {
   const [activeSettingsSection, setActiveSettingsSection] = useState('managerRoles')
   const [attendanceSettingsTab, setAttendanceSettingsTab] = useState('indicators')
   const [trainingsSettingsTab, setTrainingsSettingsTab] = useState('divisions')
+  const [matchEvidenceIndicators, setMatchEvidenceIndicators] = useState({})
+  const [selectedMatchEvidenceSettingKey, setSelectedMatchEvidenceSettingKey] = useState('')
+  const [matchEvidenceSettingsLoaded, setMatchEvidenceSettingsLoaded] = useState(false)
+  const [matchEvidenceSettingsSaving, setMatchEvidenceSettingsSaving] = useState(false)
   const [showSeasonForm, setShowSeasonForm] = useState(false)
   const [seasonDraft, setSeasonDraft] = useState({ name: '', from: '', to: '' })
   const [attendanceSeasons, setAttendanceSeasons] = useState([])
@@ -1572,6 +1599,36 @@ function MyClub() {
   }, [clubId, metricsLoaded, metrics])
 
   useEffect(() => {
+    if (!clubId) {
+      setMatchEvidenceIndicators({})
+      setSelectedMatchEvidenceSettingKey('')
+      setMatchEvidenceSettingsLoaded(false)
+      return
+    }
+
+    const loadMatchEvidenceSettings = async () => {
+      try {
+        const response = await api.getMatchCategoryIndicators()
+        const remoteSettings = Array.isArray(response?.settings) ? response.settings : []
+        const normalized = remoteSettings.reduce((acc, row) => {
+          const teamId = String(row?.teamId || '').trim()
+          const categoryKey = String(row?.categoryKey || '').trim()
+          if (!teamId || !categoryKey) return acc
+          acc[buildMatchEvidenceSettingKey(teamId, categoryKey)] = normalizeMatchEvidenceIndicators(row?.indicators)
+          return acc
+        }, {})
+        setMatchEvidenceIndicators(normalized)
+      } catch {
+        setMatchEvidenceIndicators({})
+      } finally {
+        setMatchEvidenceSettingsLoaded(true)
+      }
+    }
+
+    loadMatchEvidenceSettings()
+  }, [clubId])
+
+  useEffect(() => {
     if (!clubExists || activeTab !== 'settings' || activeSettingsSection !== 'attendance' || metricsLoaded) return
     fetchAttendanceMetrics()
   }, [clubExists, activeTab, activeSettingsSection, metricsLoaded])
@@ -1596,6 +1653,68 @@ function MyClub() {
       setTrainingsSettingsTab('divisions')
     }
   }, [activeSettingsSection])
+
+  const matchEvidenceSettingOptions = useMemo(() => {
+    const optionsFromCategories = (Array.isArray(categories) ? categories : []).map((category) => {
+      const teamId = String(category?.id || '').trim()
+      const categoryKey = String(category?.name || '').trim()
+      if (!teamId || !categoryKey) return null
+      return {
+        value: buildMatchEvidenceSettingKey(teamId, categoryKey),
+        teamId,
+        categoryKey,
+        label: categoryKey
+      }
+    }).filter(Boolean)
+
+    const existingValues = new Set(optionsFromCategories.map((item) => item.value))
+    const optionsFromStored = Object.keys(matchEvidenceIndicators || {}).map((storedKey) => {
+      if (existingValues.has(storedKey)) return null
+      const [teamIdRaw = '', ...categoryParts] = String(storedKey || '').split('::')
+      const teamId = String(teamIdRaw || '').trim()
+      const categoryKey = categoryParts.join('::').trim()
+      if (!teamId || !categoryKey) return null
+      return {
+        value: buildMatchEvidenceSettingKey(teamId, categoryKey),
+        teamId,
+        categoryKey,
+        label: `${categoryKey} (archív)`
+      }
+    }).filter(Boolean)
+
+    return [...optionsFromCategories, ...optionsFromStored]
+  }, [categories, matchEvidenceIndicators])
+
+  useEffect(() => {
+    if (matchEvidenceSettingOptions.length === 0) {
+      if (selectedMatchEvidenceSettingKey) {
+        setSelectedMatchEvidenceSettingKey('')
+      }
+      return
+    }
+
+    const hasSelected = matchEvidenceSettingOptions.some((item) => item.value === selectedMatchEvidenceSettingKey)
+    if (!hasSelected) {
+      setSelectedMatchEvidenceSettingKey(matchEvidenceSettingOptions[0].value)
+    }
+  }, [matchEvidenceSettingOptions, selectedMatchEvidenceSettingKey])
+
+  const selectedMatchEvidenceSettingOption = useMemo(() => (
+    matchEvidenceSettingOptions.find((item) => item.value === selectedMatchEvidenceSettingKey) || null
+  ), [matchEvidenceSettingOptions, selectedMatchEvidenceSettingKey])
+
+  const selectedMatchEvidenceIndicators = useMemo(() => {
+    if (!selectedMatchEvidenceSettingOption) {
+      return { ...DEFAULT_MATCH_EVIDENCE_INDICATORS }
+    }
+    const settingKey = buildMatchEvidenceSettingKey(
+      selectedMatchEvidenceSettingOption.teamId,
+      selectedMatchEvidenceSettingOption.categoryKey
+    )
+    return normalizeMatchEvidenceIndicators(
+      matchEvidenceIndicators?.[settingKey] || DEFAULT_MATCH_EVIDENCE_INDICATORS
+    )
+  }, [selectedMatchEvidenceSettingOption, matchEvidenceIndicators])
 
   const fetchMyClub = async () => {
     try {
@@ -3878,6 +3997,50 @@ function MyClub() {
       setError(err.message || 'Nepodarilo sa uložiť nastavenie zobrazenia ukazovateľov.')
     } finally {
       setAttendanceDisplaySaving(false)
+    }
+  }
+
+  const updateSelectedMatchEvidenceIndicator = (indicatorKey, checked) => {
+    if (!selectedMatchEvidenceSettingOption) return
+
+    const settingKey = buildMatchEvidenceSettingKey(
+      selectedMatchEvidenceSettingOption.teamId,
+      selectedMatchEvidenceSettingOption.categoryKey
+    )
+
+    setMatchEvidenceIndicators((prev) => ({
+      ...(prev && typeof prev === 'object' ? prev : {}),
+      [settingKey]: {
+        ...selectedMatchEvidenceIndicators,
+        [indicatorKey]: Boolean(checked)
+      }
+    }))
+  }
+
+  const saveMatchEvidenceSettings = async () => {
+    if (!selectedMatchEvidenceSettingOption) return
+
+    try {
+      setMatchEvidenceSettingsSaving(true)
+      setError('')
+      setSuccess('')
+
+      const teamId = Number(selectedMatchEvidenceSettingOption.teamId)
+      if (!Number.isInteger(teamId) || teamId <= 0) {
+        throw new Error('Chýba kategória tímu pre uloženie nastavení zápasov.')
+      }
+
+      await api.updateMatchCategoryIndicators({
+        teamId,
+        categoryKey: selectedMatchEvidenceSettingOption.categoryKey,
+        indicators: selectedMatchEvidenceIndicators
+      })
+
+      setSuccess('Nastavenie zobrazenia evidencie zápasov bolo uložené.')
+    } catch (err) {
+      setError(err.message || 'Nepodarilo sa uložiť nastavenie evidencie zápasov.')
+    } finally {
+      setMatchEvidenceSettingsSaving(false)
     }
   }
 
@@ -9220,6 +9383,16 @@ function MyClub() {
                     >
                       Nastavenia zobrazenia tréningov
                     </button>
+                    <span className="attendance-settings-menu-divider" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className={`attendance-settings-menu-item ${trainingsSettingsTab === 'matches' ? 'active' : ''}`}
+                      onClick={() => setTrainingsSettingsTab('matches')}
+                      role="tab"
+                      aria-selected={trainingsSettingsTab === 'matches'}
+                    >
+                      Zápasy
+                    </button>
                   </div>
                 </div>
 
@@ -9352,7 +9525,7 @@ function MyClub() {
                       </div>
                     ) : null}
                   </>
-                ) : (
+                ) : trainingsSettingsTab === 'displaySettings' ? (
                   <div className="card settings-placeholder-card metrics-section-card training-display-settings-card">
                     <div className="manager-role-heading">
                       <span className="material-icons-round section-icon" aria-hidden="true">analytics</span>
@@ -9427,6 +9600,126 @@ function MyClub() {
                         {trainingExerciseDisplaySaving ? 'Ukladám...' : 'Uložiť nastavenia zobrazenia'}
                       </button>
                     </div>
+                  </div>
+                ) : (
+                  <div className="card settings-placeholder-card metrics-section-card training-display-settings-card">
+                    <div className="manager-role-heading">
+                      <span className="material-icons-round section-icon" aria-hidden="true">scoreboard</span>
+                      <h3 className="manager-section-title">Nastavenia zobrazenia evidencie zápasov</h3>
+                    </div>
+
+                    <p className="manager-empty-text" style={{ marginTop: 0, marginBottom: '0.7rem' }}>
+                      Vyberte kategóriu tímu a nastavte, ktoré údaje sa majú zobrazovať v evidencii zápasov.
+                    </p>
+
+                    {!matchEvidenceSettingsLoaded ? (
+                      <p className="manager-empty-text" style={{ marginTop: 0, marginBottom: '0.6rem' }}>
+                        Načítavam nastavenia zápasov...
+                      </p>
+                    ) : matchEvidenceSettingOptions.length === 0 ? (
+                      <p className="manager-empty-text" style={{ marginTop: 0, marginBottom: '0.6rem' }}>
+                        Najskôr vytvorte kategóriu v sekcii členovia.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="form-group" style={{ maxWidth: '360px', marginBottom: '0.7rem' }}>
+                          <label htmlFor="match-evidence-setting-category">Kategória tímu</label>
+                          <select
+                            id="match-evidence-setting-category"
+                            value={selectedMatchEvidenceSettingKey}
+                            onChange={(event) => setSelectedMatchEvidenceSettingKey(String(event.target.value || ''))}
+                          >
+                            {matchEvidenceSettingOptions.map((option) => (
+                              <option key={`match-evidence-setting-option-${option.value}`} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="manager-table training-display-settings-table" style={{ marginTop: 0 }}>
+                          <div className="manager-table-head">
+                            <div>Ukazovateľ</div>
+                            <div className="metrics-col-center">Zobraziť</div>
+                          </div>
+
+                          <div className="manager-table-row">
+                            <div className="training-display-division-name">
+                              <strong>Výsledok zápasu</strong>
+                            </div>
+                            <div className="metrics-col-center">
+                              <label className="metrics-switch" title="Zapnúť/vypnúť výsledok zápasu">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMatchEvidenceIndicators.result}
+                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('result', event.target.checked)}
+                                />
+                                <span className="metrics-switch-track" aria-hidden="true" />
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="manager-table-row">
+                            <div className="training-display-division-name">
+                              <strong>Strelci</strong>
+                            </div>
+                            <div className="metrics-col-center">
+                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu strelcov">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMatchEvidenceIndicators.scorers}
+                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('scorers', event.target.checked)}
+                                />
+                                <span className="metrics-switch-track" aria-hidden="true" />
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="manager-table-row">
+                            <div className="training-display-division-name">
+                              <strong>Žlté karty</strong>
+                            </div>
+                            <div className="metrics-col-center">
+                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu žltých kariet">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMatchEvidenceIndicators.yellowCards}
+                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('yellowCards', event.target.checked)}
+                                />
+                                <span className="metrics-switch-track" aria-hidden="true" />
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="manager-table-row">
+                            <div className="training-display-division-name">
+                              <strong>Červené karty</strong>
+                            </div>
+                            <div className="metrics-col-center">
+                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu červených kariet">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMatchEvidenceIndicators.redCards}
+                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('redCards', event.target.checked)}
+                                />
+                                <span className="metrics-switch-track" aria-hidden="true" />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="form-actions" style={{ marginTop: '0.9rem' }}>
+                          <button
+                            type="button"
+                            className="manager-role-save-btn"
+                            onClick={saveMatchEvidenceSettings}
+                            disabled={matchEvidenceSettingsSaving}
+                          >
+                            {matchEvidenceSettingsSaving ? 'Ukladám...' : 'Uložiť nastavenia zobrazenia'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
