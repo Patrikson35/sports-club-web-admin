@@ -180,15 +180,33 @@ const DEFAULT_MATCH_EVIDENCE_INDICATORS = {
   redCards: false
 }
 
+const MATCH_EVIDENCE_INDICATOR_LABELS = {
+  result: 'Výsledok zápasu',
+  scorers: 'Strelci',
+  assists: 'Asistencie',
+  yellowCards: 'Žlté karty',
+  redCards: 'Červené karty'
+}
+
+const MATCH_EVIDENCE_INDICATOR_ORDER = ['result', 'scorers', 'assists', 'yellowCards', 'redCards']
+
 const normalizeMatchEvidenceIndicators = (value) => {
   const source = value && typeof value === 'object' ? value : {}
-  return {
+  const normalized = {
     result: source.result !== false,
     scorers: source.scorers !== false,
     assists: Boolean(source.assists),
     yellowCards: Boolean(source.yellowCards),
     redCards: Boolean(source.redCards)
   }
+
+  Object.entries(source).forEach(([rawKey, rawValue]) => {
+    const indicatorKey = String(rawKey || '').trim()
+    if (!indicatorKey || Object.prototype.hasOwnProperty.call(normalized, indicatorKey)) return
+    normalized[indicatorKey] = Boolean(rawValue)
+  })
+
+  return normalized
 }
 
 const buildMatchEvidenceSettingKey = (teamId, categoryKey) => {
@@ -916,6 +934,8 @@ function MyClub() {
   const [selectedMatchEvidenceSettingKey, setSelectedMatchEvidenceSettingKey] = useState('')
   const [matchEvidenceSettingsLoaded, setMatchEvidenceSettingsLoaded] = useState(false)
   const [matchEvidenceSettingsSaving, setMatchEvidenceSettingsSaving] = useState(false)
+  const [showAddMatchIndicatorCard, setShowAddMatchIndicatorCard] = useState(false)
+  const [newMatchIndicatorName, setNewMatchIndicatorName] = useState('')
   const [showSeasonForm, setShowSeasonForm] = useState(false)
   const [seasonDraft, setSeasonDraft] = useState({ name: '', from: '', to: '' })
   const [attendanceSeasons, setAttendanceSeasons] = useState([])
@@ -1717,6 +1737,30 @@ function MyClub() {
       matchEvidenceIndicators?.[settingKey] || DEFAULT_MATCH_EVIDENCE_INDICATORS
     )
   }, [selectedMatchEvidenceSettingOption, matchEvidenceIndicators])
+
+  const matchEvidenceIndicatorRows = useMemo(() => {
+    const entries = Object.entries(selectedMatchEvidenceIndicators || {})
+    return entries
+      .map(([indicatorKey, isVisible]) => {
+        const resolvedKey = String(indicatorKey || '').trim()
+        if (!resolvedKey) return null
+        return {
+          key: resolvedKey,
+          label: MATCH_EVIDENCE_INDICATOR_LABELS[resolvedKey] || resolvedKey,
+          checked: Boolean(isVisible),
+          orderIndex: MATCH_EVIDENCE_INDICATOR_ORDER.indexOf(resolvedKey)
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const aKnown = a.orderIndex >= 0
+        const bKnown = b.orderIndex >= 0
+        if (aKnown && bKnown) return a.orderIndex - b.orderIndex
+        if (aKnown) return -1
+        if (bKnown) return 1
+        return a.label.localeCompare(b.label, 'sk')
+      })
+  }, [selectedMatchEvidenceIndicators])
 
   const fetchMyClub = async () => {
     try {
@@ -4044,6 +4088,27 @@ function MyClub() {
     } finally {
       setMatchEvidenceSettingsSaving(false)
     }
+  }
+
+  const addCustomMatchEvidenceIndicator = () => {
+    if (!selectedMatchEvidenceSettingOption) return
+
+    const indicatorKey = String(newMatchIndicatorName || '').trim()
+    if (!indicatorKey) {
+      setError('Zadajte názov ukazovateľa.')
+      return
+    }
+
+    if (Object.prototype.hasOwnProperty.call(selectedMatchEvidenceIndicators, indicatorKey)) {
+      setError('Ukazovateľ s týmto názvom už existuje.')
+      return
+    }
+
+    updateSelectedMatchEvidenceIndicator(indicatorKey, false)
+    setShowAddMatchIndicatorCard(false)
+    setNewMatchIndicatorName('')
+    setError('')
+    setSuccess('Nový ukazovateľ bol pridaný. Uložte nastavenia zobrazenia.')
   }
 
   const toggleMetricActive = async (metric, isActive) => {
@@ -9635,19 +9700,22 @@ function MyClub() {
                       </p>
                     ) : (
                       <>
-                        <div className="form-group" style={{ maxWidth: '360px', marginBottom: '0.7rem' }}>
-                          <label htmlFor="match-evidence-setting-category">Kategória tímu</label>
-                          <select
-                            id="match-evidence-setting-category"
-                            value={selectedMatchEvidenceSettingKey}
-                            onChange={(event) => setSelectedMatchEvidenceSettingKey(String(event.target.value || ''))}
-                          >
+                        <div className="form-group" style={{ marginBottom: '0.7rem' }}>
+                          <label>Kategória tímu</label>
+                          <div className="attendance-settings-menu match-evidence-category-switches" role="tablist" aria-label="Kategórie tímov pre evidenciu zápasov">
                             {matchEvidenceSettingOptions.map((option) => (
-                              <option key={`match-evidence-setting-option-${option.value}`} value={option.value}>
+                              <button
+                                key={`match-evidence-setting-option-${option.value}`}
+                                type="button"
+                                className={`attendance-settings-menu-item ${selectedMatchEvidenceSettingKey === option.value ? 'active' : ''}`}
+                                onClick={() => setSelectedMatchEvidenceSettingKey(option.value)}
+                                role="tab"
+                                aria-selected={selectedMatchEvidenceSettingKey === option.value}
+                              >
                                 {option.label}
-                              </option>
+                              </button>
                             ))}
-                          </select>
+                          </div>
                         </div>
 
                         <div className="manager-table training-display-settings-table" style={{ marginTop: 0 }}>
@@ -9656,88 +9724,26 @@ function MyClub() {
                             <div className="metrics-col-center">Zobraziť</div>
                           </div>
 
-                          <div className="manager-table-row">
-                            <div className="training-display-division-name">
-                              <strong>Výsledok zápasu</strong>
+                          {matchEvidenceIndicatorRows.map((indicator) => (
+                            <div key={`match-evidence-indicator-row-${indicator.key}`} className="manager-table-row">
+                              <div className="training-display-division-name">
+                                <strong>{indicator.label}</strong>
+                              </div>
+                              <div className="metrics-col-center">
+                                <label className="metrics-switch" title={`Zapnúť/vypnúť ukazovateľ ${indicator.label}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={indicator.checked}
+                                    onChange={(event) => updateSelectedMatchEvidenceIndicator(indicator.key, event.target.checked)}
+                                  />
+                                  <span className="metrics-switch-track" aria-hidden="true" />
+                                </label>
+                              </div>
                             </div>
-                            <div className="metrics-col-center">
-                              <label className="metrics-switch" title="Zapnúť/vypnúť výsledok zápasu">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedMatchEvidenceIndicators.result}
-                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('result', event.target.checked)}
-                                />
-                                <span className="metrics-switch-track" aria-hidden="true" />
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="manager-table-row">
-                            <div className="training-display-division-name">
-                              <strong>Strelci</strong>
-                            </div>
-                            <div className="metrics-col-center">
-                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu strelcov">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedMatchEvidenceIndicators.scorers}
-                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('scorers', event.target.checked)}
-                                />
-                                <span className="metrics-switch-track" aria-hidden="true" />
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="manager-table-row">
-                            <div className="training-display-division-name">
-                              <strong>Asistencie</strong>
-                            </div>
-                            <div className="metrics-col-center">
-                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu asistencií">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedMatchEvidenceIndicators.assists}
-                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('assists', event.target.checked)}
-                                />
-                                <span className="metrics-switch-track" aria-hidden="true" />
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="manager-table-row">
-                            <div className="training-display-division-name">
-                              <strong>Žlté karty</strong>
-                            </div>
-                            <div className="metrics-col-center">
-                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu žltých kariet">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedMatchEvidenceIndicators.yellowCards}
-                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('yellowCards', event.target.checked)}
-                                />
-                                <span className="metrics-switch-track" aria-hidden="true" />
-                              </label>
-                            </div>
-                          </div>
-
-                          <div className="manager-table-row">
-                            <div className="training-display-division-name">
-                              <strong>Červené karty</strong>
-                            </div>
-                            <div className="metrics-col-center">
-                              <label className="metrics-switch" title="Zapnúť/vypnúť evidenciu červených kariet">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedMatchEvidenceIndicators.redCards}
-                                  onChange={(event) => updateSelectedMatchEvidenceIndicator('redCards', event.target.checked)}
-                                />
-                                <span className="metrics-switch-track" aria-hidden="true" />
-                              </label>
-                            </div>
-                          </div>
+                          ))}
                         </div>
 
-                        <div className="form-actions" style={{ marginTop: '0.9rem' }}>
+                        <div className="form-actions" style={{ marginTop: '0.9rem', gap: '0.6rem', justifyContent: 'flex-start' }}>
                           <button
                             type="button"
                             className="manager-role-save-btn"
@@ -9746,7 +9752,57 @@ function MyClub() {
                           >
                             {matchEvidenceSettingsSaving ? 'Ukladám...' : 'Uložiť nastavenia zobrazenia'}
                           </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              setShowAddMatchIndicatorCard((prev) => !prev)
+                              setNewMatchIndicatorName('')
+                            }}
+                          >
+                            Pridať ukazovateľ
+                          </button>
                         </div>
+
+                        {showAddMatchIndicatorCard ? (
+                          <div className="card settings-placeholder-card metrics-editor-card" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+                            <div className="manager-role-heading" style={{ marginBottom: '0.6rem' }}>
+                              <span className="material-icons-round section-icon" aria-hidden="true">playlist_add</span>
+                              <h3 className="manager-section-title">Pridať nový ukazovateľ</h3>
+                            </div>
+
+                            <div className="form-group" style={{ maxWidth: '460px', marginBottom: 0 }}>
+                              <label htmlFor="match-evidence-new-indicator">Názov ukazovateľa</label>
+                              <input
+                                id="match-evidence-new-indicator"
+                                type="text"
+                                value={newMatchIndicatorName}
+                                onChange={(event) => setNewMatchIndicatorName(event.target.value)}
+                                placeholder="napr. získané rohy"
+                              />
+                            </div>
+
+                            <div className="form-actions" style={{ marginTop: '0.9rem', gap: '0.6rem', justifyContent: 'flex-start' }}>
+                              <button
+                                type="button"
+                                className="manager-role-save-btn"
+                                onClick={addCustomMatchEvidenceIndicator}
+                              >
+                                Pridať
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => {
+                                  setShowAddMatchIndicatorCard(false)
+                                  setNewMatchIndicatorName('')
+                                }}
+                              >
+                                Zrušiť
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
                       </>
                     )}
                   </div>
