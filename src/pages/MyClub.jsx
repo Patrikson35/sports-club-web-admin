@@ -9707,7 +9707,7 @@ function MyClub() {
                               <button
                                 key={`match-evidence-setting-option-${option.value}`}
                                 type="button"
-                                className={`attendance-settings-menu-item ${selectedMatchEvidenceSettingKey === option.value ? 'active' : ''}`}
+                                className={`match-evidence-category-btn ${selectedMatchEvidenceSettingKey === option.value ? 'active' : ''}`}
                                 onClick={() => setSelectedMatchEvidenceSettingKey(option.value)}
                                 role="tab"
                                 aria-selected={selectedMatchEvidenceSettingKey === option.value}
@@ -9743,7 +9743,7 @@ function MyClub() {
                           ))}
                         </div>
 
-                        <div className="form-actions" style={{ marginTop: '0.9rem', gap: '0.6rem', justifyContent: 'flex-start' }}>
+                        <div className="form-actions match-evidence-actions-row" style={{ marginTop: '0.9rem', justifyContent: 'flex-start' }}>
                           <button
                             type="button"
                             className="manager-role-save-btn"
@@ -9754,13 +9754,13 @@ function MyClub() {
                           </button>
                           <button
                             type="button"
-                            className="btn-secondary"
+                            className={`manager-add-btn ${showAddMatchIndicatorCard ? 'category-form-toggle-cancel' : ''}`}
                             onClick={() => {
                               setShowAddMatchIndicatorCard((prev) => !prev)
                               setNewMatchIndicatorName('')
                             }}
                           >
-                            Pridať ukazovateľ
+                            {showAddMatchIndicatorCard ? 'Zrušiť formulár' : 'Pridať ukazovateľ'}
                           </button>
                         </div>
 
