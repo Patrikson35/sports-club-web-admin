@@ -993,13 +993,15 @@ function Matches() {
           <div className="matches-calendar-grid">
             {calendarCells.map((cell) => {
               const dayMatches = matchesByDateKey[cell.dateKey] || []
-              const hasFinished = dayMatches.some((item) => String(item?.status || '').trim().toLowerCase() === 'finished')
-              const hasCancelled = dayMatches.some((item) => String(item?.status || '').trim().toLowerCase() === 'cancelled')
-              const hasPlanned = dayMatches.some((item) => !['finished', 'cancelled'].includes(String(item?.status || '').trim().toLowerCase()))
+              const typeTokens = dayMatches.map((item) => formatMatchTypeShort(item?.matchType))
+              const hasTJ = typeTokens.includes('TJ')
+              const hasMZ = typeTokens.includes('MZ')
+              const hasPZ = typeTokens.includes('PZ')
+              const hasCUP = typeTokens.includes('CUP')
               return (
                 <div
                   key={cell.id}
-                  className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${hasPlanned ? 'has-planned' : ''} ${hasFinished ? 'has-finished' : ''} ${hasCancelled ? 'has-cancelled' : ''}`.trim()}
+                  className={`matches-calendar-day ${cell.inCurrentMonth ? '' : 'muted'} ${cell.isToday ? 'today' : ''} ${hasTJ ? 'has-tj' : ''} ${hasMZ ? 'has-mz' : ''} ${hasPZ ? 'has-pz' : ''} ${hasCUP ? 'has-cup' : ''}`.trim()}
                   title={dayMatches.length > 0
                     ? `${cell.dayLabel}. ${calendarTitle}: ${dayMatches.length} zápas(y)`
                     : `${cell.dayLabel}. ${calendarTitle}`}
@@ -1025,16 +1027,20 @@ function Matches() {
 
           <div className="matches-calendar-legend">
             <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot planned" aria-hidden="true" />
-              Plánované
+              <span className="matches-calendar-legend-dot tj" aria-hidden="true" />
+              TJ
             </span>
             <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot finished" aria-hidden="true" />
-              Ukončené
+              <span className="matches-calendar-legend-dot mz" aria-hidden="true" />
+              MZ
             </span>
             <span className="matches-calendar-legend-item">
-              <span className="matches-calendar-legend-dot cancelled" aria-hidden="true" />
-              Zrušené
+              <span className="matches-calendar-legend-dot pz" aria-hidden="true" />
+              PZ
+            </span>
+            <span className="matches-calendar-legend-item">
+              <span className="matches-calendar-legend-dot cup" aria-hidden="true" />
+              CUP
             </span>
           </div>
         </div>

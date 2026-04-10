@@ -95,6 +95,21 @@
 .matches-list-panel table thead th {
   background: rgba(18, 21, 28, 0.96);
   border-bottom: 1px solid rgba(96, 113, 147, 0.34);
+  color: #eef4ff;
+}
+
+.matches-list-panel table th,
+.matches-list-panel table td {
+  border: 1px solid rgba(96, 113, 147, 0.26);
+}
+
+.matches-list-panel table tbody td {
+  color: #eef4ff;
+}
+
+.matches-list-panel table tbody td strong,
+.matches-list-panel table tbody td .matches-result-value {
+  color: #ffffff;
 }
 
 .matches-category-chips {
@@ -267,17 +282,21 @@
   background: #f59e0b;
 }
 
-.matches-calendar-day.has-planned {
-  border-color: rgba(74, 131, 227, 0.72);
-  background: rgba(24, 43, 74, 0.62);
+.matches-calendar-day.has-tj {
+  border-color: rgba(250, 204, 21, 0.72);
+  background: rgba(250, 204, 21, 0.14);
 }
 
-.matches-calendar-day.has-finished {
-  box-shadow: inset 0 -2px 0 0 rgba(34, 197, 94, 0.9);
+.matches-calendar-day.has-mz {
+  box-shadow: inset 0 -2px 0 0 rgba(239, 68, 68, 0.9);
 }
 
-.matches-calendar-day.has-cancelled {
-  box-shadow: inset 0 -2px 0 0 rgba(244, 63, 94, 0.9);
+.matches-calendar-day.has-pz {
+  box-shadow: inset 0 -2px 0 0 rgba(251, 146, 60, 0.92);
+}
+
+.matches-calendar-day.has-cup {
+  box-shadow: inset 0 -2px 0 0 rgba(236, 72, 153, 0.9);
 }
 
 .matches-calendar-day-tooltip {
@@ -349,16 +368,20 @@
   border-radius: 50%;
 }
 
-.matches-calendar-legend-dot.planned {
-  background: #4a83e3;
+.matches-calendar-legend-dot.tj {
+  background: #facc15;
 }
 
-.matches-calendar-legend-dot.finished {
-  background: #22c55e;
+.matches-calendar-legend-dot.mz {
+  background: #ef4444;
 }
 
-.matches-calendar-legend-dot.cancelled {
-  background: #f43f5e;
+.matches-calendar-legend-dot.pz {
+  background: #fb923c;
+}
+
+.matches-calendar-legend-dot.cup {
+  background: #ec4899;
 }
 
 .matches-create-modal {
