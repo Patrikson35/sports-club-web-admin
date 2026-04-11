@@ -25,6 +25,14 @@ const CREATE_MATCH_INITIAL_DRAFT = {
   status: 'scheduled',
   homeScore: '',
   awayScore: '',
+  halfHomeScore: '',
+  halfAwayScore: '',
+  period1HomeScore: '',
+  period1AwayScore: '',
+  period2HomeScore: '',
+  period2AwayScore: '',
+  period3HomeScore: '',
+  period3AwayScore: '',
   notes: ''
 }
 
@@ -143,6 +151,7 @@ function Matches() {
   const [clubs, setClubs] = useState([])
   const [matchTypeOptions, setMatchTypeOptions] = useState(DEFAULT_MATCH_TYPE_OPTIONS)
   const [myClubName, setMyClubName] = useState('')
+  const [myClubSportKey, setMyClubSportKey] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -212,6 +221,7 @@ function Matches() {
       setPlayers(fetchedPlayers)
       setClubs(Array.isArray(clubsData?.clubs) ? clubsData.clubs : [])
       setMyClubName(String(myClubData?.name || '').trim())
+      setMyClubSportKey(String(myClubData?.sportKey || myClubData?.sport || myClubData?.sportType || '').trim().toLowerCase())
 
       const metricRows = Array.isArray(metricsResponse?.metrics) ? metricsResponse.metrics : []
       const foundMatchTypes = metricRows
@@ -543,6 +553,27 @@ function Matches() {
     [teams, createDraft.teamId]
   )
 
+  const isCreateMatchHockey = useMemo(() => {
+    const candidateValues = [
+      myClubSportKey,
+      selectedCreateTeam?.sportKey,
+      selectedCreateTeam?.sport,
+      selectedCreateTeam?.sportType,
+      selectedCreateTeam?.name,
+      selectedCreateTeam?.ageGroup
+    ]
+      .map((value) => String(value || '').trim().toLowerCase())
+      .filter(Boolean)
+
+    return candidateValues.some((value) => value.includes('hockey') || value.includes('hokej'))
+  }, [myClubSportKey, selectedCreateTeam])
+
+  const createMatchDateLabel = useMemo(() => {
+    const resolved = new Date(createDraft.matchDate || selectedCalendarDateKey)
+    if (Number.isNaN(resolved.getTime())) return '-'
+    return resolved.toLocaleDateString('sk-SK')
+  }, [createDraft.matchDate, selectedCalendarDateKey])
+
   const createCategoryKey = String(selectedCreateTeam?.ageGroup || 'default').trim() || 'default'
 
   const availablePlayersForCreate = useMemo(() => {
@@ -657,6 +688,19 @@ function Matches() {
     })
   }, [availablePlayersForCreate, createSessionTime, createDraft.matchTime])
 
+  useEffect(() => {
+    if (!showCreateModal) return
+    const resolvedDate = String(selectedCalendarDateKey || '').trim()
+    if (!resolvedDate) return
+    setCreateDraft((prev) => {
+      if (String(prev?.matchDate || '').trim() === resolvedDate) return prev
+      return {
+        ...prev,
+        matchDate: resolvedDate
+      }
+    })
+  }, [showCreateModal, selectedCalendarDateKey])
+
   const selectedCreatePlayerIds = useMemo(() => {
     return availablePlayersForCreate
       .map((player) => String(player?.userId || '').trim())
@@ -708,7 +752,7 @@ function Matches() {
     const payloadMatchDate = String(createDraft.matchDate || '').trim()
 
     if (!payloadTeamId || !payloadOpponent || !payloadMatchDate) {
-      setError('Vyplňte kategóriu, súpera a dátum zápasu.')
+      setError('Vyplňte kategóriu a súpera.')
       return
     }
 
@@ -1283,7 +1327,7 @@ function Matches() {
             <>
               <p className="matches-create-modal-note">Vyplňte základné údaje, nastavte ukazovatele a vyberte hráčov pre zápas.</p>
 
-              <div className="matches-create-grid">
+              <div className="matches-create-grid matches-create-grid-top-row">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label htmlFor="create-match-team">Kategória</label>
                   <select
@@ -1298,27 +1342,6 @@ function Matches() {
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="create-match-opponent">Súper</label>
-                  <input
-                    id="create-match-opponent"
-                    type="text"
-                    value={createDraft.opponent}
-                    onChange={(event) => setCreateDraft((prev) => ({ ...prev, opponent: event.target.value }))}
-                    placeholder="Názov súpera"
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="create-match-date">Dátum</label>
-                  <input
-                    id="create-match-date"
-                    type="date"
-                    value={createDraft.matchDate}
-                    onChange={(event) => setCreateDraft((prev) => ({ ...prev, matchDate: event.target.value }))}
-                  />
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1347,6 +1370,21 @@ function Matches() {
                   </select>
                 </div>
               </div>
+
+              <div className="matches-create-grid matches-create-grid-opponent-row">
+                <div className="form-group matches-opponent-field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="create-match-opponent">Názov súpera</label>
+                  <input
+                    id="create-match-opponent"
+                    type="text"
+                    value={createDraft.opponent}
+                    onChange={(event) => setCreateDraft((prev) => ({ ...prev, opponent: event.target.value }))}
+                    placeholder="Názov súpera"
+                  />
+                </div>
+              </div>
+
+              <p className="matches-create-date-hint">Dátum zápasu sa preberá z kalendára: <strong>{createMatchDateLabel}</strong></p>
 
               <div className="card" style={{ marginBottom: '10px' }}>
                 <h4 style={{ marginTop: 0 }}>Ukazovatele zápasu</h4>
@@ -1394,27 +1432,131 @@ function Matches() {
                 </div>
 
                 {createIndicators.result ? (
-                  <div className="matches-score-grid">
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label htmlFor="create-match-home-score">Domáce góly</label>
-                      <input
-                        id="create-match-home-score"
-                        type="number"
-                        min="0"
-                        value={createDraft.homeScore}
-                        onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
-                      />
+                  <div className="matches-score-wrap">
+                    <div className="matches-score-grid matches-score-grid-main">
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="create-match-home-score">Domáci</label>
+                        <input
+                          id="create-match-home-score"
+                          type="number"
+                          min="0"
+                          className="matches-score-main-input"
+                          value={createDraft.homeScore}
+                          onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="create-match-away-score">Hostia</label>
+                        <input
+                          id="create-match-away-score"
+                          type="number"
+                          min="0"
+                          className="matches-score-main-input"
+                          value={createDraft.awayScore}
+                          onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
+                        />
+                      </div>
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label htmlFor="create-match-away-score">Hosťujúce góly</label>
-                      <input
-                        id="create-match-away-score"
-                        type="number"
-                        min="0"
-                        value={createDraft.awayScore}
-                        onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
-                      />
-                    </div>
+
+                    {isCreateMatchHockey ? (
+                      <div className="matches-score-periods-grid">
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label htmlFor="create-match-period1-home-score">1. tretina (D/H)</label>
+                          <div className="matches-score-mini-pair">
+                            <input
+                              id="create-match-period1-home-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="D"
+                              value={createDraft.period1HomeScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, period1HomeScore: event.target.value }))}
+                            />
+                            <input
+                              id="create-match-period1-away-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="H"
+                              value={createDraft.period1AwayScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, period1AwayScore: event.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label htmlFor="create-match-period2-home-score">2. tretina (D/H)</label>
+                          <div className="matches-score-mini-pair">
+                            <input
+                              id="create-match-period2-home-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="D"
+                              value={createDraft.period2HomeScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, period2HomeScore: event.target.value }))}
+                            />
+                            <input
+                              id="create-match-period2-away-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="H"
+                              value={createDraft.period2AwayScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, period2AwayScore: event.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label htmlFor="create-match-period3-home-score">3. tretina (D/H)</label>
+                          <div className="matches-score-mini-pair">
+                            <input
+                              id="create-match-period3-home-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="D"
+                              value={createDraft.period3HomeScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, period3HomeScore: event.target.value }))}
+                            />
+                            <input
+                              id="create-match-period3-away-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="H"
+                              value={createDraft.period3AwayScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, period3AwayScore: event.target.value }))}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="matches-score-periods-grid">
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label htmlFor="create-match-half-home-score">Polčas (D/H)</label>
+                          <div className="matches-score-mini-pair">
+                            <input
+                              id="create-match-half-home-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="D"
+                              value={createDraft.halfHomeScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfHomeScore: event.target.value }))}
+                            />
+                            <input
+                              id="create-match-half-away-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="H"
+                              value={createDraft.halfAwayScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfAwayScore: event.target.value }))}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </div>

@@ -645,6 +645,25 @@
   margin-bottom: 12px;
 }
 
+.matches-create-grid-top-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.matches-create-grid-opponent-row {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 8px;
+}
+
+.matches-opponent-field {
+  max-width: none;
+}
+
+.matches-create-date-hint {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
 .matches-indicators-grid {
   display: grid;
   gap: 10px;
@@ -656,6 +675,41 @@
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.matches-score-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.matches-score-grid-main {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.matches-score-main-input {
+  height: 52px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.matches-score-periods-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.matches-score-mini-pair {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.matches-score-mini-input {
+  height: 38px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: center;
 }
 
 .matches-training-time-btn {
@@ -870,7 +924,19 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .matches-create-grid-top-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .matches-create-grid-opponent-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .matches-indicators-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matches-score-periods-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -896,5 +962,18 @@
   .matches-create-grid,
   .matches-score-grid {
     grid-template-columns: 1fr;
+  }
+
+  .matches-create-grid-top-row {
+    grid-template-columns: 1fr;
+  }
+
+  .matches-score-grid-main,
+  .matches-score-periods-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .matches-score-mini-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
