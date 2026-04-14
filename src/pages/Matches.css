@@ -765,12 +765,6 @@
   gap: 8px;
 }
 
-.matches-score-layout-title {
-  color: #c5d0e7;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
 .matches-score-main-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

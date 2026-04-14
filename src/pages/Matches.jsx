@@ -1493,7 +1493,7 @@ function Matches() {
                     ) : (
                       <div className="matches-score-dual-layout">
                         <div className="matches-score-layout-block">
-                          <span className="matches-score-layout-title">Výsledok zápasu</span>
+                          <h4 className="matches-create-card-title">Výsledok zápasu</h4>
                           <div className="matches-score-main-pair">
                             <input
                               id="create-match-home-score"
@@ -1516,7 +1516,7 @@ function Matches() {
                           </div>
                         </div>
                         <div className="matches-score-layout-block">
-                          <span className="matches-score-layout-title">Výsledok polčasu</span>
+                          <h4 className="matches-create-card-title">Výsledok polčasu</h4>
                           <div className="matches-score-main-pair">
                             <input
                               id="create-match-half-home-score"
