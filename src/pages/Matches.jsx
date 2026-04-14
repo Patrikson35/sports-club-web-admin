@@ -1493,7 +1493,7 @@ function Matches() {
                     ) : (
                       <div className="matches-score-paired-groups">
                         <div className="matches-score-group-headings" aria-hidden="true">
-                          <span>Výsledok zápasu</span>
+                          <span>Zápas (D/H)</span>
                           <span>Výsledok polčasu</span>
                         </div>
                         <div className="matches-score-four-grid">
