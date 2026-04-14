@@ -744,6 +744,10 @@
   font-weight: 700;
 }
 
+.matches-score-group-heading-spacer {
+  visibility: hidden;
+}
+
 .matches-score-four-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
