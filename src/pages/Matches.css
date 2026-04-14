@@ -731,8 +731,23 @@
 
 .matches-score-paired-groups {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.matches-score-group-headings {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  color: #c5d0e7;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.matches-score-four-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .matches-training-time-btn {
@@ -1055,6 +1070,10 @@
 
   .matches-score-paired-groups {
     grid-template-columns: 1fr;
+  }
+
+  .matches-score-four-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

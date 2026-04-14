@@ -1492,51 +1492,47 @@ function Matches() {
                       </>
                     ) : (
                       <div className="matches-score-paired-groups">
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label htmlFor="create-match-home-score">Výsledok zápasu</label>
-                          <div className="matches-score-mini-pair">
-                            <input
-                              id="create-match-home-score"
-                              type="number"
-                              min="0"
-                              className="matches-score-mini-input"
-                              placeholder="D"
-                              value={createDraft.homeScore}
-                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
-                            />
-                            <input
-                              id="create-match-away-score"
-                              type="number"
-                              min="0"
-                              className="matches-score-mini-input"
-                              placeholder="H"
-                              value={createDraft.awayScore}
-                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
-                            />
-                          </div>
+                        <div className="matches-score-group-headings" aria-hidden="true">
+                          <span>Výsledok zápasu</span>
+                          <span>Výsledok polčasu</span>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label htmlFor="create-match-half-home-score">Výsledok polčasu</label>
-                          <div className="matches-score-mini-pair">
-                            <input
-                              id="create-match-half-home-score"
-                              type="number"
-                              min="0"
-                              className="matches-score-mini-input"
-                              placeholder="D"
-                              value={createDraft.halfHomeScore}
-                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfHomeScore: event.target.value }))}
-                            />
-                            <input
-                              id="create-match-half-away-score"
-                              type="number"
-                              min="0"
-                              className="matches-score-mini-input"
-                              placeholder="H"
-                              value={createDraft.halfAwayScore}
-                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfAwayScore: event.target.value }))}
-                            />
-                          </div>
+                        <div className="matches-score-four-grid">
+                          <input
+                            id="create-match-home-score"
+                            type="number"
+                            min="0"
+                            className="matches-score-mini-input"
+                            placeholder="D"
+                            value={createDraft.homeScore}
+                            onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
+                          />
+                          <input
+                            id="create-match-away-score"
+                            type="number"
+                            min="0"
+                            className="matches-score-mini-input"
+                            placeholder="H"
+                            value={createDraft.awayScore}
+                            onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
+                          />
+                          <input
+                            id="create-match-half-home-score"
+                            type="number"
+                            min="0"
+                            className="matches-score-mini-input"
+                            placeholder="D"
+                            value={createDraft.halfHomeScore}
+                            onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfHomeScore: event.target.value }))}
+                          />
+                          <input
+                            id="create-match-half-away-score"
+                            type="number"
+                            min="0"
+                            className="matches-score-mini-input"
+                            placeholder="H"
+                            value={createDraft.halfAwayScore}
+                            onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfAwayScore: event.target.value }))}
+                          />
                         </div>
                       </div>
                     )}
