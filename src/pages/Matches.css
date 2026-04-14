@@ -857,6 +857,12 @@
   justify-content: flex-end;
 }
 
+.matches-player-evidence-head-cell {
+  text-align: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+
 .matches-player-minutes-head {
   display: inline-flex;
   align-items: center;
@@ -930,6 +936,19 @@
   align-items: center;
   gap: 0.38rem;
   justify-self: end;
+}
+
+.matches-player-evidence-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.matches-player-evidence-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #3b82f6;
 }
 
 .matches-player-time-input {
