@@ -174,6 +174,7 @@ const EXERCISE_PLAYERS_COUNT_OPTIONS = Array.from({ length: 20 }, (_, index) => 
 
 const DEFAULT_MATCH_EVIDENCE_INDICATORS = {
   result: true,
+  halfTimeResult: true,
   scorers: true,
   assists: false,
   yellowCards: false,
@@ -182,19 +183,21 @@ const DEFAULT_MATCH_EVIDENCE_INDICATORS = {
 
 const MATCH_EVIDENCE_INDICATOR_LABELS = {
   result: 'Výsledok zápasu',
+  halfTimeResult: 'Výsledok polčasu',
   scorers: 'Strelci',
   assists: 'Asistencie',
   yellowCards: 'Žlté karty',
   redCards: 'Červené karty'
 }
 
-const MATCH_EVIDENCE_INDICATOR_ORDER = ['result', 'scorers', 'assists', 'yellowCards', 'redCards']
+const MATCH_EVIDENCE_INDICATOR_ORDER = ['result', 'halfTimeResult', 'scorers', 'assists', 'yellowCards', 'redCards']
 const isDefaultMatchEvidenceIndicator = (indicatorKey) => MATCH_EVIDENCE_INDICATOR_ORDER.includes(String(indicatorKey || '').trim())
 
 const normalizeMatchEvidenceIndicators = (value) => {
   const source = value && typeof value === 'object' ? value : {}
   const normalized = {
-    result: source.result !== false,
+    result: true,
+    halfTimeResult: source.halfTimeResult !== false,
     scorers: source.scorers !== false,
     assists: Boolean(source.assists),
     yellowCards: Boolean(source.yellowCards),
@@ -4089,6 +4092,9 @@ function MyClub() {
   const updateSelectedMatchEvidenceIndicator = (indicatorKey, checked) => {
     if (!selectedMatchEvidenceSettingOption) return
 
+      const resolvedIndicatorKey = String(indicatorKey || '').trim()
+      if (resolvedIndicatorKey === 'result') return
+
     const settingKey = buildMatchEvidenceSettingKey(
       selectedMatchEvidenceSettingOption.teamId,
       selectedMatchEvidenceSettingOption.categoryKey
@@ -4098,7 +4104,7 @@ function MyClub() {
       ...(prev && typeof prev === 'object' ? prev : {}),
       [settingKey]: {
         ...selectedMatchEvidenceIndicators,
-        [indicatorKey]: Boolean(checked)
+        [resolvedIndicatorKey]: Boolean(checked)
       }
     }))
   }
@@ -9899,6 +9905,7 @@ function MyClub() {
                                   <input
                                     type="checkbox"
                                     checked={indicator.checked}
+                                    disabled={indicator.key === 'result'}
                                     onChange={(event) => updateSelectedMatchEvidenceIndicator(indicator.key, event.target.checked)}
                                   />
                                   <span className="metrics-switch-track" aria-hidden="true" />

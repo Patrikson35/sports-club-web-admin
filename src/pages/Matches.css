@@ -760,6 +760,10 @@
   gap: 10px;
 }
 
+.matches-score-dual-layout.matches-score-dual-layout-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .matches-score-layout-block {
   display: grid;
   gap: 8px;
@@ -769,6 +773,20 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.matches-score-main-input::-webkit-outer-spin-button,
+.matches-score-main-input::-webkit-inner-spin-button,
+.matches-score-mini-input::-webkit-outer-spin-button,
+.matches-score-mini-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.matches-score-main-input,
+.matches-score-mini-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .matches-training-time-btn {

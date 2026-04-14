@@ -8,6 +8,7 @@ const MATCH_PAIRINGS_STORAGE_KEY = 'matchesPairings'
 
 const DEFAULT_INDICATORS = {
   result: true,
+  halfTimeResult: true,
   scorers: true,
   assists: false,
   yellowCards: false,
@@ -71,7 +72,8 @@ const isMonthDayInRange = (point, from, to) => {
 const normalizeIndicators = (value) => {
   const source = value && typeof value === 'object' ? value : {}
   return {
-    result: source.result !== false,
+    result: true,
+    halfTimeResult: source.halfTimeResult !== false,
     scorers: source.scorers !== false,
     assists: Boolean(source.assists),
     yellowCards: Boolean(source.yellowCards),
@@ -505,6 +507,7 @@ function Matches() {
   }
 
   const updateCategoryIndicators = (indicatorKey, checked) => {
+    if (String(indicatorKey || '') === 'result') return
     setCategoryIndicators((prev) => {
       const next = {
         ...(prev && typeof prev === 'object' ? prev : {}),
@@ -1490,7 +1493,7 @@ function Matches() {
                         </div>
                       </>
                     ) : (
-                      <div className="matches-score-dual-layout">
+                      <div className={`matches-score-dual-layout ${createIndicators.halfTimeResult === false ? 'matches-score-dual-layout-single' : ''}`.trim()}>
                         <div className="matches-score-layout-block">
                           <h4 className="matches-create-card-title">Výsledok zápasu</h4>
                           <div className="matches-score-main-pair">
@@ -1514,29 +1517,31 @@ function Matches() {
                             />
                           </div>
                         </div>
-                        <div className="matches-score-layout-block">
-                          <h4 className="matches-create-card-title">Výsledok polčasu</h4>
-                          <div className="matches-score-main-pair">
-                            <input
-                              id="create-match-half-home-score"
-                              type="number"
-                              min="0"
-                              className="matches-score-main-input"
-                              placeholder="D"
-                              value={createDraft.halfHomeScore}
-                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfHomeScore: event.target.value }))}
-                            />
-                            <input
-                              id="create-match-half-away-score"
-                              type="number"
-                              min="0"
-                              className="matches-score-main-input"
-                              placeholder="H"
-                              value={createDraft.halfAwayScore}
-                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfAwayScore: event.target.value }))}
-                            />
+                        {createIndicators.halfTimeResult !== false ? (
+                          <div className="matches-score-layout-block">
+                            <h4 className="matches-create-card-title">Výsledok polčasu</h4>
+                            <div className="matches-score-main-pair">
+                              <input
+                                id="create-match-half-home-score"
+                                type="number"
+                                min="0"
+                                className="matches-score-main-input"
+                                placeholder="D"
+                                value={createDraft.halfHomeScore}
+                                onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfHomeScore: event.target.value }))}
+                              />
+                              <input
+                                id="create-match-half-away-score"
+                                type="number"
+                                min="0"
+                                className="matches-score-main-input"
+                                placeholder="H"
+                                value={createDraft.halfAwayScore}
+                                onChange={(event) => setCreateDraft((prev) => ({ ...prev, halfAwayScore: event.target.value }))}
+                              />
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
                       </div>
                     )}
                   </div>
