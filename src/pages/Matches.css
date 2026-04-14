@@ -894,6 +894,11 @@
   background: rgba(15, 17, 21, 0.5);
 }
 
+.matches-player-list.matches-player-attendance-list {
+  max-height: none;
+  overflow: visible;
+}
+
 .matches-player-row {
   display: flex;
   align-items: center;
