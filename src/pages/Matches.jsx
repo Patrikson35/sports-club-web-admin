@@ -1388,49 +1388,6 @@ function Matches() {
 
               <div className="card" style={{ marginBottom: '10px' }}>
                 <h4 style={{ marginTop: 0 }}>Ukazovatele zápasu</h4>
-                <div className="matches-indicators-grid">
-                  <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={createIndicators.result}
-                      onChange={(event) => setCreateIndicators((prev) => ({ ...prev, result: event.target.checked }))}
-                    />
-                    <span>Výsledok</span>
-                  </label>
-                  <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={createIndicators.scorers}
-                      onChange={(event) => setCreateIndicators((prev) => ({ ...prev, scorers: event.target.checked }))}
-                    />
-                    <span>Strelci</span>
-                  </label>
-                  <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={createIndicators.assists}
-                      onChange={(event) => setCreateIndicators((prev) => ({ ...prev, assists: event.target.checked }))}
-                    />
-                    <span>Asistencie</span>
-                  </label>
-                  <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={createIndicators.yellowCards}
-                      onChange={(event) => setCreateIndicators((prev) => ({ ...prev, yellowCards: event.target.checked }))}
-                    />
-                    <span>Žlté karty</span>
-                  </label>
-                  <label className="planner-stitch-checkbox-option" style={{ marginBottom: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={createIndicators.redCards}
-                      onChange={(event) => setCreateIndicators((prev) => ({ ...prev, redCards: event.target.checked }))}
-                    />
-                    <span>Červené karty</span>
-                  </label>
-                </div>
-
                 {createIndicators.result ? (
                   <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
                     <div className="matches-score-grid matches-score-grid-main">
