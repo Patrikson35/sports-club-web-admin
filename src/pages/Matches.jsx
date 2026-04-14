@@ -109,6 +109,20 @@ const formatMatchTypeShort = (value) => {
   return String(value || '').trim().slice(0, 4).toUpperCase() || 'MZ'
 }
 
+const toPlayerName = (player) => {
+  const composed = `${String(player?.firstName || '').trim()} ${String(player?.lastName || '').trim()}`.trim()
+  return composed || String(player?.displayName || player?.name || 'Neznámy hráč')
+}
+
+const toPlayerAvatar = (player) => String(player?.photo ?? player?.photoUrl ?? player?.avatar ?? '').trim()
+
+const toNameInitials = (fullName) => {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return 'H'
+  if (parts.length === 1) return String(parts[0][0] || '').toUpperCase()
+  return `${String(parts[0][0] || '').toUpperCase()}${String(parts[1][0] || '').toUpperCase()}`
+}
+
 const toDateKey = (input) => {
   if (!input) return ''
   const value = new Date(input)
@@ -1513,8 +1527,9 @@ function Matches() {
                 ) : availablePlayersForCreate.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Pre túto kategóriu sa nenašli žiadni hráči.</p>
                 ) : (
-                  <div className="matches-player-attendance-head">
-                    <span>Hráč</span>
+                  <div className="matches-player-attendance-head matches-player-attendance-table-head">
+                    <span>HRÁČ</span>
+                    <span>ÚČASŤ</span>
                     <span className="matches-player-attendance-head-time">
                       <span className="matches-player-minutes-head">
                         <input
@@ -1526,7 +1541,7 @@ function Matches() {
                           aria-label="Minúty zápasu"
                           placeholder="min"
                         />
-                        <span>Min</span>
+                        <span>MIN</span>
                       </span>
                     </span>
                   </div>
@@ -1536,14 +1551,23 @@ function Matches() {
                     {availablePlayersForCreate.map((player) => {
                       const playerKey = String(player?.userId || '')
                       const attendance = getCreatePlayerAttendanceEntry(playerKey)
+                      const playerName = toPlayerName(player)
+                      const avatarUrl = toPlayerAvatar(player)
                       return (
                         <div key={`match-create-player-${playerKey}`} className="matches-player-row matches-player-attendance-row">
-                          <span>
-                            {player.firstName} {player.lastName}
-                            {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
+                          <span className="matches-player-cell">
+                            <span className="matches-player-avatar" aria-hidden="true">
+                              {avatarUrl
+                                ? <img src={avatarUrl} alt="" />
+                                : <span>{toNameInitials(playerName)}</span>}
+                            </span>
+                            <span>
+                              {playerName}
+                              {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
+                            </span>
                           </span>
-                          <span className="matches-player-attendance-controls">
-                            <label className="matches-row-switch" aria-label={`Účasť hráča ${player.firstName} ${player.lastName}`}>
+                          <span className="matches-player-attendance-col">
+                            <label className="matches-row-switch" aria-label={`Účasť hráča ${playerName}`}>
                               <input
                                 type="checkbox"
                                 checked={attendance.attended !== false}
@@ -1551,6 +1575,8 @@ function Matches() {
                               />
                               <span className="matches-row-switch-slider" />
                             </label>
+                          </span>
+                          <span className="matches-player-attendance-controls">
                             <input
                               type="text"
                               inputMode="numeric"

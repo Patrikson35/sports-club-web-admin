@@ -768,13 +768,27 @@
 
 .matches-player-attendance-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 90px 120px;
   align-items: center;
   gap: 0.45rem;
   margin-bottom: 0.45rem;
   color: #cbd5e1;
   font-size: 0.74rem;
   font-weight: 600;
+}
+
+.matches-player-attendance-table-head {
+  background: rgba(18, 21, 28, 0.96);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  text-transform: uppercase;
+  padding: 0.62rem 0.72rem;
+  margin-bottom: 0;
+}
+
+.matches-player-attendance-table-head > *:nth-child(2) {
+  justify-self: center;
 }
 
 .matches-player-attendance-head-time {
@@ -811,29 +825,67 @@
 .matches-player-attendance-list {
   max-height: none;
   overflow-y: visible;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .matches-player-attendance-row {
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 120px;
+  align-items: center;
   gap: 0.6rem;
+}
+
+.matches-player-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.58rem;
+  min-width: 0;
+}
+
+.matches-player-avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(96, 113, 147, 0.38);
+  background: rgba(23, 30, 44, 0.95);
+  color: #dbeafe;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.matches-player-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.matches-player-attendance-col {
+  justify-self: center;
 }
 
 .matches-player-attendance-controls {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-self: end;
 }
 
 .matches-player-time-input {
-  width: 96px;
-  height: 32px;
+  width: 62px;
+  height: 30px;
   border: 1px solid rgba(96, 113, 147, 0.44);
-  border-radius: 0.5rem;
+  border-radius: 0.55rem;
   background: rgba(18, 21, 28, 0.92);
-  color: #dbe6ff;
-  font-size: 0.7rem;
+  color: #e5ecff;
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 0 0.35rem;
+  text-align: center;
+  padding: 0 0.4rem;
 }
 
 .matches-player-time-input:focus {
@@ -843,56 +895,53 @@
 }
 
 .matches-player-time-input:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .matches-row-switch {
   position: relative;
-  width: 46px;
-  height: 24px;
+  width: 30px;
+  height: 16px;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  flex-shrink: 0;
 }
 
 .matches-row-switch input {
-  position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
 }
 
 .matches-row-switch-slider {
-  width: 46px;
-  height: 24px;
+  position: absolute;
+  inset: 0;
   border-radius: 999px;
-  background: rgba(30, 41, 59, 0.95);
-  border: 1px solid rgba(96, 113, 147, 0.45);
-  position: relative;
-  transition: all 0.2s ease;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(18, 21, 28, 0.92);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .matches-row-switch-slider::before {
   content: '';
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
+  left: 1px;
+  top: 1px;
   border-radius: 50%;
-  left: 2px;
-  top: 2px;
-  background: #94a3b8;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  background: #c5d0e7;
+  transition: transform 0.2s ease;
 }
 
 .matches-row-switch input:checked + .matches-row-switch-slider {
-  background: rgba(30, 64, 175, 0.35);
-  border-color: rgba(96, 165, 250, 0.78);
+  border-color: rgba(59, 130, 246, 0.8);
+  background: rgba(24, 43, 74, 0.94);
 }
 
 .matches-row-switch input:checked + .matches-row-switch-slider::before {
-  transform: translateX(22px);
-  background: #60a5fa;
+  transform: translateX(13px);
+  background: #dbeafe;
 }
 
 .matches-create-grid input[type='date']::-webkit-calendar-picker-indicator {
@@ -982,6 +1031,11 @@
 
   .matches-score-periods-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matches-player-attendance-head,
+  .matches-player-attendance-row {
+    grid-template-columns: minmax(0, 1fr) 74px 96px;
   }
 
   .matches-score-wrap-single-row {
