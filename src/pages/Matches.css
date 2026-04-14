@@ -638,6 +638,11 @@
   font-size: 14px;
 }
 
+.matches-create-card-title {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
 .matches-create-grid {
   display: grid;
   gap: 10px;
@@ -788,7 +793,7 @@
 }
 
 .matches-player-attendance-table-head > *:nth-child(2) {
-  justify-self: center;
+  justify-self: end;
 }
 
 .matches-player-attendance-head-time {
@@ -866,12 +871,13 @@
 }
 
 .matches-player-attendance-col {
-  justify-self: center;
+  justify-self: end;
 }
 
 .matches-player-attendance-controls {
   display: inline-flex;
   align-items: center;
+  gap: 0.38rem;
   justify-self: end;
 }
 

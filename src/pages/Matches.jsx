@@ -1389,7 +1389,7 @@ function Matches() {
               <p className="matches-create-date-hint">Dátum zápasu sa preberá z kalendára: <strong>{createMatchDateLabel}</strong></p>
 
               <div className="card" style={{ marginBottom: '10px' }}>
-                <h4 style={{ marginTop: 0, marginBottom: '12px' }}>Výsledok zápasu</h4>
+                <h4 className="matches-create-card-title">Výsledok zápasu</h4>
                 {createIndicators.result ? (
                   <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
                     <div className="matches-score-grid matches-score-grid-main">
@@ -1521,7 +1521,7 @@ function Matches() {
               </div>
 
               <div className="card" style={{ marginBottom: '10px' }}>
-                <h4 style={{ marginTop: 0 }}>Zoznam hráčov</h4>
+                <h4 className="matches-create-card-title">Zoznam hráčov</h4>
                 {!createDraft.teamId ? (
                   <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Najprv vyberte kategóriu.</p>
                 ) : availablePlayersForCreate.length === 0 ? (
