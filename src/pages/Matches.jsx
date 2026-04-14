@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
-import TimeClockPickerModal from '../components/TimeClockPickerModal'
 import './Matches.css'
 
 const MATCH_CATEGORY_INDICATORS_STORAGE_KEY = 'matchesCategoryIndicators'
@@ -169,7 +168,6 @@ function Matches() {
   const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
   const [createSessionTime, setCreateSessionTime] = useState('')
   const [createPlayerAttendanceDraft, setCreatePlayerAttendanceDraft] = useState({})
-  const [isMatchTimeClockOpen, setIsMatchTimeClockOpen] = useState(false)
   const [matchPendingDelete, setMatchPendingDelete] = useState(null)
   const [matchRecordings, setMatchRecordings] = useState({})
   const [matchPairings, setMatchPairings] = useState({})
@@ -533,19 +531,10 @@ function Matches() {
 
   const closeCreateMatchModal = () => {
     setShowCreateModal(false)
-    setIsMatchTimeClockOpen(false)
     setCreateSessionTime('')
     setCreatePlayerAttendanceDraft({})
     setCreateDraft({ ...CREATE_MATCH_INITIAL_DRAFT })
     setCreateIndicators({ ...DEFAULT_INDICATORS })
-  }
-
-  const openMatchTimePicker = () => {
-    setIsMatchTimeClockOpen(true)
-  }
-
-  const closeMatchTimePicker = () => {
-    setIsMatchTimeClockOpen(false)
   }
 
   const selectedCreateTeam = useMemo(
@@ -583,9 +572,8 @@ function Matches() {
   }, [players, createDraft.teamId])
 
   const updateCreateSessionTime = (nextTime) => {
-    const normalized = String(nextTime || '').trim()
+    const normalized = String(nextTime || '').replace(/[^\d]/g, '').slice(0, 3)
     setCreateSessionTime(normalized)
-    setCreateDraft((prev) => ({ ...prev, matchTime: normalized }))
     setCreatePlayerAttendanceDraft((prev) => {
       const source = prev && typeof prev === 'object' ? prev : {}
       const next = { ...source }
@@ -612,7 +600,7 @@ function Matches() {
     }
     return {
       attended: true,
-      time: String(createSessionTime || createDraft.matchTime || '').trim()
+      time: String(createSessionTime || '').trim()
     }
   }
 
@@ -623,13 +611,13 @@ function Matches() {
       const source = prev && typeof prev === 'object' ? prev : {}
       const current = source[resolvedId] && typeof source[resolvedId] === 'object'
         ? source[resolvedId]
-        : { attended: true, time: String(createSessionTime || createDraft.matchTime || '').trim() }
+        : { attended: true, time: String(createSessionTime || '').trim() }
       return {
         ...source,
         [resolvedId]: {
           attended: Boolean(attended),
           time: attended
-            ? (String(current.time || '').trim() || String(createSessionTime || createDraft.matchTime || '').trim())
+            ? (String(current.time || '').trim() || String(createSessionTime || '').trim())
             : ''
         }
       }
@@ -639,12 +627,12 @@ function Matches() {
   const updateCreatePlayerTime = (userId, nextTime) => {
     const resolvedId = String(userId || '').trim()
     if (!resolvedId) return
-    const normalized = String(nextTime || '').trim()
+    const normalized = String(nextTime || '').replace(/[^\d]/g, '').slice(0, 3)
     setCreatePlayerAttendanceDraft((prev) => {
       const source = prev && typeof prev === 'object' ? prev : {}
       const current = source[resolvedId] && typeof source[resolvedId] === 'object'
         ? source[resolvedId]
-        : { attended: true, time: String(createSessionTime || createDraft.matchTime || '').trim() }
+        : { attended: true, time: String(createSessionTime || '').trim() }
       return {
         ...source,
         [resolvedId]: {
@@ -678,15 +666,15 @@ function Matches() {
         if (!key) return
         const current = source[key] && typeof source[key] === 'object'
           ? source[key]
-          : { attended: true, time: String(createSessionTime || createDraft.matchTime || '').trim() }
+          : { attended: true, time: String(createSessionTime || '').trim() }
         next[key] = {
           attended: current.attended !== false,
-          time: String(current.time || '').trim()
+          time: String(current.time || '').replace(/[^\d]/g, '').slice(0, 3)
         }
       })
       return next
     })
-  }, [availablePlayersForCreate, createSessionTime, createDraft.matchTime])
+  }, [availablePlayersForCreate, createSessionTime])
 
   useEffect(() => {
     if (!showCreateModal) return
@@ -710,7 +698,7 @@ function Matches() {
         return attendance.attended !== false
       })
   }
-  , [availablePlayersForCreate, createPlayerAttendanceDraft, createSessionTime, createDraft.matchTime])
+  , [availablePlayersForCreate, createPlayerAttendanceDraft, createSessionTime])
 
   useEffect(() => {
     const current = String(quickCreateCategoryKey || '')
@@ -1387,7 +1375,7 @@ function Matches() {
               <p className="matches-create-date-hint">Dátum zápasu sa preberá z kalendára: <strong>{createMatchDateLabel}</strong></p>
 
               <div className="card" style={{ marginBottom: '10px' }}>
-                <h4 style={{ marginTop: 0 }}>Výsledok zápasu</h4>
+                <h4 style={{ marginTop: 0, marginBottom: '12px' }}>Výsledok zápasu</h4>
                 {createIndicators.result ? (
                   <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
                     <div className="matches-score-grid matches-score-grid-main">
@@ -1528,16 +1516,18 @@ function Matches() {
                   <div className="matches-player-attendance-head">
                     <span>Hráč</span>
                     <span className="matches-player-attendance-head-time">
-                      <button
-                        id="create-match-time"
-                        type="button"
-                        className="matches-training-time-btn matches-training-time-btn-compact"
-                        onClick={openMatchTimePicker}
-                        aria-label="Nastaviť čas zápasu"
-                      >
-                        <span className="material-icons-round" aria-hidden="true">schedule</span>
-                        <span>{createSessionTime || createDraft.matchTime || '--:--'}</span>
-                      </button>
+                      <span className="matches-player-minutes-head">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className="matches-player-minutes-head-input"
+                          value={createSessionTime}
+                          onChange={(event) => updateCreateSessionTime(event.target.value)}
+                          aria-label="Minúty zápasu"
+                          placeholder="min"
+                        />
+                        <span>Min</span>
+                      </span>
                     </span>
                   </div>
                 )}
@@ -1562,12 +1552,13 @@ function Matches() {
                               <span className="matches-row-switch-slider" />
                             </label>
                             <input
-                              type="time"
-                              step="60"
+                              type="text"
+                              inputMode="numeric"
                               className="matches-player-time-input"
                               value={attendance.time}
                               onChange={(event) => updateCreatePlayerTime(playerKey, event.target.value)}
                               disabled={attendance.attended === false}
+                              placeholder="min"
                             />
                           </span>
                         </div>
@@ -1993,16 +1984,6 @@ function Matches() {
           </div>
         </div>
       ) : null}
-
-      <TimeClockPickerModal
-        isOpen={isMatchTimeClockOpen}
-        value={createSessionTime || createDraft.matchTime}
-        onClose={closeMatchTimePicker}
-        onApply={(nextValue) => {
-          updateCreateSessionTime(nextValue)
-        }}
-        ariaLabel="Výber času zápasu"
-      />
     </div>
   )
 }

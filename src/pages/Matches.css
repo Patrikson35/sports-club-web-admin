@@ -783,6 +783,31 @@
   justify-content: flex-end;
 }
 
+.matches-player-minutes-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.matches-player-minutes-head-input {
+  width: 72px;
+  height: 32px;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  border-radius: 0.5rem;
+  background: rgba(18, 21, 28, 0.92);
+  color: #dbe6ff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0 0.4rem;
+  text-align: center;
+}
+
+.matches-player-minutes-head-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
 .matches-player-attendance-list {
   max-height: none;
   overflow-y: visible;
