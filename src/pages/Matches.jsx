@@ -1529,7 +1529,6 @@ function Matches() {
                 ) : (
                   <div className="matches-player-attendance-head matches-player-attendance-table-head">
                     <span>HRÁČ</span>
-                    <span>ÚČASŤ</span>
                     <span className="matches-player-attendance-head-time">
                       <span className="matches-player-minutes-head">
                         <input
@@ -1566,7 +1565,7 @@ function Matches() {
                               {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
                             </span>
                           </span>
-                          <span className="matches-player-attendance-col">
+                          <span className="matches-player-attendance-controls">
                             <label className="matches-row-switch" aria-label={`Účasť hráča ${playerName}`}>
                               <input
                                 type="checkbox"
@@ -1575,8 +1574,6 @@ function Matches() {
                               />
                               <span className="matches-row-switch-slider" />
                             </label>
-                          </span>
-                          <span className="matches-player-attendance-controls">
                             <input
                               type="text"
                               inputMode="numeric"
