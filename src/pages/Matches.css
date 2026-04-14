@@ -682,6 +682,11 @@
   gap: 10px;
 }
 
+.matches-score-wrap-single-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: end;
+}
+
 .matches-score-grid-main {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -696,6 +701,14 @@
 .matches-score-periods-grid {
   display: grid;
   gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.matches-score-periods-grid-half {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.matches-score-periods-grid-hockey {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -938,6 +951,10 @@
 
   .matches-score-periods-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matches-score-wrap-single-row {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1432,7 +1432,7 @@ function Matches() {
                 </div>
 
                 {createIndicators.result ? (
-                  <div className="matches-score-wrap">
+                  <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
                     <div className="matches-score-grid matches-score-grid-main">
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label htmlFor="create-match-home-score">Domáci</label>
@@ -1459,7 +1459,7 @@ function Matches() {
                     </div>
 
                     {isCreateMatchHockey ? (
-                      <div className="matches-score-periods-grid">
+                      <div className="matches-score-periods-grid matches-score-periods-grid-hockey">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label htmlFor="create-match-period1-home-score">1. tretina (D/H)</label>
                           <div className="matches-score-mini-pair">
@@ -1531,7 +1531,7 @@ function Matches() {
                         </div>
                       </div>
                     ) : (
-                      <div className="matches-score-periods-grid">
+                      <div className="matches-score-periods-grid matches-score-periods-grid-half">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label htmlFor="create-match-half-home-score">Polčas (D/H)</label>
                           <div className="matches-score-mini-pair">
