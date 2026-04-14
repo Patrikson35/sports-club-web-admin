@@ -1392,33 +1392,33 @@ function Matches() {
                 <h4 className="matches-create-card-title">Výsledok zápasu</h4>
                 {createIndicators.result ? (
                   <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
-                    <div className="matches-score-grid matches-score-grid-main">
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label htmlFor="create-match-home-score">Domáci</label>
-                        <input
-                          id="create-match-home-score"
-                          type="number"
-                          min="0"
-                          className="matches-score-main-input"
-                          value={createDraft.homeScore}
-                          onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
-                        />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label htmlFor="create-match-away-score">Hostia</label>
-                        <input
-                          id="create-match-away-score"
-                          type="number"
-                          min="0"
-                          className="matches-score-main-input"
-                          value={createDraft.awayScore}
-                          onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
-                        />
-                      </div>
-                    </div>
-
                     {isCreateMatchHockey ? (
-                      <div className="matches-score-periods-grid matches-score-periods-grid-hockey">
+                      <>
+                        <div className="matches-score-grid matches-score-grid-main">
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label htmlFor="create-match-home-score">Domáci</label>
+                            <input
+                              id="create-match-home-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-main-input"
+                              value={createDraft.homeScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
+                            />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label htmlFor="create-match-away-score">Hostia</label>
+                            <input
+                              id="create-match-away-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-main-input"
+                              value={createDraft.awayScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div className="matches-score-periods-grid matches-score-periods-grid-hockey">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label htmlFor="create-match-period1-home-score">1. tretina (D/H)</label>
                           <div className="matches-score-mini-pair">
@@ -1488,11 +1488,35 @@ function Matches() {
                             />
                           </div>
                         </div>
-                      </div>
+                        </div>
+                      </>
                     ) : (
-                      <div className="matches-score-periods-grid matches-score-periods-grid-half">
+                      <div className="matches-score-paired-groups">
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label htmlFor="create-match-half-home-score">Polčas (D/H)</label>
+                          <label htmlFor="create-match-home-score">Výsledok zápasu</label>
+                          <div className="matches-score-mini-pair">
+                            <input
+                              id="create-match-home-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="D"
+                              value={createDraft.homeScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, homeScore: event.target.value }))}
+                            />
+                            <input
+                              id="create-match-away-score"
+                              type="number"
+                              min="0"
+                              className="matches-score-mini-input"
+                              placeholder="H"
+                              value={createDraft.awayScore}
+                              onChange={(event) => setCreateDraft((prev) => ({ ...prev, awayScore: event.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label htmlFor="create-match-half-home-score">Výsledok polčasu</label>
                           <div className="matches-score-mini-pair">
                             <input
                               id="create-match-half-home-score"
