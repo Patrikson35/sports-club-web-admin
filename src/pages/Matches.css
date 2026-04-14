@@ -784,7 +784,8 @@
 }
 
 .matches-player-attendance-list {
-  max-height: 320px;
+  max-height: none;
+  overflow-y: visible;
 }
 
 .matches-player-attendance-row {

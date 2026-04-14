@@ -1387,7 +1387,7 @@ function Matches() {
               <p className="matches-create-date-hint">Dátum zápasu sa preberá z kalendára: <strong>{createMatchDateLabel}</strong></p>
 
               <div className="card" style={{ marginBottom: '10px' }}>
-                <h4 style={{ marginTop: 0 }}>Ukazovatele zápasu</h4>
+                <h4 style={{ marginTop: 0 }}>Výsledok zápasu</h4>
                 {createIndicators.result ? (
                   <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
                     <div className="matches-score-grid matches-score-grid-main">
