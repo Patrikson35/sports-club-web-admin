@@ -991,6 +991,14 @@
   margin: 0;
 }
 
+/* Keep attendance variant in a dedicated right column (switch + minutes). */
+.matches-player-row.matches-player-attendance-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 @media (max-width: 920px) {
   .matches-timeline-row {
     grid-template-columns: 1fr;
