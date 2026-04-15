@@ -28,7 +28,7 @@ import './App.css'
 class RouteErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, errorMessage: '' }
   }
 
   static getDerivedStateFromError() {
@@ -37,6 +37,7 @@ class RouteErrorBoundary extends React.Component {
 
   componentDidCatch(error) {
     console.error('RouteErrorBoundary caught route error:', error)
+    this.setState({ errorMessage: String(error?.message || 'Neznáma chyba') })
   }
 
   render() {
@@ -47,12 +48,33 @@ class RouteErrorBoundary extends React.Component {
           <p style={{ marginBottom: '12px', color: 'var(--text-secondary)' }}>
             Na stránke Zápasy nastala chyba. Skúste obnoviť stránku.
           </p>
+          {this.state.errorMessage ? (
+            <p style={{ marginBottom: '12px', color: '#fca5a5', fontSize: '0.85rem' }}>
+              Detail chyby: {this.state.errorMessage}
+            </p>
+          ) : null}
           <button
             type="button"
             className="manager-add-btn"
             onClick={() => window.location.reload()}
+            style={{ marginRight: '8px' }}
           >
             Obnoviť stránku
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              try {
+                localStorage.removeItem('matchesLocalCreated')
+                localStorage.removeItem('matchesCategoryIndicators')
+                localStorage.removeItem('matchesRecordings')
+                localStorage.removeItem('matchesPairings')
+              } catch {}
+              window.location.reload()
+            }}
+          >
+            Vyčistiť lokálne dáta
           </button>
         </div>
       )
