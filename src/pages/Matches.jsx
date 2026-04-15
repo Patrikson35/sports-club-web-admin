@@ -942,7 +942,11 @@ function Matches() {
     setSuccess('')
 
     try {
-      const createResponse = await api.createMatch({
+      const selectedPlayerIdsPayload = selectedCreatePlayerIds
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0)
+
+      const createPayload = {
         teamId: payloadTeamId,
         categoryKey: createCategoryKey,
         opponent: payloadOpponent,
@@ -953,14 +957,28 @@ function Matches() {
         status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
         notes: String(createDraft.notes || '').trim() || null,
         indicators: createIndicators,
-        selectedPlayers: selectedCreatePlayerIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
+        selectedPlayers: selectedPlayerIdsPayload,
         homeScore: createIndicators.result ? createDraft.homeScore : null,
         awayScore: createIndicators.result ? createDraft.awayScore : null,
         // Keep create payload lightweight; detailed evidence is saved in a dedicated follow-up request.
         scorers: [],
         assists: [],
         cards: []
-      })
+      }
+
+      let createResponse = null
+      let createWithLineupFallbackUsed = false
+
+      try {
+        createResponse = await api.createMatch(createPayload)
+      } catch (primaryCreateError) {
+        // Older DB snapshots may not support lineup writes during create; retry without selected players.
+        createResponse = await api.createMatch({
+          ...createPayload,
+          selectedPlayers: []
+        })
+        createWithLineupFallbackUsed = true
+      }
 
       const createdMatch = createResponse?.match
       const createdMatchId = Number(createdMatch?.id || 0)
@@ -970,18 +988,30 @@ function Matches() {
         selectedCards.length > 0
 
       if (createdMatchId > 0 && shouldSaveEvidence) {
-        await api.updateMatchEvidence(createdMatchId, {
-          homeScore: createIndicators.result ? createDraft.homeScore : null,
-          awayScore: createIndicators.result ? createDraft.awayScore : null,
-          scorers: selectedScorers,
-          assists: selectedAssists,
-          cards: selectedCards
-        })
+        try {
+          await api.updateMatchEvidence(createdMatchId, {
+            homeScore: createIndicators.result ? createDraft.homeScore : null,
+            awayScore: createIndicators.result ? createDraft.awayScore : null,
+            scorers: selectedScorers,
+            assists: selectedAssists,
+            cards: selectedCards
+          })
+        } catch (evidenceSaveError) {
+          console.error('Chyba pri ukladaní evidencie nového zápasu:', evidenceSaveError)
+          setSuccess('Zápas bol vytvorený, ale evidenčné údaje sa nepodarilo uložiť. Skúste ich doplniť v detaile zápasu.')
+          await loadMatches()
+          closeCreateMatchModal()
+          return
+        }
       }
 
       await loadMatches()
 
-      setSuccess('Zápas bol úspešne pridaný.')
+      if (createWithLineupFallbackUsed) {
+        setSuccess('Zápas bol pridaný. Predvyplnená zostava hráčov nebola pri vytváraní uložená (fallback kompatibility).')
+      } else {
+        setSuccess('Zápas bol úspešne pridaný.')
+      }
       closeCreateMatchModal()
     } catch (createError) {
       console.error('Chyba pri vytváraní zápasu:', createError)
