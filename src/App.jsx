@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
 import { api } from './api'
 import Dashboard from './pages/Dashboard'
@@ -24,6 +24,43 @@ import Evidence from './pages/Evidence'
 import Planner from './pages/Planner'
 import WebSettings from './pages/WebSettings'
 import './App.css'
+
+class RouteErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error) {
+    console.error('RouteErrorBoundary caught route error:', error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card" style={{ padding: '16px' }}>
+          <h3 style={{ marginTop: 0 }}>Zápasy sa nepodarilo zobraziť</h3>
+          <p style={{ marginBottom: '12px', color: 'var(--text-secondary)' }}>
+            Na stránke Zápasy nastala chyba. Skúste obnoviť stránku.
+          </p>
+          <button
+            type="button"
+            className="manager-add-btn"
+            onClick={() => window.location.reload()}
+          >
+            Obnoviť stránku
+          </button>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 const normalizeRole = (role) => (role === 'club_admin' ? 'club' : role)
 
@@ -452,7 +489,14 @@ function AppContent() {
               <Route path="/players" element={canAccessSection('players') ? <Players /> : <Navigate to="/" />} />
               <Route path="/attendance" element={canAccessSection('attendance') ? <Evidence /> : <Navigate to="/" />} />
               <Route path="/planner" element={canAccessSection('planner') ? <Planner /> : <Navigate to="/" />} />
-              <Route path="/matches" element={canAccessSection('matches') ? <Matches /> : <Navigate to="/" />} />
+              <Route
+                path="/matches"
+                element={canAccessSection('matches') ? (
+                  <RouteErrorBoundary>
+                    <Matches />
+                  </RouteErrorBoundary>
+                ) : <Navigate to="/" />}
+              />
               <Route path="/trainings" element={canAccessSection('trainings') ? <Trainings /> : <Navigate to="/" />} />
               <Route path="/exercises" element={canAccessSection('exercises') ? <Exercises /> : <Navigate to="/" />} />
               <Route path="/tests" element={canAccessSection('tests') ? <Tests /> : <Navigate to="/" />} />
