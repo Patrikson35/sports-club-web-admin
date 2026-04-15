@@ -1545,10 +1545,122 @@ class APIClient {
       };
     }
 
-    return this.request('/matches', {
-      method: 'POST',
-      body: JSON.stringify(data || {}),
-    });
+    const payload = data && typeof data === 'object' ? data : {};
+    const safeTeamId = Number(payload?.teamId || payload?.team_id || 0);
+    const safeOpponent = String(payload?.opponent || payload?.opponentTeam || payload?.opponent_team || '').trim();
+    const safeMatchDate = String(payload?.matchDate || payload?.match_date || payload?.date || '').trim();
+
+    const basePayload = {
+      ...payload,
+      teamId: safeTeamId || payload?.teamId,
+      opponent: safeOpponent || payload?.opponent,
+      matchDate: safeMatchDate || payload?.matchDate,
+    };
+
+    const snakeCasePayload = {
+      ...basePayload,
+      team_id: safeTeamId || basePayload?.team_id,
+      opponent_team: safeOpponent || basePayload?.opponent_team,
+      match_date: safeMatchDate || basePayload?.match_date,
+    };
+
+    const legacyNamedPayload = {
+      ...basePayload,
+      opponentTeam: safeOpponent || basePayload?.opponentTeam,
+      date: safeMatchDate || basePayload?.date,
+    };
+
+    const minimalCamelPayload = {
+      teamId: safeTeamId || basePayload?.teamId,
+      opponent: safeOpponent || basePayload?.opponent,
+      matchDate: safeMatchDate || basePayload?.matchDate,
+    };
+
+    const minimalSnakePayload = {
+      team_id: safeTeamId || snakeCasePayload?.team_id,
+      opponent_team: safeOpponent || snakeCasePayload?.opponent_team,
+      match_date: safeMatchDate || snakeCasePayload?.match_date,
+    };
+
+    const payloadVariants = [
+      basePayload,
+      legacyNamedPayload,
+      snakeCasePayload,
+      minimalCamelPayload,
+      minimalSnakePayload,
+    ];
+
+    const endpointAttempts = [
+      '/matches',
+      '/v1/matches',
+      ...(safeTeamId > 0 ? [`/teams/${safeTeamId}/matches`, `/v1/teams/${safeTeamId}/matches`] : []),
+    ];
+
+    let lastError = null;
+    const attemptDiagnostics = [];
+
+    for (const endpoint of endpointAttempts) {
+      for (const variant of payloadVariants) {
+        try {
+          const response = await this.request(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(variant || {}),
+          });
+
+          const responseMatch = response?.match;
+          if (responseMatch && typeof responseMatch === 'object') {
+            return response;
+          }
+
+          const fallbackId = Number(response?.id || response?.matchId || response?.data?.id || 0);
+          if (fallbackId > 0) {
+            return {
+              ...response,
+              match: {
+                id: fallbackId,
+                opponent: safeOpponent || null,
+                matchDate: safeMatchDate || null,
+                location: payload?.location || null,
+                matchType: payload?.matchType || null,
+                status: payload?.status || 'scheduled',
+                team: {
+                  id: safeTeamId || null,
+                  name: payload?.teamName || 'Kategória',
+                  ageGroup: payload?.categoryKey || 'default',
+                },
+              },
+            };
+          }
+
+          return response;
+        } catch (error) {
+          lastError = error;
+          const status = Number(error?.status || 0);
+          const message = String(error?.payload?.message || error?.payload?.error || error?.message || '').trim() || 'Unknown error';
+          attemptDiagnostics.push(`${endpoint} -> ${status || 'n/a'} (${message})`);
+
+          const isAccessError = status === 401 || status === 403;
+          if (isAccessError) {
+            throw error;
+          }
+
+          const isRetryableStatus = status === 0 || status === 400 || status === 404 || status === 405 || status === 422 || status >= 500;
+          const isLikelyEndpointIssue = this.isEndpointNotFound(error);
+          if (!isRetryableStatus && !isLikelyEndpointIssue) {
+            throw error;
+          }
+        }
+      }
+    }
+
+    if (attemptDiagnostics.length > 0) {
+      const diagnosticMessage = `Vytvorenie zápasu zlyhalo. Pokusy: ${attemptDiagnostics.join(' | ')}`;
+      const wrapped = new Error(diagnosticMessage);
+      wrapped.cause = lastError || null;
+      throw wrapped;
+    }
+
+    throw lastError || new Error('Vytvorenie zápasu zlyhalo');
   }
 
   async deleteMatch(matchId) {
