@@ -125,6 +125,16 @@ const toPlayerName = (player) => {
 
 const toPlayerAvatar = (player) => String(player?.photo ?? player?.photoUrl ?? player?.avatar ?? '').trim()
 
+const toCreatePlayerKey = (player) => {
+  const userId = String(player?.userId || '').trim()
+  if (userId) return `user-${userId}`
+  const id = String(player?.id || '').trim()
+  if (id) return `id-${id}`
+  const name = toPlayerName(player)
+  const jersey = String(player?.jerseyNumber || '').trim()
+  return `fallback-${name}-${jersey}`
+}
+
 const toNameInitials = (fullName) => {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return 'H'
@@ -595,7 +605,17 @@ function Matches() {
   const availablePlayersForCreate = useMemo(() => {
     const selectedTeamId = String(createDraft.teamId || '')
     if (!selectedTeamId) return []
-    return players.filter((player) => String(player?.team?.id || '') === selectedTeamId)
+
+    const source = players.filter((player) => String(player?.team?.id || '') === selectedTeamId)
+    const uniqueMap = new Map()
+    source.forEach((player) => {
+      const dedupeKey = toCreatePlayerKey(player)
+      if (!uniqueMap.has(dedupeKey)) {
+        uniqueMap.set(dedupeKey, player)
+      }
+    })
+
+    return Array.from(uniqueMap.values())
   }, [players, createDraft.teamId])
 
   const updateCreateSessionTime = (nextTime) => {
@@ -720,10 +740,10 @@ function Matches() {
         if (!key) return
         const current = source[key] && typeof source[key] === 'object' ? source[key] : {}
         next[key] = {
-          scorers: Boolean(current.scorers),
-          assists: Boolean(current.assists),
-          yellowCards: Boolean(current.yellowCards),
-          redCards: Boolean(current.redCards)
+          scorers: Math.max(0, Math.min(99, Number(current.scorers) || 0)),
+          assists: Math.max(0, Math.min(99, Number(current.assists) || 0)),
+          yellowCards: Math.max(0, Math.min(99, Number(current.yellowCards) || 0)),
+          redCards: Math.max(0, Math.min(99, Number(current.redCards) || 0))
         }
       })
       return next
@@ -735,24 +755,26 @@ function Matches() {
     const source = key ? createPlayerEvidenceDraft?.[key] : null
     if (source && typeof source === 'object') {
       return {
-        scorers: Boolean(source.scorers),
-        assists: Boolean(source.assists),
-        yellowCards: Boolean(source.yellowCards),
-        redCards: Boolean(source.redCards)
+        scorers: Math.max(0, Math.min(99, Number(source.scorers) || 0)),
+        assists: Math.max(0, Math.min(99, Number(source.assists) || 0)),
+        yellowCards: Math.max(0, Math.min(99, Number(source.yellowCards) || 0)),
+        redCards: Math.max(0, Math.min(99, Number(source.redCards) || 0))
       }
     }
     return {
-      scorers: false,
-      assists: false,
-      yellowCards: false,
-      redCards: false
+      scorers: 0,
+      assists: 0,
+      yellowCards: 0,
+      redCards: 0
     }
   }
 
-  const toggleCreatePlayerEvidence = (userId, indicatorKey, checked) => {
+  const updateCreatePlayerEvidence = (userId, indicatorKey, nextValue) => {
     const resolvedId = String(userId || '').trim()
     const resolvedIndicatorKey = String(indicatorKey || '').trim()
     if (!resolvedId || !resolvedIndicatorKey) return
+    const normalizedValue = String(nextValue || '').replace(/[^\d]/g, '').slice(0, 2)
+    const resolvedCount = Math.max(0, Math.min(99, Number(normalizedValue || 0)))
 
     setCreatePlayerEvidenceDraft((prev) => {
       const source = prev && typeof prev === 'object' ? prev : {}
@@ -760,11 +782,11 @@ function Matches() {
       return {
         ...source,
         [resolvedId]: {
-          scorers: Boolean(current.scorers),
-          assists: Boolean(current.assists),
-          yellowCards: Boolean(current.yellowCards),
-          redCards: Boolean(current.redCards),
-          [resolvedIndicatorKey]: Boolean(checked)
+          scorers: Math.max(0, Math.min(99, Number(current.scorers) || 0)),
+          assists: Math.max(0, Math.min(99, Number(current.assists) || 0)),
+          yellowCards: Math.max(0, Math.min(99, Number(current.yellowCards) || 0)),
+          redCards: Math.max(0, Math.min(99, Number(current.redCards) || 0)),
+          [resolvedIndicatorKey]: resolvedCount
         }
       }
     })
@@ -777,7 +799,7 @@ function Matches() {
   const createPlayerRowsGridTemplate = useMemo(() => {
     const evidenceColumnsCount = createPlayerEvidenceColumns.length
     if (evidenceColumnsCount === 0) return 'minmax(0, 1fr) 140px'
-    return `minmax(0, 1fr) repeat(${evidenceColumnsCount}, 56px) 140px`
+    return `minmax(0, 1fr) 140px repeat(${evidenceColumnsCount}, 62px)`
   }, [createPlayerEvidenceColumns])
 
   useEffect(() => {
@@ -867,38 +889,51 @@ function Matches() {
       const playerName = String(playerNameById.get(String(playerId || '')) || '').trim()
       if (!playerName) return
 
-      if (createIndicators.scorers && evidence.scorers) {
-        selectedScorers.push({
-          id: `create-scorer-${playerId}`,
-          name: playerName,
-          minute: ''
-        })
+      const scorersCount = Math.max(0, Math.min(99, Number(evidence.scorers) || 0))
+      const assistsCount = Math.max(0, Math.min(99, Number(evidence.assists) || 0))
+      const yellowCardsCount = Math.max(0, Math.min(99, Number(evidence.yellowCards) || 0))
+      const redCardsCount = Math.max(0, Math.min(99, Number(evidence.redCards) || 0))
+
+      if (createIndicators.scorers && scorersCount > 0) {
+        for (let index = 0; index < scorersCount; index += 1) {
+          selectedScorers.push({
+            id: `create-scorer-${playerId}-${index}`,
+            name: playerName,
+            minute: ''
+          })
+        }
       }
 
-      if (createIndicators.assists && evidence.assists) {
-        selectedAssists.push({
-          id: `create-assist-${playerId}`,
-          name: playerName,
-          minute: ''
-        })
+      if (createIndicators.assists && assistsCount > 0) {
+        for (let index = 0; index < assistsCount; index += 1) {
+          selectedAssists.push({
+            id: `create-assist-${playerId}-${index}`,
+            name: playerName,
+            minute: ''
+          })
+        }
       }
 
-      if (createIndicators.yellowCards && evidence.yellowCards) {
-        selectedCards.push({
-          id: `create-card-yellow-${playerId}`,
-          name: playerName,
-          minute: '',
-          type: 'yellow'
-        })
+      if (createIndicators.yellowCards && yellowCardsCount > 0) {
+        for (let index = 0; index < yellowCardsCount; index += 1) {
+          selectedCards.push({
+            id: `create-card-yellow-${playerId}-${index}`,
+            name: playerName,
+            minute: '',
+            type: 'yellow'
+          })
+        }
       }
 
-      if (createIndicators.redCards && evidence.redCards) {
-        selectedCards.push({
-          id: `create-card-red-${playerId}`,
-          name: playerName,
-          minute: '',
-          type: 'red'
-        })
+      if (createIndicators.redCards && redCardsCount > 0) {
+        for (let index = 0; index < redCardsCount; index += 1) {
+          selectedCards.push({
+            id: `create-card-red-${playerId}-${index}`,
+            name: playerName,
+            minute: '',
+            type: 'red'
+          })
+        }
       }
     })
 
@@ -1701,15 +1736,6 @@ function Matches() {
                     style={{ gridTemplateColumns: createPlayerRowsGridTemplate }}
                   >
                     <span>HRÁČ</span>
-                    {createPlayerEvidenceColumns.map((column) => (
-                      <span
-                        key={`create-player-evidence-head-${column.key}`}
-                        className="matches-player-evidence-head-cell"
-                        title={column.ariaLabel}
-                      >
-                        {column.label}
-                      </span>
-                    ))}
                     <span className="matches-player-attendance-head-time">
                       <span className="matches-player-minutes-head">
                         <input
@@ -1724,6 +1750,15 @@ function Matches() {
                         <span>MIN</span>
                       </span>
                     </span>
+                    {createPlayerEvidenceColumns.map((column) => (
+                      <span
+                        key={`create-player-evidence-head-${column.key}`}
+                        className="matches-player-evidence-head-cell"
+                        title={column.ariaLabel}
+                      >
+                        {column.label}
+                      </span>
+                    ))}
                   </div>
                 )}
                 {createDraft.teamId && availablePlayersForCreate.length > 0 ? (
@@ -1751,17 +1786,6 @@ function Matches() {
                               {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
                             </span>
                           </span>
-                          {createPlayerEvidenceColumns.map((column) => (
-                            <span key={`create-player-evidence-cell-${playerKey}-${column.key}`} className="matches-player-evidence-cell">
-                              <input
-                                type="checkbox"
-                                className="matches-player-evidence-checkbox"
-                                checked={Boolean(evidence?.[column.key])}
-                                onChange={(event) => toggleCreatePlayerEvidence(playerKey, column.key, event.target.checked)}
-                                aria-label={`${column.ariaLabel} hráča ${playerName}`}
-                              />
-                            </span>
-                          ))}
                           <span className="matches-player-attendance-controls">
                             <label className="matches-row-switch" aria-label={`Účasť hráča ${playerName}`}>
                               <input
@@ -1781,6 +1805,20 @@ function Matches() {
                               placeholder="min"
                             />
                           </span>
+                          {createPlayerEvidenceColumns.map((column) => (
+                            <span key={`create-player-evidence-cell-${playerKey}-${column.key}`} className="matches-player-evidence-cell">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                className="matches-player-evidence-input"
+                                value={String(Math.max(0, Number(evidence?.[column.key]) || 0))}
+                                onChange={(event) => updateCreatePlayerEvidence(playerKey, column.key, event.target.value)}
+                                disabled={attendance.attended === false}
+                                aria-label={`${column.ariaLabel} hráča ${playerName}`}
+                                placeholder="0"
+                              />
+                            </span>
+                          ))}
                         </div>
                       )
                     })}
