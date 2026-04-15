@@ -1015,7 +1015,37 @@ function Matches() {
       closeCreateMatchModal()
     } catch (createError) {
       console.error('Chyba pri vytváraní zápasu:', createError)
-      setError(createError?.message || 'Zápas sa nepodarilo vytvoriť.')
+
+      const localMatchId = `local-${Date.now()}`
+      const localHomeScoreRaw = createIndicators.result ? Number(createDraft.homeScore) : NaN
+      const localAwayScoreRaw = createIndicators.result ? Number(createDraft.awayScore) : NaN
+      const localHomeScore = Number.isFinite(localHomeScoreRaw) ? localHomeScoreRaw : null
+      const localAwayScore = Number.isFinite(localAwayScoreRaw) ? localAwayScoreRaw : null
+
+      const localMatch = {
+        id: localMatchId,
+        opponent: payloadOpponent,
+        matchDate: payloadMatchDate,
+        location: String(createDraft.location || '').trim() || null,
+        matchType: String(createDraft.matchType || '').trim() || null,
+        homeScore: localHomeScore,
+        awayScore: localAwayScore,
+        result: Number.isFinite(localHomeScore) && Number.isFinite(localAwayScore)
+          ? `${localHomeScore}:${localAwayScore}`
+          : null,
+        status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
+        team: {
+          id: Number(selectedCreateTeam?.id || payloadTeamId || 0),
+          name: String(selectedCreateTeam?.name || '').trim() || 'Kategória',
+          ageGroup: String(selectedCreateTeam?.ageGroup || createCategoryKey || 'default').trim() || 'default'
+        },
+        isLocalFallback: true
+      }
+
+      setMatches((prev) => [localMatch, ...(Array.isArray(prev) ? prev : [])])
+      setError('')
+      setSuccess(`Serverové uloženie zlyhalo (${createError?.message || 'neznáma chyba'}). Zápas bol dočasne uložený lokálne.`)
+      closeCreateMatchModal()
     } finally {
       setCreating(false)
     }
