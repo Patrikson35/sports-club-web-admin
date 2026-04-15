@@ -942,7 +942,7 @@ function Matches() {
     setSuccess('')
 
     try {
-      const response = await api.createMatch({
+      const createResponse = await api.createMatch({
         teamId: payloadTeamId,
         categoryKey: createCategoryKey,
         opponent: payloadOpponent,
@@ -956,17 +956,30 @@ function Matches() {
         selectedPlayers: selectedCreatePlayerIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
         homeScore: createIndicators.result ? createDraft.homeScore : null,
         awayScore: createIndicators.result ? createDraft.awayScore : null,
-        scorers: selectedScorers,
-        assists: selectedAssists,
-        cards: selectedCards
+        // Keep create payload lightweight; detailed evidence is saved in a dedicated follow-up request.
+        scorers: [],
+        assists: [],
+        cards: []
       })
 
-      const createdMatch = response?.match
-      if (createdMatch && typeof createdMatch === 'object') {
-        setMatches((prev) => [createdMatch, ...(Array.isArray(prev) ? prev : [])])
-      } else {
-        await loadMatches()
+      const createdMatch = createResponse?.match
+      const createdMatchId = Number(createdMatch?.id || 0)
+      const shouldSaveEvidence =
+        selectedScorers.length > 0 ||
+        selectedAssists.length > 0 ||
+        selectedCards.length > 0
+
+      if (createdMatchId > 0 && shouldSaveEvidence) {
+        await api.updateMatchEvidence(createdMatchId, {
+          homeScore: createIndicators.result ? createDraft.homeScore : null,
+          awayScore: createIndicators.result ? createDraft.awayScore : null,
+          scorers: selectedScorers,
+          assists: selectedAssists,
+          cards: selectedCards
+        })
       }
+
+      await loadMatches()
 
       setSuccess('Zápas bol úspešne pridaný.')
       closeCreateMatchModal()
