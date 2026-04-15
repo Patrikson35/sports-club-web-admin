@@ -5,6 +5,7 @@ import './Matches.css'
 const MATCH_CATEGORY_INDICATORS_STORAGE_KEY = 'matchesCategoryIndicators'
 const MATCH_RECORDINGS_STORAGE_KEY = 'matchesRecordings'
 const MATCH_PAIRINGS_STORAGE_KEY = 'matchesPairings'
+const MATCH_LOCAL_CREATED_STORAGE_KEY = 'matchesLocalCreated'
 
 const DEFAULT_INDICATORS = {
   result: true,
@@ -102,6 +103,25 @@ const readLocalObject = (key) => {
 const writeLocalObject = (key, value) => {
   try {
     localStorage.setItem(key, JSON.stringify(value && typeof value === 'object' ? value : {}))
+  } catch {
+    return
+  }
+}
+
+const readLocalArray = (key) => {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const writeLocalArray = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(Array.isArray(value) ? value : []))
   } catch {
     return
   }
@@ -229,6 +249,7 @@ function Matches() {
     const localIndicators = readLocalObject(MATCH_CATEGORY_INDICATORS_STORAGE_KEY)
     const localRecordings = readLocalObject(MATCH_RECORDINGS_STORAGE_KEY)
     const localPairings = readLocalObject(MATCH_PAIRINGS_STORAGE_KEY)
+    const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
 
     try {
       setLoading(true)
@@ -245,9 +266,13 @@ function Matches() {
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
+      const mergedMatches = [
+        ...localCreatedMatches,
+        ...fetchedMatches
+      ]
       const fetchedTeams = Array.isArray(teamsData?.teams) ? teamsData.teams : []
       const fetchedPlayers = Array.isArray(playersData?.players) ? playersData.players : []
-      setMatches(fetchedMatches)
+      setMatches(mergedMatches)
       setTeams(fetchedTeams)
       setAttendanceSeasons(Array.isArray(attendanceSeasonsResponse?.seasons) ? attendanceSeasonsResponse.seasons : [])
       setPlayers(fetchedPlayers)
@@ -337,6 +362,7 @@ function Matches() {
     } catch (loadError) {
       console.error('Chyba načítania zápasov:', loadError)
       setError('Nepodarilo sa načítať zápasy. Skúste to znova.')
+      setMatches(localCreatedMatches)
       setCategoryIndicators({ default: { ...DEFAULT_INDICATORS }, ...localIndicators })
       setMatchRecordings(localRecordings)
       setMatchPairings(localPairings)
@@ -1042,6 +1068,8 @@ function Matches() {
         isLocalFallback: true
       }
 
+      const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
+      writeLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY, [localMatch, ...localCreatedMatches])
       setMatches((prev) => [localMatch, ...(Array.isArray(prev) ? prev : [])])
       setError('')
       setSuccess(`Serverové uloženie zlyhalo (${createError?.message || 'neznáma chyba'}). Zápas bol dočasne uložený lokálne.`)
@@ -1451,6 +1479,18 @@ function Matches() {
   }
 
   const deleteMatch = async () => {
+    const rawMatchId = String(matchPendingDelete?.id || '').trim()
+    if (rawMatchId.startsWith('local-')) {
+      const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
+      const nextLocalMatches = localCreatedMatches.filter((item) => String(item?.id || '') !== rawMatchId)
+      writeLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY, nextLocalMatches)
+      setMatches((prev) => (Array.isArray(prev) ? prev.filter((item) => String(item?.id || '') !== rawMatchId) : []))
+      setMatchPendingDelete(null)
+      setError('')
+      setSuccess('Lokálne uložený zápas bol odstránený.')
+      return
+    }
+
     const matchId = Number(matchPendingDelete?.id || 0)
     if (!matchId) return
 
