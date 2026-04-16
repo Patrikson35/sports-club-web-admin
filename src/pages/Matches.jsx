@@ -193,6 +193,20 @@ const parseResultScore = (value) => {
   }
 }
 
+const hasScoreValue = (value) => {
+  if (value === null || value === undefined) return false
+  return String(value).trim() !== ''
+}
+
+const pickScoreValue = (...candidates) => {
+  for (const candidate of candidates) {
+    if (hasScoreValue(candidate)) {
+      return String(candidate).trim()
+    }
+  }
+  return ''
+}
+
 const toNormalizedPlayerNameKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ')
 
 const buildPlayerEvidenceDraftFromRecording = (recording, teamPlayers) => {
@@ -570,18 +584,17 @@ function Matches() {
     let decidedMatches = 0
 
     source.forEach((match) => {
-      const resultRaw = String(getMatchResult(match) || '').trim()
-      const parts = resultRaw.split(':').map((value) => Number(value))
-      if (parts.length !== 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) return
+      const scorePair = getPerspectiveScorePair(match)
+      if (!scorePair) return
 
-      const home = parts[0]
-      const away = parts[1]
-      goalsFor += home
-      goalsAgainst += away
+      const ownGoals = scorePair.goalsFor
+      const opponentGoals = scorePair.goalsAgainst
+      goalsFor += ownGoals
+      goalsAgainst += opponentGoals
       decidedMatches += 1
 
-      if (home > away) wins += 1
-      else if (home === away) draws += 1
+      if (ownGoals > opponentGoals) wins += 1
+      else if (ownGoals === opponentGoals) draws += 1
       else losses += 1
     })
 
@@ -598,7 +611,7 @@ function Matches() {
       goalsAgainst,
       successRate
     }
-  }, [filteredMatches])
+  }, [filteredMatches, matchRecordings])
 
   const orderedCategoryKeys = useMemo(() => {
     const source = Array.isArray(categoryKeys) ? categoryKeys : []
@@ -641,10 +654,33 @@ function Matches() {
 
   function getMatchResult(match) {
     const recording = getRecordingForMatch(match?.id)
-    if (recording.homeScore !== '' && recording.awayScore !== '') {
-      return `${recording.homeScore}:${recording.awayScore}`
+    const resolvedHomeScore = pickScoreValue(recording.homeScore, match?.homeScore, match?.home_score)
+    const resolvedAwayScore = pickScoreValue(recording.awayScore, match?.awayScore, match?.away_score)
+
+    if (resolvedHomeScore !== '' && resolvedAwayScore !== '') {
+      return `${resolvedHomeScore}:${resolvedAwayScore}`
     }
     return String(match?.result || '').trim()
+  }
+
+  const getPerspectiveScorePair = (match) => {
+    const parsed = parseResultScore(getMatchResult(match))
+    const home = Number(parsed.homeScore)
+    const away = Number(parsed.awayScore)
+    if (!Number.isFinite(home) || !Number.isFinite(away)) return null
+
+    const location = normalizeLocationValue(match?.location || match?.venue || match?.homeAway)
+    if (location === 'vonku') {
+      return {
+        goalsFor: away,
+        goalsAgainst: home
+      }
+    }
+
+    return {
+      goalsFor: home,
+      goalsAgainst: away
+    }
   }
 
   const getScorersSummary = (match) => {
@@ -774,8 +810,8 @@ function Matches() {
     const resolvedNotes = String(match?.notes || match?.note || '').trim()
     const resolvedOpponent = String(match?.opponent || match?.opponentTeam || match?.opponent_team || '').trim()
     const resultFromText = parseResultScore(match?.result)
-    const resolvedHomeScore = recording.homeScore ?? match?.homeScore ?? resultFromText.homeScore
-    const resolvedAwayScore = recording.awayScore ?? match?.awayScore ?? resultFromText.awayScore
+    const resolvedHomeScore = pickScoreValue(recording.homeScore, match?.homeScore, match?.home_score, resultFromText.homeScore)
+    const resolvedAwayScore = pickScoreValue(recording.awayScore, match?.awayScore, match?.away_score, resultFromText.awayScore)
 
     const teamPlayers = players.filter((player) => String(player?.team?.id || '') === resolvedTeamId)
     const evidencePrefill = buildPlayerEvidenceDraftFromRecording(recording, teamPlayers)
@@ -901,6 +937,8 @@ function Matches() {
     if (Number.isNaN(resolved.getTime())) return '-'
     return resolved.toLocaleDateString('sk-SK')
   }, [createDraft.matchDate, selectedCalendarDateKey])
+
+  const isCreateAwayMatch = String(createDraft.location || '').trim() === 'vonku'
 
   const createCategoryKey = String(selectedCreateTeam?.ageGroup || 'default').trim() || 'default'
 
@@ -2064,6 +2102,11 @@ function Matches() {
               <div className="card" style={{ marginBottom: '10px' }}>
                 {createIndicators.result ? (
                   <div className={`matches-score-wrap ${isCreateMatchHockey ? '' : 'matches-score-wrap-single-row'}`.trim()}>
+                    {isCreateAwayMatch ? (
+                      <p style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                        Pri ihrisku Vonku zadávajte výsledok ako D = domáci tím (súper), H = hostia (náš tím).
+                      </p>
+                    ) : null}
                     {isCreateMatchHockey ? (
                       <>
                         <div className="matches-score-grid matches-score-grid-main">
