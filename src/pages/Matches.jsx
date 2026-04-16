@@ -2864,13 +2864,17 @@ function Matches() {
             </div>
 
             <div className="matches-calendar-grid">
-              {calendarCells.map((cell) => {
+              {calendarCells.map((cell, index) => {
                 const dayMatches = matchesByDateKey[cell.dateKey] || []
                 const typeTokens = dayMatches.map((item) => formatMatchTypeShort(item?.matchType))
                 const hasTJ = typeTokens.includes('TJ')
                 const hasMZ = typeTokens.includes('MZ')
                 const hasPZ = typeTokens.includes('PZ')
                 const hasCUP = typeTokens.includes('CUP')
+                const dayColumnIndex = index % 7
+                const tooltipAlignClass = dayColumnIndex <= 1
+                  ? 'align-left'
+                  : (dayColumnIndex >= 5 ? 'align-right' : 'align-center')
                 return (
                   <button
                     key={cell.id}
@@ -2886,10 +2890,11 @@ function Matches() {
                     <span className="matches-calendar-day-number">{cell.dayLabel}</span>
                     {dayMatches.length > 0 ? <span className="matches-calendar-day-dot" aria-hidden="true" /> : null}
                     {dayMatches.length > 0 ? (
-                      <span className="matches-calendar-day-tooltip">
+                      <span className={`matches-calendar-day-tooltip ${tooltipAlignClass}`.trim()}>
                         {dayMatches.slice(0, 3).map((item) => (
                           <span key={`calendar-match-tip-${item.id}`} className="matches-calendar-day-tooltip-row">
-                            {formatMatchTypeShort(item.matchType)}: {getMatchTitle(item)}
+                            {selectedCategoryKey === 'all' ? `${getCategoryKey(item)} · ` : ''}
+                            {formatMatchTypeShort(item.matchType)} · {getMatchResult(item) || '-'}: {getMatchTitle(item)}
                           </span>
                         ))}
                         {dayMatches.length > 3 ? (
