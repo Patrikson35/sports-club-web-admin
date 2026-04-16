@@ -326,6 +326,30 @@
   letter-spacing: 0.03em;
 }
 
+.matches-type-pill-mz {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.48);
+  color: #fca5a5;
+}
+
+.matches-type-pill-pz {
+  background: rgba(251, 146, 60, 0.18);
+  border-color: rgba(251, 146, 60, 0.5);
+  color: #fdba74;
+}
+
+.matches-type-pill-cup {
+  background: rgba(236, 72, 153, 0.18);
+  border-color: rgba(236, 72, 153, 0.5);
+  color: #f9a8d4;
+}
+
+.matches-type-pill-tj {
+  background: rgba(250, 204, 21, 0.18);
+  border-color: rgba(250, 204, 21, 0.5);
+  color: #fde047;
+}
+
 .matches-subline {
   margin-top: 0.2rem;
   color: var(--text-secondary);

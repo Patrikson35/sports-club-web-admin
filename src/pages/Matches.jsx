@@ -2498,7 +2498,7 @@ function Matches() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Druh zápasu</th>
+                      <th>Druh</th>
                       <th>Zápas</th>
                       {showCategoryColumn ? <th>Kategória</th> : null}
                       <th>Výsledok</th>
@@ -2515,10 +2515,11 @@ function Matches() {
                     ) : (
                       filteredMatches.map((match) => {
                         const indicators = getIndicatorsForMatch(match)
+                        const matchTypeToken = String(formatMatchTypeShort(match.matchType || '')).trim().toLowerCase()
                         return (
                           <tr key={match.id}>
                             <td>
-                              <span className="matches-type-pill">{formatMatchTypeShort(match.matchType)}</span>
+                              <span className={`matches-type-pill ${matchTypeToken ? `matches-type-pill-${matchTypeToken}` : ''}`.trim()}>{formatMatchTypeShort(match.matchType)}</span>
                             </td>
                             <td>
                               <strong>{getMatchTitle(match)}</strong>
