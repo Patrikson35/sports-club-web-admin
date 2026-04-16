@@ -1663,6 +1663,91 @@ class APIClient {
     throw lastError || new Error('Vytvorenie zápasu zlyhalo');
   }
 
+  async updateMatch(matchId, data) {
+    const safeMatchId = Number(matchId || 0);
+    if (!Number.isInteger(safeMatchId) || safeMatchId <= 0) {
+      throw new Error('Neplatné matchId');
+    }
+
+    const payload = data && typeof data === 'object' ? data : {};
+    const safeTeamId = Number(payload?.teamId || payload?.team_id || 0);
+    const safeOpponent = String(payload?.opponent || payload?.opponentTeam || payload?.opponent_team || '').trim();
+    const safeMatchDate = String(payload?.matchDate || payload?.match_date || payload?.date || '').trim();
+
+    const basePayload = {
+      ...payload,
+      teamId: safeTeamId || payload?.teamId,
+      opponent: safeOpponent || payload?.opponent,
+      matchDate: safeMatchDate || payload?.matchDate,
+    };
+
+    const snakeCasePayload = {
+      ...basePayload,
+      team_id: safeTeamId || basePayload?.team_id,
+      opponent_team: safeOpponent || basePayload?.opponent_team,
+      match_date: safeMatchDate || basePayload?.match_date,
+      match_type: basePayload?.matchType || basePayload?.match_type || null,
+    };
+
+    const legacyNamedPayload = {
+      ...basePayload,
+      opponentTeam: safeOpponent || basePayload?.opponentTeam,
+      date: safeMatchDate || basePayload?.date,
+    };
+
+    const minimalCamelPayload = {
+      teamId: safeTeamId || basePayload?.teamId,
+      opponent: safeOpponent || basePayload?.opponent,
+      matchDate: safeMatchDate || basePayload?.matchDate,
+      location: basePayload?.location || null,
+      matchType: basePayload?.matchType || null,
+      status: basePayload?.status || 'scheduled',
+      notes: basePayload?.notes || null,
+    };
+
+    const payloadVariants = [
+      basePayload,
+      legacyNamedPayload,
+      snakeCasePayload,
+      minimalCamelPayload,
+    ];
+
+    const endpointAttempts = [
+      `/matches/${safeMatchId}`,
+      `/v1/matches/${safeMatchId}`,
+      ...(safeTeamId > 0 ? [`/teams/${safeTeamId}/matches/${safeMatchId}`, `/v1/teams/${safeTeamId}/matches/${safeMatchId}`] : []),
+    ];
+
+    let lastError = null;
+
+    for (const endpoint of endpointAttempts) {
+      for (const variant of payloadVariants) {
+        try {
+          return await this.request(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(variant || {}),
+          });
+        } catch (error) {
+          lastError = error;
+
+          const status = Number(error?.status || 0);
+          const isAccessError = status === 401 || status === 403;
+          if (isAccessError) {
+            throw error;
+          }
+
+          const isRetryableStatus = status === 0 || status === 400 || status === 404 || status === 405 || status === 422 || status >= 500;
+          const isLikelyEndpointIssue = this.isEndpointNotFound(error);
+          if (!isRetryableStatus && !isLikelyEndpointIssue) {
+            throw error;
+          }
+        }
+      }
+    }
+
+    throw lastError || new Error('Úprava zápasu zlyhala');
+  }
+
   async deleteMatch(matchId) {
     return this.request(`/matches/${matchId}`, {
       method: 'DELETE',

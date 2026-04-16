@@ -1291,14 +1291,39 @@ function Matches() {
           String(createDraft.homeScore || '').trim() !== '' ||
           String(createDraft.awayScore || '').trim() !== ''
 
+        const editWarnings = []
+
+        if (Number.isInteger(editedMatchId) && editedMatchId > 0) {
+          try {
+            await api.updateMatch(editedMatchId, {
+              teamId: payloadTeamId,
+              opponent: payloadOpponent,
+              matchDate: payloadMatchDate,
+              matchTime: String(createDraft.matchTime || '').trim() || null,
+              location: String(createDraft.location || '').trim() || null,
+              matchType: String(createDraft.matchType || '').trim() || null,
+              status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
+              notes: String(createDraft.notes || '').trim() || null,
+            })
+          } catch (mainUpdateError) {
+            console.warn('Server update zápasu zlyhal, pokračujem lokálnym patchom:', mainUpdateError)
+            editWarnings.push('základné údaje sa nepodarilo uložiť na server')
+          }
+        }
+
         if (Number.isInteger(editedMatchId) && editedMatchId > 0 && shouldSaveEvidence) {
-          await api.updateMatchEvidence(editedMatchId, {
-            homeScore: createIndicators.result ? createDraft.homeScore : null,
-            awayScore: createIndicators.result ? createDraft.awayScore : null,
-            scorers: selectedScorers,
-            assists: selectedAssists,
-            cards: selectedCards
-          })
+          try {
+            await api.updateMatchEvidence(editedMatchId, {
+              homeScore: createIndicators.result ? createDraft.homeScore : null,
+              awayScore: createIndicators.result ? createDraft.awayScore : null,
+              scorers: selectedScorers,
+              assists: selectedAssists,
+              cards: selectedCards
+            })
+          } catch (evidenceUpdateError) {
+            console.warn('Server update evidencie zlyhal, pokračujem lokálnym patchom:', evidenceUpdateError)
+            editWarnings.push('evidenciu sa nepodarilo uložiť na server')
+          }
         }
 
         const editedPatch = {
@@ -1323,6 +1348,24 @@ function Matches() {
           [String(createEditingMatchId)]: editedPatch
         })
 
+        setMatchRecordings((prev) => {
+          const key = String(createEditingMatchId)
+          const source = prev && typeof prev === 'object' ? prev : {}
+          const next = {
+            ...source,
+            [key]: {
+              ...(source[key] && typeof source[key] === 'object' ? source[key] : { scorers: [], assists: [], cards: [] }),
+              homeScore: createIndicators.result ? (String(createDraft.homeScore || '').trim()) : '',
+              awayScore: createIndicators.result ? (String(createDraft.awayScore || '').trim()) : '',
+              scorers: selectedScorers,
+              assists: selectedAssists,
+              cards: selectedCards
+            }
+          }
+          writeLocalObject(MATCH_RECORDINGS_STORAGE_KEY, next)
+          return next
+        })
+
         const localPlayerStats = readLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY)
         const nextPlayerStats = {
           ...(localPlayerStats && typeof localPlayerStats === 'object' ? localPlayerStats : {}),
@@ -1340,7 +1383,11 @@ function Matches() {
         setMatchPlayerStats(nextPlayerStats)
 
         await loadMatches()
-        setSuccess('Zápas bol upravený.')
+        if (editWarnings.length > 0) {
+          setSuccess(`Zápas bol upravený lokálne; ${editWarnings.join(' a ')}.`)
+        } else {
+          setSuccess('Zápas bol upravený.')
+        }
         closeCreateMatchModal()
       } catch (editError) {
         console.error('Chyba pri úprave zápasu:', editError)
