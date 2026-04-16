@@ -81,6 +81,111 @@ const resolveMatchMetricCode = (matchType) => {
   return 'MZ'
 }
 
+const buildBackfilledMatchEvidence = ({
+  matches,
+  matchPlayerStats,
+  attendanceMetrics,
+  evidenceEntries,
+  evidenceSessionMeta
+}) => {
+  const sourceMatches = Array.isArray(matches) ? matches : []
+  const sourcePlayerStats = (matchPlayerStats && typeof matchPlayerStats === 'object') ? matchPlayerStats : {}
+  const sourceMetrics = Array.isArray(attendanceMetrics) ? attendanceMetrics : []
+  const sourceEntries = (evidenceEntries && typeof evidenceEntries === 'object' && !Array.isArray(evidenceEntries)) ? evidenceEntries : {}
+  const sourceSessionMeta = (evidenceSessionMeta && typeof evidenceSessionMeta === 'object' && !Array.isArray(evidenceSessionMeta)) ? evidenceSessionMeta : {}
+
+  const metricIdByCode = new Map(
+    sourceMetrics
+      .map((metric) => {
+        const metricId = String(metric?.id || '').trim()
+        const metricCode = normalizeMetricCode(String(metric?.shortName || metric?.name || '').trim())
+        return [metricCode, metricId]
+      })
+      .filter(([, metricId]) => Boolean(metricId))
+  )
+
+  const nextEntries = { ...sourceEntries }
+  const nextSessionMeta = { ...sourceSessionMeta }
+  let changed = false
+
+  sourceMatches.forEach((match) => {
+    const matchId = String(match?.id || '').trim()
+    if (!matchId) return
+
+    const stats = sourcePlayerStats[matchId] && typeof sourcePlayerStats[matchId] === 'object'
+      ? sourcePlayerStats[matchId]
+      : null
+    if (!stats) return
+
+    const attendanceDraft = (stats?.attendanceDraft && typeof stats.attendanceDraft === 'object')
+      ? stats.attendanceDraft
+      : null
+    if (!attendanceDraft) return
+
+    const categoryId = String(match?.team?.id || match?.teamId || match?.team_id || '').trim()
+    const dateKey = toDateKey(match?.matchDate || match?.match_date || match?.date)
+    const metricCode = resolveMatchMetricCode(match?.matchType || match?.match_type || match?.type)
+    const metricId = String(metricIdByCode.get(metricCode) || '').trim()
+    const sessionId = `match-${matchId}`
+
+    if (!categoryId || !dateKey || !metricId) return
+
+    Object.keys(nextEntries).forEach((entryKey) => {
+      const parsed = parseEvidenceEntryKey(entryKey)
+      if (String(parsed.categoryId || '') !== categoryId) return
+      if (String(parsed.dateKey || '') !== dateKey) return
+      if (String(parsed.sessionId || '') !== sessionId) return
+      delete nextEntries[entryKey]
+      changed = true
+    })
+
+    Object.entries(attendanceDraft).forEach(([playerId, rawEntry]) => {
+      const resolvedPlayerId = String(playerId || '').trim()
+      if (!resolvedPlayerId) return
+
+      const entry = rawEntry && typeof rawEntry === 'object' ? rawEntry : {}
+      const attended = entry.attended !== false
+      const minutes = String(entry.time || stats?.sessionTime || '').replace(/[^\d]/g, '').slice(0, 3)
+      const normalizedMinutes = attended ? String(Math.max(0, Math.min(999, Number(minutes || 0)))) : ''
+      const evidenceKey = `${categoryId}:${resolvedPlayerId}:${dateKey}:${metricId}:${sessionId}`
+      const previous = nextEntries[evidenceKey] && typeof nextEntries[evidenceKey] === 'object' ? nextEntries[evidenceKey] : null
+
+      const nextValue = {
+        attended,
+        minutes: normalizedMinutes
+      }
+
+      if (!previous || previous.attended !== nextValue.attended || String(previous.minutes || '') !== nextValue.minutes) {
+        nextEntries[evidenceKey] = nextValue
+        changed = true
+      }
+    })
+
+    const sessionMetaKey = `${categoryId}:${dateKey}:${sessionId}`
+    const nextMetaValue = {
+      ...(nextSessionMeta[sessionMetaKey] && typeof nextSessionMeta[sessionMetaKey] === 'object' ? nextSessionMeta[sessionMetaKey] : {}),
+      trainingTime: String(stats?.sessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+      source: 'matches'
+    }
+    const previousMeta = nextSessionMeta[sessionMetaKey] && typeof nextSessionMeta[sessionMetaKey] === 'object'
+      ? nextSessionMeta[sessionMetaKey]
+      : null
+
+    if (!previousMeta
+      || String(previousMeta.trainingTime || '') !== String(nextMetaValue.trainingTime || '')
+      || String(previousMeta.source || '') !== 'matches') {
+      nextSessionMeta[sessionMetaKey] = nextMetaValue
+      changed = true
+    }
+  })
+
+  return {
+    changed,
+    evidenceEntries: nextEntries,
+    evidenceSessionMeta: nextSessionMeta
+  }
+}
+
 const parseDayMonth = (value) => {
   const input = String(value || '').trim()
   const match = input.match(/^(\d{1,2})\.(\d{1,2})\.?$/)
@@ -542,6 +647,25 @@ function Matches() {
           : localPairings)
       setMatchPairings(serverPairings)
       setMatchPlayerStats(localPlayerStats)
+
+      try {
+        const backfillResult = buildBackfilledMatchEvidence({
+          matches: mergedMatches,
+          matchPlayerStats: localPlayerStats,
+          attendanceMetrics: metricRows,
+          evidenceEntries: myClubData?.evidenceEntries,
+          evidenceSessionMeta: myClubData?.evidenceSessionMeta
+        })
+
+        if (backfillResult.changed) {
+          await api.updateMyClub({
+            evidenceEntries: backfillResult.evidenceEntries,
+            evidenceSessionMeta: backfillResult.evidenceSessionMeta
+          })
+        }
+      } catch (backfillError) {
+        console.warn('Automatická synchronizácia starších zápasov do dochádzky zlyhala:', backfillError)
+      }
     } catch (loadError) {
       console.error('Chyba načítania zápasov:', loadError)
       setError('Nepodarilo sa načítať zápasy. Skúste to znova.')
