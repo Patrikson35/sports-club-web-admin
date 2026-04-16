@@ -1435,7 +1435,7 @@ function Matches() {
         closeCreateMatchModal()
       } catch (editError) {
         console.error('Chyba pri úprave zápasu:', editError)
-        setError(editError?.message || 'Zápas sa nepodarilo upraviť.')
+        setError('Zápas sa nepodarilo upraviť na serveri. Skúste to znova, prípadne obnovte stránku.')
       } finally {
         setCreating(false)
       }
@@ -1582,7 +1582,7 @@ function Matches() {
 
       setMatches((prev) => [localMatch, ...(Array.isArray(prev) ? prev : [])])
       setError('')
-      setSuccess(`Serverové uloženie zlyhalo (${createError?.message || 'neznáma chyba'}). Zápas bol dočasne uložený lokálne.`)
+      setSuccess('Zápas sa nepodarilo uložiť na server, preto bol dočasne uložený lokálne.')
       closeCreateMatchModal()
     } finally {
       setCreating(false)
