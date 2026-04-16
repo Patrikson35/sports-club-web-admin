@@ -728,6 +728,18 @@ function Matches() {
     return String(pairing.pairedClubName || '').trim() || 'Bez párovania'
   }
 
+  function getMatchTitle(match) {
+    const clubName = String(myClubName || '').trim() || 'Môj klub'
+    const opponentName = String(match?.opponent || '').trim() || '-'
+    const location = normalizeLocationValue(match?.location || match?.venue || match?.homeAway)
+
+    if (location === 'vonku') {
+      return `${opponentName} vs ${clubName}`
+    }
+
+    return `${clubName} vs ${opponentName}`
+  }
+
   const updateCategoryIndicators = (indicatorKey, checked) => {
     if (String(indicatorKey || '') === 'result') return
     setCategoryIndicators((prev) => {
@@ -2509,7 +2521,7 @@ function Matches() {
                               <span className="matches-type-pill">{formatMatchTypeShort(match.matchType)}</span>
                             </td>
                             <td>
-                              <strong>{myClubName || 'Môj klub'} vs {match.opponent || '-'}</strong>
+                              <strong>{getMatchTitle(match)}</strong>
                               <div className="matches-subline">{match.matchDate ? new Date(match.matchDate).toLocaleDateString('sk-SK') : '-'}</div>
                             </td>
                             {showCategoryColumn ? <td>{getCategoryKey(match)}</td> : null}
@@ -2611,7 +2623,7 @@ function Matches() {
                       <span className="matches-calendar-day-tooltip">
                         {dayMatches.slice(0, 3).map((item) => (
                           <span key={`calendar-match-tip-${item.id}`} className="matches-calendar-day-tooltip-row">
-                            {formatMatchTypeShort(item.matchType)}: {myClubName || 'Môj klub'} vs {item.opponent || '-'}
+                            {formatMatchTypeShort(item.matchType)}: {getMatchTitle(item)}
                           </span>
                         ))}
                         {dayMatches.length > 3 ? (
@@ -2679,7 +2691,7 @@ function Matches() {
         <div className="confirm-modal-overlay" onClick={closeMatchDetail} role="dialog" aria-modal="true" aria-label="Evidencia zápasu">
           <div className="confirm-modal-card" style={{ width: 'min(980px, 96vw)', maxHeight: '88vh', overflow: 'auto' }} onClick={(event) => event.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: '8px' }}>
-              Evidencia zápasu: {(myClubName || 'Môj klub')} vs {openedMatch.opponent}
+              Evidencia zápasu: {getMatchTitle(openedMatch)}
             </h3>
 
             <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginBottom: '12px' }}>
