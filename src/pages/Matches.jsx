@@ -391,6 +391,21 @@ function Matches() {
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
+      const patchedLocalCreatedMatches = localCreatedMatches.map((match) => {
+        const key = String(match?.id || '').trim()
+        const patch = key ? localEditedMatches?.[key] : null
+        if (!patch || typeof patch !== 'object') return match
+
+        return {
+          ...match,
+          ...patch,
+          team: {
+            ...(match?.team && typeof match.team === 'object' ? match.team : {}),
+            ...(patch?.team && typeof patch.team === 'object' ? patch.team : {})
+          }
+        }
+      })
+
       const patchedServerMatches = fetchedMatches.map((match) => {
         const key = String(match?.id || '').trim()
         const patch = key ? localEditedMatches?.[key] : null
@@ -406,7 +421,7 @@ function Matches() {
         }
       })
       const mergedMatches = [
-        ...localCreatedMatches,
+        ...patchedLocalCreatedMatches,
         ...patchedServerMatches
       ]
       const fetchedTeams = Array.isArray(teamsData?.teams) ? teamsData.teams : []
@@ -1347,6 +1362,23 @@ function Matches() {
           ...(localEditedMatches && typeof localEditedMatches === 'object' ? localEditedMatches : {}),
           [String(createEditingMatchId)]: editedPatch
         })
+
+        const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
+        const nextLocalCreatedMatches = localCreatedMatches.map((match) => {
+          if (String(match?.id || '') !== String(createEditingMatchId || '')) {
+            return match
+          }
+
+          return {
+            ...match,
+            ...editedPatch,
+            team: {
+              ...(match?.team && typeof match.team === 'object' ? match.team : {}),
+              ...(editedPatch?.team && typeof editedPatch.team === 'object' ? editedPatch.team : {})
+            }
+          }
+        })
+        writeLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY, nextLocalCreatedMatches)
 
         setMatchRecordings((prev) => {
           const key = String(createEditingMatchId)
