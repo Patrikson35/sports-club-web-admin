@@ -6,6 +6,7 @@ const MATCH_CATEGORY_INDICATORS_STORAGE_KEY = 'matchesCategoryIndicators'
 const MATCH_RECORDINGS_STORAGE_KEY = 'matchesRecordings'
 const MATCH_PAIRINGS_STORAGE_KEY = 'matchesPairings'
 const MATCH_LOCAL_CREATED_STORAGE_KEY = 'matchesLocalCreated'
+const MATCH_LOCAL_EDITED_STORAGE_KEY = 'matchesLocalEdited'
 
 const DEFAULT_INDICATORS = {
   result: true,
@@ -218,6 +219,7 @@ function Matches() {
   const [attendanceSeasons, setAttendanceSeasons] = useState([])
   const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState(() => toDateKey(new Date()))
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
+  const [createEditingMatchId, setCreateEditingMatchId] = useState(null)
   const [createIndicators, setCreateIndicators] = useState({ ...DEFAULT_INDICATORS })
   const [createSessionTime, setCreateSessionTime] = useState('')
   const [createPlayerAttendanceDraft, setCreatePlayerAttendanceDraft] = useState({})
@@ -250,6 +252,7 @@ function Matches() {
     const localRecordings = readLocalObject(MATCH_RECORDINGS_STORAGE_KEY)
     const localPairings = readLocalObject(MATCH_PAIRINGS_STORAGE_KEY)
     const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
+    const localEditedMatches = readLocalObject(MATCH_LOCAL_EDITED_STORAGE_KEY)
 
     try {
       setLoading(true)
@@ -266,9 +269,23 @@ function Matches() {
       ])
 
       const fetchedMatches = Array.isArray(matchesData?.matches) ? matchesData.matches : []
+      const patchedServerMatches = fetchedMatches.map((match) => {
+        const key = String(match?.id || '').trim()
+        const patch = key ? localEditedMatches?.[key] : null
+        if (!patch || typeof patch !== 'object') return match
+
+        return {
+          ...match,
+          ...patch,
+          team: {
+            ...(match?.team && typeof match.team === 'object' ? match.team : {}),
+            ...(patch?.team && typeof patch.team === 'object' ? patch.team : {})
+          }
+        }
+      })
       const mergedMatches = [
         ...localCreatedMatches,
-        ...fetchedMatches
+        ...patchedServerMatches
       ]
       const fetchedTeams = Array.isArray(teamsData?.teams) ? teamsData.teams : []
       const fetchedPlayers = Array.isArray(playersData?.players) ? playersData.players : []
@@ -584,6 +601,7 @@ function Matches() {
       matchDate: resolvedDateKey,
       matchType: resolvedMatchType
     })
+    setCreateEditingMatchId(null)
     setCreateSessionTime('')
     setCreatePlayerAttendanceDraft({})
     setCreatePlayerEvidenceDraft({})
@@ -593,11 +611,43 @@ function Matches() {
 
   const closeCreateMatchModal = () => {
     setShowCreateModal(false)
+    setCreateEditingMatchId(null)
     setCreateSessionTime('')
     setCreatePlayerAttendanceDraft({})
     setCreatePlayerEvidenceDraft({})
     setCreateDraft({ ...CREATE_MATCH_INITIAL_DRAFT })
     setCreateIndicators({ ...DEFAULT_INDICATORS })
+  }
+
+  const openEditMatchModal = (match) => {
+    const matchId = String(match?.id || '').trim()
+    if (!matchId) return
+
+    const recording = getRecordingForMatch(match?.id)
+    const defaultTeam = teams.find((team) => String(team?.id || '') === String(match?.team?.id || '')) || null
+    const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : String(match?.team?.id || '')
+    const resolvedCategory = String(defaultTeam?.ageGroup || match?.team?.ageGroup || 'default').trim() || 'default'
+    const resolvedDateKey = toDateKey(match?.matchDate) || toDateKey(new Date())
+    const resolvedMatchType = String(match?.matchType || matchTypeOptions[0]?.code || 'MZ').trim().toUpperCase()
+
+    setCreateEditingMatchId(matchId)
+    setCreateDraft({
+      ...CREATE_MATCH_INITIAL_DRAFT,
+      teamId: resolvedTeamId,
+      opponent: String(match?.opponent || '').trim(),
+      matchDate: resolvedDateKey,
+      location: String(match?.location || '').trim(),
+      matchType: resolvedMatchType,
+      status: String(match?.status || 'scheduled').trim() || 'scheduled',
+      homeScore: recording.homeScore ?? match?.homeScore ?? '',
+      awayScore: recording.awayScore ?? match?.awayScore ?? ''
+    })
+    setSelectedCalendarDateKey(resolvedDateKey)
+    setCreateSessionTime('')
+    setCreatePlayerAttendanceDraft({})
+    setCreatePlayerEvidenceDraft({})
+    setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
+    setShowCreateModal(true)
   }
 
   const selectedCreateTeam = useMemo(
@@ -966,6 +1016,57 @@ function Matches() {
     setCreating(true)
     setError('')
     setSuccess('')
+
+    if (createEditingMatchId) {
+      try {
+        const editedMatchId = Number(createEditingMatchId)
+        const shouldSaveEvidence =
+          selectedScorers.length > 0 ||
+          selectedAssists.length > 0 ||
+          selectedCards.length > 0 ||
+          String(createDraft.homeScore || '').trim() !== '' ||
+          String(createDraft.awayScore || '').trim() !== ''
+
+        if (Number.isInteger(editedMatchId) && editedMatchId > 0 && shouldSaveEvidence) {
+          await api.updateMatchEvidence(editedMatchId, {
+            homeScore: createIndicators.result ? createDraft.homeScore : null,
+            awayScore: createIndicators.result ? createDraft.awayScore : null,
+            scorers: selectedScorers,
+            assists: selectedAssists,
+            cards: selectedCards
+          })
+        }
+
+        const editedPatch = {
+          opponent: payloadOpponent,
+          matchDate: payloadMatchDate,
+          location: String(createDraft.location || '').trim() || null,
+          matchType: String(createDraft.matchType || '').trim() || null,
+          status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
+          team: {
+            id: Number(selectedCreateTeam?.id || payloadTeamId || 0),
+            name: String(selectedCreateTeam?.name || '').trim() || 'Kategória',
+            ageGroup: String(selectedCreateTeam?.ageGroup || createCategoryKey || 'default').trim() || 'default'
+          }
+        }
+
+        const localEditedMatches = readLocalObject(MATCH_LOCAL_EDITED_STORAGE_KEY)
+        writeLocalObject(MATCH_LOCAL_EDITED_STORAGE_KEY, {
+          ...(localEditedMatches && typeof localEditedMatches === 'object' ? localEditedMatches : {}),
+          [String(createEditingMatchId)]: editedPatch
+        })
+
+        await loadMatches()
+        setSuccess('Zápas bol upravený.')
+        closeCreateMatchModal()
+      } catch (editError) {
+        console.error('Chyba pri úprave zápasu:', editError)
+        setError(editError?.message || 'Zápas sa nepodarilo upraviť.')
+      } finally {
+        setCreating(false)
+      }
+      return
+    }
 
     try {
       const selectedPlayerIdsPayload = selectedCreatePlayerIds
@@ -1602,7 +1703,7 @@ function Matches() {
       <div className="matches-main-grid">
         <div className="card matches-list-panel">
           <div className="matches-panel-head">
-            <h3>{showCreateModal ? 'Pridať zápas' : 'Zoznam zápasov'}</h3>
+            <h3>{showCreateModal ? (createEditingMatchId ? 'Upraviť zápas' : 'Pridať zápas') : 'Zoznam zápasov'}</h3>
             {showCreateModal ? (
               <button
                 type="button"
@@ -1953,7 +2054,7 @@ function Matches() {
               <div className="confirm-modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeCreateMatchModal} disabled={creating}>Zavrieť</button>
                 <button type="button" className="manager-add-btn" onClick={submitCreateMatch} disabled={creating}>
-                  {creating ? 'Ukladám...' : 'Pridať zápas'}
+                  {creating ? 'Ukladám...' : (createEditingMatchId ? 'Uložiť zmeny' : 'Pridať zápas')}
                 </button>
               </div>
             </>
@@ -2029,7 +2130,7 @@ function Matches() {
                                 <button
                                   type="button"
                                   className="matches-action-icon"
-                                  onClick={() => openMatchDetail(match)}
+                                  onClick={() => openEditMatchModal(match)}
                                   title="Upraviť"
                                   aria-label="Upraviť"
                                 >
