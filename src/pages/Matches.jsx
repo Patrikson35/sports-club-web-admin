@@ -7,6 +7,7 @@ const MATCH_RECORDINGS_STORAGE_KEY = 'matchesRecordings'
 const MATCH_PAIRINGS_STORAGE_KEY = 'matchesPairings'
 const MATCH_LOCAL_CREATED_STORAGE_KEY = 'matchesLocalCreated'
 const MATCH_LOCAL_EDITED_STORAGE_KEY = 'matchesLocalEdited'
+const MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY = 'matchesLocalPlayerStats'
 
 const DEFAULT_INDICATORS = {
   result: true,
@@ -332,6 +333,7 @@ function Matches() {
   const [matchPendingDelete, setMatchPendingDelete] = useState(null)
   const [matchRecordings, setMatchRecordings] = useState({})
   const [matchPairings, setMatchPairings] = useState({})
+  const [matchPlayerStats, setMatchPlayerStats] = useState({})
   const [openedMatch, setOpenedMatch] = useState(null)
   const [matchDraft, setMatchDraft] = useState({
     homeScore: '',
@@ -358,6 +360,7 @@ function Matches() {
     const localPairings = readLocalObject(MATCH_PAIRINGS_STORAGE_KEY)
     const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
     const localEditedMatches = readLocalObject(MATCH_LOCAL_EDITED_STORAGE_KEY)
+    const localPlayerStats = readLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY)
 
     try {
       setLoading(true)
@@ -481,6 +484,7 @@ function Matches() {
           ? myClubData.matchesPairings
           : localPairings)
       setMatchPairings(serverPairings)
+      setMatchPlayerStats(localPlayerStats)
     } catch (loadError) {
       console.error('Chyba načítania zápasov:', loadError)
       setError('Nepodarilo sa načítať zápasy. Skúste to znova.')
@@ -488,6 +492,7 @@ function Matches() {
       setCategoryIndicators({ default: { ...DEFAULT_INDICATORS }, ...localIndicators })
       setMatchRecordings(localRecordings)
       setMatchPairings(localPairings)
+      setMatchPlayerStats(localPlayerStats)
     } finally {
       setLoading(false)
     }
@@ -724,11 +729,40 @@ function Matches() {
     setCreateIndicators({ ...DEFAULT_INDICATORS })
   }
 
-  const openEditMatchModal = (match) => {
+  const openEditMatchModal = async (match) => {
     const matchId = String(match?.id || '').trim()
     if (!matchId) return
 
-    const recording = getRecordingForMatch(match?.id)
+    const existingRecording = getRecordingForMatch(match?.id)
+    let fetchedEvidence = null
+    let fetchedLineup = null
+
+    try {
+      const [evidenceResponse, lineupResponse] = await Promise.all([
+        api.getMatchEvidence(matchId).catch(() => null),
+        api.getMatchLineup(matchId).catch(() => null)
+      ])
+      fetchedEvidence = evidenceResponse
+      fetchedLineup = lineupResponse
+    } catch {
+      fetchedEvidence = null
+      fetchedLineup = null
+    }
+
+    const recording = {
+      homeScore: fetchedEvidence?.evidence?.homeScore ?? existingRecording?.homeScore ?? '',
+      awayScore: fetchedEvidence?.evidence?.awayScore ?? existingRecording?.awayScore ?? '',
+      scorers: Array.isArray(fetchedEvidence?.evidence?.scorers)
+        ? fetchedEvidence.evidence.scorers
+        : (Array.isArray(existingRecording?.scorers) ? existingRecording.scorers : []),
+      assists: Array.isArray(fetchedEvidence?.evidence?.assists)
+        ? fetchedEvidence.evidence.assists
+        : (Array.isArray(existingRecording?.assists) ? existingRecording.assists : []),
+      cards: Array.isArray(fetchedEvidence?.evidence?.cards)
+        ? fetchedEvidence.evidence.cards
+        : (Array.isArray(existingRecording?.cards) ? existingRecording.cards : [])
+    }
+
     const matchTeamId = String(match?.team?.id || match?.teamId || match?.team_id || '').trim()
     const defaultTeam = teams.find((team) => String(team?.id || '') === matchTeamId) || null
     const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : matchTeamId
@@ -745,6 +779,62 @@ function Matches() {
 
     const teamPlayers = players.filter((player) => String(player?.team?.id || '') === resolvedTeamId)
     const evidencePrefill = buildPlayerEvidenceDraftFromRecording(recording, teamPlayers)
+    const localPlayerStatsForMatch = matchPlayerStats?.[matchId] && typeof matchPlayerStats[matchId] === 'object'
+      ? matchPlayerStats[matchId]
+      : {}
+    const lineupPlayers = [
+      ...(Array.isArray(fetchedLineup?.starting) ? fetchedLineup.starting : []),
+      ...(Array.isArray(fetchedLineup?.substitutes) ? fetchedLineup.substitutes : [])
+    ]
+    const lineupIds = new Set(
+      lineupPlayers
+        .map((row) => String(row?.player?.id || row?.playerId || '').trim())
+        .filter(Boolean)
+    )
+
+    const attendanceFromLocal = localPlayerStatsForMatch?.attendanceDraft && typeof localPlayerStatsForMatch.attendanceDraft === 'object'
+      ? localPlayerStatsForMatch.attendanceDraft
+      : {}
+    const hasLocalAttendance = Object.keys(attendanceFromLocal).length > 0
+
+    const attendancePrefill = {}
+    teamPlayers.forEach((player) => {
+      const userId = String(player?.userId || '').trim()
+      if (!userId) return
+
+      const localEntry = attendanceFromLocal[userId] && typeof attendanceFromLocal[userId] === 'object'
+        ? attendanceFromLocal[userId]
+        : null
+
+      if (localEntry) {
+        attendancePrefill[userId] = {
+          attended: localEntry.attended !== false,
+          time: String(localEntry.time || '').replace(/[^\d]/g, '').slice(0, 3)
+        }
+        return
+      }
+
+      if (lineupIds.size > 0) {
+        attendancePrefill[userId] = {
+          attended: lineupIds.has(userId),
+          time: ''
+        }
+      }
+    })
+
+    const evidenceFromLocal = localPlayerStatsForMatch?.evidenceDraft && typeof localPlayerStatsForMatch.evidenceDraft === 'object'
+      ? localPlayerStatsForMatch.evidenceDraft
+      : {}
+    const mergedEvidenceDraft = { ...evidencePrefill.draft }
+    Object.entries(evidenceFromLocal).forEach(([playerId, rawEntry]) => {
+      const entry = rawEntry && typeof rawEntry === 'object' ? rawEntry : {}
+      mergedEvidenceDraft[String(playerId || '').trim()] = {
+        scorers: Math.max(0, Math.min(99, Number(entry.scorers) || 0)),
+        assists: Math.max(0, Math.min(99, Number(entry.assists) || 0)),
+        yellowCards: Math.max(0, Math.min(99, Number(entry.yellowCards) || 0)),
+        redCards: Math.max(0, Math.min(99, Number(entry.redCards) || 0))
+      }
+    })
 
     setCreateEditingMatchId(matchId)
     setCreateDraft({
@@ -759,10 +849,23 @@ function Matches() {
       homeScore: resolvedHomeScore,
       awayScore: resolvedAwayScore
     })
+
+    setMatchRecordings((prev) => {
+      const source = prev && typeof prev === 'object' ? prev : {}
+      const next = {
+        ...source,
+        [matchId]: {
+          ...recording
+        }
+      }
+      writeLocalObject(MATCH_RECORDINGS_STORAGE_KEY, next)
+      return next
+    })
+
     setSelectedCalendarDateKey(resolvedDateKey)
-    setCreateSessionTime('')
-    setCreatePlayerAttendanceDraft({})
-    setCreatePlayerEvidenceDraft(evidencePrefill.draft)
+    setCreateSessionTime(String(localPlayerStatsForMatch?.sessionTime || '').replace(/[^\d]/g, '').slice(0, 3))
+    setCreatePlayerAttendanceDraft(hasLocalAttendance || lineupIds.size > 0 ? attendancePrefill : {})
+    setCreatePlayerEvidenceDraft(mergedEvidenceDraft)
     setCreateIndicators({
       ...getIndicatorsForCategory(resolvedCategory),
       scorers: evidencePrefill.hasScorers ? true : getIndicatorsForCategory(resolvedCategory).scorers,
@@ -1166,6 +1269,9 @@ function Matches() {
           location: String(createDraft.location || '').trim() || null,
           matchType: String(createDraft.matchType || '').trim() || null,
           status: String(createDraft.status || 'scheduled').trim() || 'scheduled',
+          notes: String(createDraft.notes || '').trim() || null,
+          homeScore: createIndicators.result ? (String(createDraft.homeScore || '').trim() || null) : null,
+          awayScore: createIndicators.result ? (String(createDraft.awayScore || '').trim() || null) : null,
           team: {
             id: Number(selectedCreateTeam?.id || payloadTeamId || 0),
             name: String(selectedCreateTeam?.name || '').trim() || 'Kategória',
@@ -1178,6 +1284,22 @@ function Matches() {
           ...(localEditedMatches && typeof localEditedMatches === 'object' ? localEditedMatches : {}),
           [String(createEditingMatchId)]: editedPatch
         })
+
+        const localPlayerStats = readLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY)
+        const nextPlayerStats = {
+          ...(localPlayerStats && typeof localPlayerStats === 'object' ? localPlayerStats : {}),
+          [String(createEditingMatchId)]: {
+            sessionTime: String(createSessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+            attendanceDraft: createPlayerAttendanceDraft && typeof createPlayerAttendanceDraft === 'object'
+              ? createPlayerAttendanceDraft
+              : {},
+            evidenceDraft: createPlayerEvidenceDraft && typeof createPlayerEvidenceDraft === 'object'
+              ? createPlayerEvidenceDraft
+              : {}
+          }
+        }
+        writeLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY, nextPlayerStats)
+        setMatchPlayerStats(nextPlayerStats)
 
         await loadMatches()
         setSuccess('Zápas bol upravený.')
@@ -1255,6 +1377,24 @@ function Matches() {
         }
       }
 
+      if (createdMatchId > 0) {
+        const localPlayerStats = readLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY)
+        const nextPlayerStats = {
+          ...(localPlayerStats && typeof localPlayerStats === 'object' ? localPlayerStats : {}),
+          [String(createdMatchId)]: {
+            sessionTime: String(createSessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+            attendanceDraft: createPlayerAttendanceDraft && typeof createPlayerAttendanceDraft === 'object'
+              ? createPlayerAttendanceDraft
+              : {},
+            evidenceDraft: createPlayerEvidenceDraft && typeof createPlayerEvidenceDraft === 'object'
+              ? createPlayerEvidenceDraft
+              : {}
+          }
+        }
+        writeLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY, nextPlayerStats)
+        setMatchPlayerStats(nextPlayerStats)
+      }
+
       await loadMatches()
 
       if (createWithLineupFallbackUsed) {
@@ -1294,6 +1434,23 @@ function Matches() {
 
       const localCreatedMatches = readLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY)
       writeLocalArray(MATCH_LOCAL_CREATED_STORAGE_KEY, [localMatch, ...localCreatedMatches])
+
+      const localPlayerStats = readLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY)
+      const nextPlayerStats = {
+        ...(localPlayerStats && typeof localPlayerStats === 'object' ? localPlayerStats : {}),
+        [String(localMatchId)]: {
+          sessionTime: String(createSessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+          attendanceDraft: createPlayerAttendanceDraft && typeof createPlayerAttendanceDraft === 'object'
+            ? createPlayerAttendanceDraft
+            : {},
+          evidenceDraft: createPlayerEvidenceDraft && typeof createPlayerEvidenceDraft === 'object'
+            ? createPlayerEvidenceDraft
+            : {}
+        }
+      }
+      writeLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY, nextPlayerStats)
+      setMatchPlayerStats(nextPlayerStats)
+
       setMatches((prev) => [localMatch, ...(Array.isArray(prev) ? prev : [])])
       setError('')
       setSuccess(`Serverové uloženie zlyhalo (${createError?.message || 'neznáma chyba'}). Zápas bol dočasne uložený lokálne.`)

@@ -1685,6 +1685,10 @@ class APIClient {
     return this.request(`/matches/${matchId}/evidence`);
   }
 
+  async getMatchLineup(matchId) {
+    return this.request(`/matches/${matchId}/lineup`);
+  }
+
   async updateMatchEvidence(matchId, data) {
     return this.request(`/matches/${matchId}/evidence`, {
       method: 'PUT',
