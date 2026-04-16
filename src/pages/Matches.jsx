@@ -663,7 +663,7 @@ function Matches() {
     return String(match?.result || '').trim()
   }
 
-  const getPerspectiveScorePair = (match) => {
+  function getPerspectiveScorePair(match) {
     const parsed = parseResultScore(getMatchResult(match))
     const home = Number(parsed.homeScore)
     const away = Number(parsed.awayScore)
