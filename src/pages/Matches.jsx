@@ -55,6 +55,32 @@ const DEFAULT_MATCH_TYPE_OPTIONS = [
 const MONTH_NAMES = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
 const MONTH_SHORT_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
 
+const normalizeMetricCode = (code) => String(code || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase()
+  .replace(/[^A-Z0-9]/g, '')
+
+const parseEvidenceEntryKey = (rawKey) => {
+  const [categoryId = '', playerId = '', dateKey = '', metricId = '', sessionId = 'default'] = String(rawKey || '').split(':')
+  return {
+    categoryId: String(categoryId || ''),
+    playerId: String(playerId || ''),
+    dateKey: String(dateKey || ''),
+    metricId: String(metricId || ''),
+    sessionId: String(sessionId || 'default')
+  }
+}
+
+const resolveMatchMetricCode = (matchType) => {
+  const normalized = normalizeMetricCode(matchType)
+  if (normalized === 'MZ') return 'MZ'
+  if (normalized === 'PZ') return 'PZ'
+  if (normalized === 'CUP' || normalized === 'POH' || normalized === 'POHAR') return 'CUP'
+  if (normalized === 'TJ') return 'TJ'
+  return 'MZ'
+}
+
 const parseDayMonth = (value) => {
   const input = String(value || '').trim()
   const match = input.match(/^(\d{1,2})\.(\d{1,2})\.?$/)
@@ -337,6 +363,7 @@ function Matches() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [calendarDate, setCalendarDate] = useState(() => new Date())
   const [attendanceSeasons, setAttendanceSeasons] = useState([])
+  const [attendanceMetrics, setAttendanceMetrics] = useState([])
   const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState(() => toDateKey(new Date()))
   const [createDraft, setCreateDraft] = useState({ ...CREATE_MATCH_INITIAL_DRAFT })
   const [createEditingMatchId, setCreateEditingMatchId] = useState(null)
@@ -435,6 +462,7 @@ function Matches() {
       setMyClubSportKey(String(myClubData?.sportKey || myClubData?.sport || myClubData?.sportType || '').trim().toLowerCase())
 
       const metricRows = Array.isArray(metricsResponse?.metrics) ? metricsResponse.metrics : []
+      setAttendanceMetrics(metricRows)
       const foundMatchTypes = metricRows
         .map((metric) => String(metric?.shortName || metric?.name || '').trim().toUpperCase())
         .filter((code) => code === 'MZ' || code === 'PZ' || code === 'CUP')
@@ -518,6 +546,7 @@ function Matches() {
       console.error('Chyba načítania zápasov:', loadError)
       setError('Nepodarilo sa načítať zápasy. Skúste to znova.')
       setMatches(localCreatedMatches)
+      setAttendanceMetrics([])
       setCategoryIndicators({ default: { ...DEFAULT_INDICATORS }, ...localIndicators })
       setMatchRecordings(localRecordings)
       setMatchPairings(localPairings)
@@ -734,10 +763,93 @@ function Matches() {
     const location = normalizeLocationValue(match?.location || match?.venue || match?.homeAway)
 
     if (location === 'vonku') {
-      return `${opponentName} vs ${clubName}`
+      return `${opponentName} - ${clubName}`
     }
 
-    return `${clubName} vs ${opponentName}`
+    return `${clubName} - ${opponentName}`
+  }
+
+  const syncMatchAttendanceIntoClubEvidence = async ({
+    matchId,
+    matchDate,
+    teamId,
+    matchType,
+    sessionTime,
+    attendanceDraft
+  }) => {
+    const resolvedCategoryId = String(teamId || '').trim()
+    const resolvedDateKey = toDateKey(matchDate)
+    const resolvedMatchId = String(matchId || '').trim()
+    const resolvedMetricCode = resolveMatchMetricCode(matchType)
+    const resolvedSessionId = resolvedMatchId ? `match-${resolvedMatchId}` : `match-${Date.now()}`
+
+    if (!resolvedCategoryId || !resolvedDateKey) {
+      return
+    }
+
+    const metricsList = Array.isArray(attendanceMetrics) ? attendanceMetrics : []
+    const metricIdByCode = new Map(
+      metricsList.map((metric) => {
+        const metricId = String(metric?.id || '').trim()
+        const metricCode = normalizeMetricCode(String(metric?.shortName || metric?.name || '').trim())
+        return [metricCode, metricId]
+      }).filter(([, metricId]) => Boolean(metricId))
+    )
+
+    const targetMetricId = metricIdByCode.get(resolvedMetricCode)
+    if (!targetMetricId) {
+      return
+    }
+
+    const sourceAttendanceDraft = (attendanceDraft && typeof attendanceDraft === 'object') ? attendanceDraft : {}
+
+    const club = await api.getMyClub()
+    const sourceEntries = (club?.evidenceEntries && typeof club.evidenceEntries === 'object' && !Array.isArray(club.evidenceEntries))
+      ? club.evidenceEntries
+      : {}
+    const sourceSessionMeta = (club?.evidenceSessionMeta && typeof club.evidenceSessionMeta === 'object' && !Array.isArray(club.evidenceSessionMeta))
+      ? club.evidenceSessionMeta
+      : {}
+
+    const nextEntries = { ...sourceEntries }
+    const nextSessionMeta = { ...sourceSessionMeta }
+
+    // Remove previous generated entries for this match session so edit/save always rewrites the current state.
+    Object.keys(nextEntries).forEach((entryKey) => {
+      const parsed = parseEvidenceEntryKey(entryKey)
+      if (String(parsed.categoryId || '') !== resolvedCategoryId) return
+      if (String(parsed.dateKey || '') !== resolvedDateKey) return
+      if (String(parsed.sessionId || '') !== resolvedSessionId) return
+      delete nextEntries[entryKey]
+    })
+
+    Object.entries(sourceAttendanceDraft).forEach(([playerId, rawEntry]) => {
+      const resolvedPlayerId = String(playerId || '').trim()
+      if (!resolvedPlayerId) return
+
+      const entry = rawEntry && typeof rawEntry === 'object' ? rawEntry : {}
+      const attended = entry.attended !== false
+      const minutesToken = String(entry.time || sessionTime || '').replace(/[^\d]/g, '').slice(0, 3)
+      const minutes = Number(minutesToken || 0)
+
+      const evidenceKey = `${resolvedCategoryId}:${resolvedPlayerId}:${resolvedDateKey}:${targetMetricId}:${resolvedSessionId}`
+      nextEntries[evidenceKey] = {
+        attended,
+        minutes: attended ? String(Math.max(0, Math.min(999, minutes || 0))) : ''
+      }
+    })
+
+    const sessionMetaKey = `${resolvedCategoryId}:${resolvedDateKey}:${resolvedSessionId}`
+    nextSessionMeta[sessionMetaKey] = {
+      ...(nextSessionMeta[sessionMetaKey] && typeof nextSessionMeta[sessionMetaKey] === 'object' ? nextSessionMeta[sessionMetaKey] : {}),
+      trainingTime: String(sessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+      source: 'matches'
+    }
+
+    await api.updateMyClub({
+      evidenceEntries: nextEntries,
+      evidenceSessionMeta: nextSessionMeta
+    })
   }
 
   const updateCategoryIndicators = (indicatorKey, checked) => {
@@ -1426,6 +1538,22 @@ function Matches() {
         writeLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY, nextPlayerStats)
         setMatchPlayerStats(nextPlayerStats)
 
+        if (Number.isInteger(editedMatchId) && editedMatchId > 0) {
+          try {
+            await syncMatchAttendanceIntoClubEvidence({
+              matchId: editedMatchId,
+              matchDate: payloadMatchDate,
+              teamId: payloadTeamId,
+              matchType: String(createDraft.matchType || '').trim() || 'MZ',
+              sessionTime: String(createSessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+              attendanceDraft: createPlayerAttendanceDraft
+            })
+          } catch (evidenceSyncError) {
+            console.warn('Synchronizácia zápasovej dochádzky do evidencie zlyhala:', evidenceSyncError)
+            editWarnings.push('dochádzku sa nepodarilo zosynchronizovať')
+          }
+        }
+
         await loadMatches()
         if (editWarnings.length > 0) {
           setSuccess(`Zápas bol upravený lokálne; ${editWarnings.join(' a ')}.`)
@@ -1522,6 +1650,19 @@ function Matches() {
         }
         writeLocalObject(MATCH_LOCAL_PLAYER_STATS_STORAGE_KEY, nextPlayerStats)
         setMatchPlayerStats(nextPlayerStats)
+
+        try {
+          await syncMatchAttendanceIntoClubEvidence({
+            matchId: createdMatchId,
+            matchDate: payloadMatchDate,
+            teamId: payloadTeamId,
+            matchType: String(createDraft.matchType || '').trim() || 'MZ',
+            sessionTime: String(createSessionTime || '').replace(/[^\d]/g, '').slice(0, 3),
+            attendanceDraft: createPlayerAttendanceDraft
+          })
+        } catch (evidenceSyncError) {
+          console.warn('Synchronizácia zápasovej dochádzky do evidencie zlyhala:', evidenceSyncError)
+        }
       }
 
       await loadMatches()
