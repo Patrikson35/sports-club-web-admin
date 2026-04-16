@@ -504,7 +504,7 @@ function Matches() {
 
   const getIndicatorsForMatch = (match) => getIndicatorsForCategory(getCategoryKey(match))
 
-  const getRecordingForMatch = (matchId) => {
+  function getRecordingForMatch(matchId) {
     const key = String(matchId || '').trim()
     const source = key ? matchRecordings?.[key] : null
     return source && typeof source === 'object'
@@ -512,7 +512,7 @@ function Matches() {
       : { homeScore: '', awayScore: '', scorers: [], assists: [], cards: [] }
   }
 
-  const getMatchResult = (match) => {
+  function getMatchResult(match) {
     const recording = getRecordingForMatch(match?.id)
     if (recording.homeScore !== '' && recording.awayScore !== '') {
       return `${recording.homeScore}:${recording.awayScore}`
