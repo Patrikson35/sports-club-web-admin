@@ -173,6 +173,111 @@ const toDateKey = (input) => {
   return `${year}-${month}-${day}`
 }
 
+const normalizeLocationValue = (value) => {
+  const source = String(value || '').trim().toLowerCase()
+  if (!source) return ''
+  if (source === 'doma' || source === 'home' || source.includes('dom')) return 'doma'
+  if (source === 'vonku' || source === 'away' || source.includes('hos') || source.includes('von')) return 'vonku'
+  return ''
+}
+
+const parseResultScore = (value) => {
+  const source = String(value || '').trim()
+  if (!source) return { homeScore: '', awayScore: '' }
+  const match = source.match(/(\d+)\s*[:\-]\s*(\d+)/)
+  if (!match) return { homeScore: '', awayScore: '' }
+  return {
+    homeScore: String(match[1] || '').trim(),
+    awayScore: String(match[2] || '').trim()
+  }
+}
+
+const toNormalizedPlayerNameKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ')
+
+const buildPlayerEvidenceDraftFromRecording = (recording, teamPlayers) => {
+  const sourcePlayers = Array.isArray(teamPlayers) ? teamPlayers : []
+  if (sourcePlayers.length === 0) {
+    return {
+      draft: {},
+      hasScorers: false,
+      hasAssists: false,
+      hasYellowCards: false,
+      hasRedCards: false
+    }
+  }
+
+  const playerIdByName = new Map()
+  sourcePlayers.forEach((player) => {
+    const userId = String(player?.userId || '').trim()
+    if (!userId) return
+    const normalized = toNormalizedPlayerNameKey(toPlayerName(player))
+    if (!normalized || playerIdByName.has(normalized)) return
+    playerIdByName.set(normalized, userId)
+  })
+
+  const nextDraft = {}
+  let hasScorers = false
+  let hasAssists = false
+  let hasYellowCards = false
+  let hasRedCards = false
+
+  const ensureEntry = (userId) => {
+    if (!nextDraft[userId]) {
+      nextDraft[userId] = {
+        scorers: 0,
+        assists: 0,
+        yellowCards: 0,
+        redCards: 0
+      }
+    }
+    return nextDraft[userId]
+  }
+
+  const scorers = Array.isArray(recording?.scorers) ? recording.scorers : []
+  scorers.forEach((item) => {
+    const key = toNormalizedPlayerNameKey(item?.name)
+    const userId = playerIdByName.get(key)
+    if (!userId) return
+    const entry = ensureEntry(userId)
+    entry.scorers += 1
+    hasScorers = true
+  })
+
+  const assists = Array.isArray(recording?.assists) ? recording.assists : []
+  assists.forEach((item) => {
+    const key = toNormalizedPlayerNameKey(item?.name)
+    const userId = playerIdByName.get(key)
+    if (!userId) return
+    const entry = ensureEntry(userId)
+    entry.assists += 1
+    hasAssists = true
+  })
+
+  const cards = Array.isArray(recording?.cards) ? recording.cards : []
+  cards.forEach((item) => {
+    const key = toNormalizedPlayerNameKey(item?.name)
+    const userId = playerIdByName.get(key)
+    if (!userId) return
+    const entry = ensureEntry(userId)
+    const cardType = String(item?.type || '').trim().toLowerCase()
+    if (cardType === 'red') {
+      entry.redCards += 1
+      hasRedCards = true
+      return
+    }
+    entry.yellowCards += 1
+    hasYellowCards = true
+  })
+
+  return {
+    draft: nextDraft,
+    hasScorers,
+    hasAssists,
+    hasYellowCards,
+    hasRedCards
+  }
+}
+
 const getCalendarCells = (baseDate) => {
   const year = baseDate.getFullYear()
   const monthIndex = baseDate.getMonth()
@@ -624,29 +729,47 @@ function Matches() {
     if (!matchId) return
 
     const recording = getRecordingForMatch(match?.id)
-    const defaultTeam = teams.find((team) => String(team?.id || '') === String(match?.team?.id || '')) || null
-    const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : String(match?.team?.id || '')
-    const resolvedCategory = String(defaultTeam?.ageGroup || match?.team?.ageGroup || 'default').trim() || 'default'
-    const resolvedDateKey = toDateKey(match?.matchDate) || toDateKey(new Date())
-    const resolvedMatchType = String(match?.matchType || matchTypeOptions[0]?.code || 'MZ').trim().toUpperCase()
+    const matchTeamId = String(match?.team?.id || match?.teamId || match?.team_id || '').trim()
+    const defaultTeam = teams.find((team) => String(team?.id || '') === matchTeamId) || null
+    const resolvedTeamId = defaultTeam ? String(defaultTeam.id) : matchTeamId
+    const resolvedCategory = String(defaultTeam?.ageGroup || match?.team?.ageGroup || match?.categoryKey || 'default').trim() || 'default'
+    const resolvedDateKey = toDateKey(match?.matchDate || match?.match_date || match?.date) || toDateKey(new Date())
+    const resolvedMatchType = String(match?.matchType || match?.match_type || match?.type || matchTypeOptions[0]?.code || 'MZ').trim().toUpperCase()
+    const resolvedLocation = normalizeLocationValue(match?.location || match?.venue || match?.homeAway)
+    const resolvedStatus = String(match?.status || match?.state || 'scheduled').trim() || 'scheduled'
+    const resolvedNotes = String(match?.notes || match?.note || '').trim()
+    const resolvedOpponent = String(match?.opponent || match?.opponentTeam || match?.opponent_team || '').trim()
+    const resultFromText = parseResultScore(match?.result)
+    const resolvedHomeScore = recording.homeScore ?? match?.homeScore ?? resultFromText.homeScore
+    const resolvedAwayScore = recording.awayScore ?? match?.awayScore ?? resultFromText.awayScore
+
+    const teamPlayers = players.filter((player) => String(player?.team?.id || '') === resolvedTeamId)
+    const evidencePrefill = buildPlayerEvidenceDraftFromRecording(recording, teamPlayers)
 
     setCreateEditingMatchId(matchId)
     setCreateDraft({
       ...CREATE_MATCH_INITIAL_DRAFT,
       teamId: resolvedTeamId,
-      opponent: String(match?.opponent || '').trim(),
+      opponent: resolvedOpponent,
       matchDate: resolvedDateKey,
-      location: String(match?.location || '').trim(),
+      location: resolvedLocation,
       matchType: resolvedMatchType,
-      status: String(match?.status || 'scheduled').trim() || 'scheduled',
-      homeScore: recording.homeScore ?? match?.homeScore ?? '',
-      awayScore: recording.awayScore ?? match?.awayScore ?? ''
+      status: resolvedStatus,
+      notes: resolvedNotes,
+      homeScore: resolvedHomeScore,
+      awayScore: resolvedAwayScore
     })
     setSelectedCalendarDateKey(resolvedDateKey)
     setCreateSessionTime('')
     setCreatePlayerAttendanceDraft({})
-    setCreatePlayerEvidenceDraft({})
-    setCreateIndicators(getIndicatorsForCategory(resolvedCategory))
+    setCreatePlayerEvidenceDraft(evidencePrefill.draft)
+    setCreateIndicators({
+      ...getIndicatorsForCategory(resolvedCategory),
+      scorers: evidencePrefill.hasScorers ? true : getIndicatorsForCategory(resolvedCategory).scorers,
+      assists: evidencePrefill.hasAssists ? true : getIndicatorsForCategory(resolvedCategory).assists,
+      yellowCards: evidencePrefill.hasYellowCards ? true : getIndicatorsForCategory(resolvedCategory).yellowCards,
+      redCards: evidencePrefill.hasRedCards ? true : getIndicatorsForCategory(resolvedCategory).redCards
+    })
     setShowCreateModal(true)
   }
 
