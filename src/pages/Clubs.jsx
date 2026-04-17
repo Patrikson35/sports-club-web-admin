@@ -65,15 +65,15 @@ function Clubs() {
   }
 
   return (
-    <div>
+    <div className="unified-page">
       <div className="page-header">
         <h2>Kluby</h2>
         <p>Správa sportovních klubů</p>
       </div>
 
       {showForm && (
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <h3 style={{ marginBottom: '16px' }}>Nový klub</h3>
+        <div className="card">
+          <h3>Nový klub</h3>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="name">Název klubu *</label>
@@ -124,7 +124,7 @@ function Clubs() {
               />
             </div>
 
-            <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+            <div className="unified-toolbar">
               <button 
                 type="submit" 
                 className="btn"
@@ -167,7 +167,7 @@ function Clubs() {
             {club.phone && (
               <p className="club-info">📞 {club.phone}</p>
             )}
-            <button className="btn btn-secondary" style={{ marginTop: '16px', width: '100%' }}>
+            <button className="btn btn-secondary" style={{ width: '100%' }}>
               Zobrazit detail
             </button>
           </div>
@@ -176,7 +176,7 @@ function Clubs() {
 
       {clubs.length === 0 && !showForm && (
         <div className="card">
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <p className="unified-empty">
             Žádné kluby v systému.
           </p>
         </div>

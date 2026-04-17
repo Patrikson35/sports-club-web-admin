@@ -25,13 +25,13 @@ function Teams() {
   }
 
   return (
-    <div>
+    <div className="unified-page">
       <div className="page-header">
         <h2>Týmy</h2>
         <p>Správa týmů a kategorií</p>
       </div>
 
-      <div className="actions">
+      <div className="unified-toolbar">
         <button className="btn">+ Vytvořit tým</button>
       </div>
 
@@ -40,10 +40,10 @@ function Teams() {
           <div key={team.id} className="stat-card">
             <h3>{team.name}</h3>
             <div className="value">{team.playerCount}</div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '8px' }}>
+            <p className="unified-table-note">
               Kategorie: {team.ageGroup}
             </p>
-            <button className="btn btn-secondary" style={{ marginTop: '16px', width: '100%' }}>
+            <button className="btn btn-secondary" style={{ width: '100%' }}>
               Zobrazit detail
             </button>
           </div>
@@ -52,7 +52,7 @@ function Teams() {
 
       {teams.length === 0 && (
         <div className="card">
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <p className="unified-empty">
             Žádné týmy v systému
           </p>
         </div>

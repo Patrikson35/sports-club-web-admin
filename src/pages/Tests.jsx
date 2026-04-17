@@ -25,19 +25,19 @@ function Tests() {
   }
 
   return (
-    <div>
+    <div className="unified-page">
       <div className="page-header">
         <h2>Testy</h2>
         <p>Výsledky a statistiky testů</p>
       </div>
 
-      <div className="actions">
+      <div className="unified-toolbar">
         <button className="btn">+ Zadat nový test</button>
         <button className="btn btn-secondary">📊 Statistiky</button>
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: '16px' }}>Rychlostné testy</h3>
+        <h3>Rychlostné testy</h3>
         <table>
           <thead>
             <tr>
@@ -51,7 +51,7 @@ function Tests() {
           <tbody>
             {results.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <td colSpan="5" className="unified-empty">
                   Žádné výsledky testů
                 </td>
               </tr>
@@ -61,16 +61,12 @@ function Tests() {
                   <td><strong>{result.player?.name}</strong></td>
                   <td>{result.test?.name}</td>
                   <td>
-                    <span style={{
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      color: 'var(--accent)'
-                    }}>
+                    <span className="unified-accent-value">
                       {result.value} {result.unit}
                     </span>
                   </td>
                   <td>{new Date(result.testDate).toLocaleDateString('cs-CZ')}</td>
-                  <td style={{ color: 'var(--text-secondary)' }}>
+                  <td className="unified-table-note">
                     {result.notes || '-'}
                   </td>
                 </tr>
@@ -81,23 +77,23 @@ function Tests() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: '16px' }}>Typy testů</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-          <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px' }}>
+        <h3>Typy testů</h3>
+        <div className="unified-info-cards">
+          <div className="unified-info-card">
             <strong>Rychlostné</strong>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+            <p>
               10m, 30m, 100m, Omikový běh
             </p>
           </div>
-          <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px' }}>
+          <div className="unified-info-card">
             <strong>Silové</strong>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+            <p>
               Tlak, Sed-lehy
             </p>
           </div>
-          <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px' }}>
+          <div className="unified-info-card">
             <strong>Kondiční</strong>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+            <p>
               Výdrž, Cooper test
             </p>
           </div>

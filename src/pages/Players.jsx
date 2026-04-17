@@ -31,20 +31,19 @@ function Players() {
   }
 
   return (
-    <div>
+    <div className="unified-page">
       <div className="page-header">
         <h2>Hráči</h2>
         <p>Správa hráčů a jejich dat</p>
       </div>
 
-      <div className="actions">
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px', flex: 1 }}>
+      <div className="unified-toolbar">
+        <form onSubmit={handleSearch} className="unified-search-form">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Hledat hráče..."
-            style={{ marginBottom: 0 }}
           />
           <button type="submit" className="btn">Hledat</button>
         </form>
@@ -66,7 +65,7 @@ function Players() {
           <tbody>
             {players.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <td colSpan="6" className="unified-empty">
                   Žádní hráči
                 </td>
               </tr>
@@ -77,23 +76,17 @@ function Players() {
                   <td>
                     <strong>{player.firstName} {player.lastName}</strong>
                     <br />
-                    <small style={{ color: 'var(--text-secondary)' }}>{player.email}</small>
+                    <small className="unified-table-note">{player.email}</small>
                   </td>
                   <td>
-                    <span style={{ 
-                      background: 'var(--accent)', 
-                      color: '#000', 
-                      padding: '4px 12px', 
-                      borderRadius: '6px',
-                      fontWeight: 'bold'
-                    }}>
+                    <span className="unified-badge warning">
                       #{player.jerseyNumber}
                     </span>
                   </td>
                   <td>{player.position}</td>
                   <td>{player.team?.name || '-'}</td>
                   <td>
-                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }}>
+                    <button className="btn btn-secondary">
                       Detail
                     </button>
                   </td>
@@ -105,8 +98,8 @@ function Players() {
       </div>
 
       <div className="card">
-        <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-          Celkem hráčů: <strong style={{ color: 'var(--accent)' }}>{players.length}</strong>
+        <p className="unified-muted">
+          Celkem hráčů: <strong className="unified-accent-value">{players.length}</strong>
         </p>
       </div>
     </div>

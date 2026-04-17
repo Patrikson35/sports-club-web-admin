@@ -25,13 +25,13 @@ function Trainings() {
   }
 
   return (
-    <div>
+    <div className="unified-page">
       <div className="page-header">
         <h2>Tréninky</h2>
         <p>Plánování a správa tréninků</p>
       </div>
 
-      <div className="actions">
+      <div className="unified-toolbar">
         <button className="btn">+ Naplánovat trénink</button>
       </div>
 
@@ -50,7 +50,7 @@ function Trainings() {
           <tbody>
             {trainings.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <td colSpan="6" className="unified-empty">
                   Žádné tréninky
                 </td>
               </tr>
@@ -62,19 +62,12 @@ function Trainings() {
                   <td>{training.location}</td>
                   <td>{training.exerciseCount} cvičení</td>
                   <td>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      background: training.status === 'completed' ? 'var(--success)' : 'var(--accent)',
-                      color: training.status === 'completed' ? '#fff' : '#000'
-                    }}>
+                    <span className={`unified-badge ${training.status === 'completed' ? 'success' : 'warning'}`}>
                       {training.status === 'completed' ? 'Dokončeno' : 'Naplánováno'}
                     </span>
                   </td>
                   <td>
-                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }}>
+                    <button className="btn btn-secondary">
                       Detail
                     </button>
                   </td>
