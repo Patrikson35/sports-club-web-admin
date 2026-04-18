@@ -42,6 +42,7 @@ const DEFAULT_CANVAS = { width: 1100, height: 650 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
+const AREA_HANDLE_KEYS = ['nw', 'ne', 'sw', 'se']
 
 const MIN_AREA_SIZE = 26
 
@@ -404,50 +405,92 @@ const drawAreaShape = (ctx, item, isSelected) => {
   ctx.restore()
 }
 
-const getAreaResizeHandle = (item) => {
+const getAreaBounds = (item) => {
   if (item.type === 'areaRect') {
     const width = Number(item.width || 120)
     const height = Number(item.height || 80)
-    return { x: item.x + width / 2, y: item.y + height / 2 }
+    return {
+      left: item.x - width / 2,
+      right: item.x + width / 2,
+      top: item.y - height / 2,
+      bottom: item.y + height / 2
+    }
   }
 
   if (item.type === 'areaSquare') {
     const size = Number(item.width || 120)
-    return { x: item.x + size / 2, y: item.y + size / 2 }
+    return {
+      left: item.x - size / 2,
+      right: item.x + size / 2,
+      top: item.y - size / 2,
+      bottom: item.y + size / 2
+    }
   }
 
   if (item.type === 'areaCircle') {
     const radius = Number(item.radius || 62)
-    return { x: item.x + radius, y: item.y + radius }
+    return {
+      left: item.x - radius,
+      right: item.x + radius,
+      top: item.y - radius,
+      bottom: item.y + radius
+    }
   }
 
   const size = Number(item.size || 86)
-  return { x: item.x + size, y: item.y + size }
+  return {
+    left: item.x - size,
+    right: item.x + size,
+    top: item.y - size,
+    bottom: item.y + size
+  }
 }
 
-const drawAreaResizeHandle = (ctx, item) => {
-  const handle = getAreaResizeHandle(item)
+const getAreaResizeHandles = (item) => {
+  const bounds = getAreaBounds(item)
+  return [
+    { key: 'nw', x: bounds.left, y: bounds.top },
+    { key: 'ne', x: bounds.right, y: bounds.top },
+    { key: 'sw', x: bounds.left, y: bounds.bottom },
+    { key: 'se', x: bounds.right, y: bounds.bottom }
+  ]
+}
+
+const drawAreaResizeHandles = (ctx, item) => {
+  const handles = getAreaResizeHandles(item)
   ctx.save()
-  ctx.beginPath()
-  ctx.arc(handle.x, handle.y, 8, 0, Math.PI * 2)
-  ctx.fillStyle = '#60a5fa'
-  ctx.fill()
-  ctx.lineWidth = 2
-  ctx.strokeStyle = '#0f172a'
-  ctx.stroke()
+  handles.forEach((handle) => {
+    ctx.beginPath()
+    ctx.arc(handle.x, handle.y, 7, 0, Math.PI * 2)
+    ctx.fillStyle = '#60a5fa'
+    ctx.fill()
+    ctx.lineWidth = 2
+    ctx.strokeStyle = '#0f172a'
+    ctx.stroke()
+  })
   ctx.restore()
 }
 
 const hitAreaResizeHandle = (item, point) => {
-  const handle = getAreaResizeHandle(item)
-  const dx = point.x - handle.x
-  const dy = point.y - handle.y
-  return Math.sqrt(dx * dx + dy * dy) <= 12
+  const handles = getAreaResizeHandles(item)
+  const hit = handles.find((handle) => {
+    const dx = point.x - handle.x
+    const dy = point.y - handle.y
+    return Math.sqrt(dx * dx + dy * dy) <= 12
+  })
+  return hit?.key || ''
 }
 
-const resizeAreaFromPoint = (item, point) => {
-  const dx = Math.abs(point.x - item.x)
-  const dy = Math.abs(point.y - item.y)
+const resizeAreaFromPoint = (item, point, handleKey = 'se') => {
+  const isWest = String(handleKey || '').includes('w')
+  const isNorth = String(handleKey || '').includes('n')
+  const normalizedPoint = {
+    x: item.x + (isWest ? -1 : 1) * Math.abs(point.x - item.x),
+    y: item.y + (isNorth ? -1 : 1) * Math.abs(point.y - item.y)
+  }
+
+  const dx = Math.abs(normalizedPoint.x - item.x)
+  const dy = Math.abs(normalizedPoint.y - item.y)
 
   if (item.type === 'areaRect') {
     return {
@@ -510,7 +553,7 @@ const drawSceneObjects = (ctx, objects, selectedId) => {
     if (item.type === 'areaRect' || item.type === 'areaSquare' || item.type === 'areaCircle' || item.type === 'areaDiamond') {
       drawAreaShape(ctx, item, isSelected)
       if (isSelected) {
-        drawAreaResizeHandle(ctx, item)
+        drawAreaResizeHandles(ctx, item)
       }
       return
     }
@@ -596,43 +639,43 @@ const hitTest = (objects, point) => {
   for (let i = objects.length - 1; i >= 0; i -= 1) {
     const item = objects[i]
 
+    if (item.type === 'areaRect' || item.type === 'areaSquare') {
+      const width = Number(item.width || 120)
+      const height = item.type === 'areaSquare' ? width : Number(item.height || 80)
+      if (
+        point.x >= item.x - width / 2
+        && point.x <= item.x + width / 2
+        && point.y >= item.y - height / 2
+        && point.y <= item.y + height / 2
+      ) {
+        return item
+      }
+      continue
+    }
+
+    if (item.type === 'areaCircle') {
+      const radius = Number(item.radius || 62)
+      const dx = point.x - item.x
+      const dy = point.y - item.y
+      if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+        return item
+      }
+      continue
+    }
+
+    if (item.type === 'areaDiamond') {
+      const size = Number(item.size || 86)
+      const normalized = (Math.abs(point.x - item.x) / size) + (Math.abs(point.y - item.y) / size)
+      if (normalized <= 1) {
+        return item
+      }
+      continue
+    }
+
     if (item.type === 'arrowPlayerStraight' || item.type === 'arrowPlayerBall' || item.type === 'arrowBallDashed') {
       const minX = Math.min(item.fromX, item.toX) - 12
       const maxX = Math.max(item.fromX, item.toX) + 12
       const minY = Math.min(item.fromY, item.toY) - 12
-          if (item.type === 'areaRect' || item.type === 'areaSquare') {
-            const width = Number(item.width || 120)
-            const height = item.type === 'areaSquare' ? width : Number(item.height || 80)
-            if (
-              point.x >= item.x - width / 2
-              && point.x <= item.x + width / 2
-              && point.y >= item.y - height / 2
-              && point.y <= item.y + height / 2
-            ) {
-              return item
-            }
-            continue
-          }
-
-          if (item.type === 'areaCircle') {
-            const radius = Number(item.radius || 62)
-            const dx = point.x - item.x
-            const dy = point.y - item.y
-            if (Math.sqrt(dx * dx + dy * dy) <= radius) {
-              return item
-            }
-            continue
-          }
-
-          if (item.type === 'areaDiamond') {
-            const size = Number(item.size || 86)
-            const normalized = (Math.abs(point.x - item.x) / size) + (Math.abs(point.y - item.y) / size)
-            if (normalized <= 1) {
-              return item
-            }
-            continue
-          }
-
       const maxY = Math.max(item.fromY, item.toY) + 12
       if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
         return item
@@ -677,6 +720,48 @@ function SchemeTool() {
   const [exportDataUrl, setExportDataUrl] = useState('')
 
   const activeSportLabel = useMemo(() => SPORTS[sportKey]?.label || 'Šport', [sportKey])
+
+  useEffect(() => {
+    const isTypingContext = (eventTarget) => {
+      if (!eventTarget || !(eventTarget instanceof HTMLElement)) return false
+      const tagName = String(eventTarget.tagName || '').toLowerCase()
+      if (tagName === 'input' || tagName === 'textarea' || tagName === 'select' || tagName === 'button') {
+        return true
+      }
+      return Boolean(eventTarget.isContentEditable)
+    }
+
+    const handleKeyDown = (event) => {
+      if (!(event.ctrlKey || event.metaKey) || String(event.key || '').toLowerCase() !== 'd') return
+      if (isTypingContext(event.target)) return
+      if (!selectedObjectId) return
+
+      const selectedItem = sceneObjects.find((item) => String(item?.id || '') === String(selectedObjectId))
+      if (!selectedItem) return
+
+      event.preventDefault()
+
+      const offset = 20
+      const duplicatedId = createId()
+      const duplicatedItem = { ...selectedItem, id: duplicatedId }
+
+      if (duplicatedItem.type === 'arrowPlayerStraight' || duplicatedItem.type === 'arrowPlayerBall' || duplicatedItem.type === 'arrowBallDashed') {
+        duplicatedItem.fromX = Number(duplicatedItem.fromX || 0) + offset
+        duplicatedItem.fromY = Number(duplicatedItem.fromY || 0) + offset
+        duplicatedItem.toX = Number(duplicatedItem.toX || 0) + offset
+        duplicatedItem.toY = Number(duplicatedItem.toY || 0) + offset
+      } else {
+        duplicatedItem.x = Number(duplicatedItem.x || 0) + offset
+        duplicatedItem.y = Number(duplicatedItem.y || 0) + offset
+      }
+
+      setSceneObjects((prev) => [...prev, duplicatedItem])
+      setSelectedObjectId(duplicatedId)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [sceneObjects, selectedObjectId])
 
   useEffect(() => {
     let isMounted = true
@@ -837,8 +922,9 @@ function SchemeTool() {
       if (hit) {
         setSelectedObjectId(hit.id)
 
-        if (isAreaToolType(hit.type) && hitAreaResizeHandle(hit, point)) {
-          setResizeState({ id: hit.id })
+        const resizeHandleKey = isAreaToolType(hit.type) ? hitAreaResizeHandle(hit, point) : ''
+        if (resizeHandleKey) {
+          setResizeState({ id: hit.id, handleKey: resizeHandleKey })
           setDragState(null)
           return
         }
@@ -886,7 +972,7 @@ function SchemeTool() {
       setSceneObjects((prev) => prev.map((item) => {
         if (item.id !== resizeState.id) return item
         if (!isAreaToolType(item.type)) return item
-        return resizeAreaFromPoint(item, point)
+        return resizeAreaFromPoint(item, point, resizeState.handleKey)
       }))
       return
     }
