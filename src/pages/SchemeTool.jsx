@@ -41,6 +41,7 @@ const DEFAULT_CANVAS = { width: 1100, height: 650 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
+const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 
 const MIN_AREA_SIZE = 26
 
@@ -403,6 +404,82 @@ const drawAreaShape = (ctx, item, isSelected) => {
   ctx.restore()
 }
 
+const getAreaResizeHandle = (item) => {
+  if (item.type === 'areaRect') {
+    const width = Number(item.width || 120)
+    const height = Number(item.height || 80)
+    return { x: item.x + width / 2, y: item.y + height / 2 }
+  }
+
+  if (item.type === 'areaSquare') {
+    const size = Number(item.width || 120)
+    return { x: item.x + size / 2, y: item.y + size / 2 }
+  }
+
+  if (item.type === 'areaCircle') {
+    const radius = Number(item.radius || 62)
+    return { x: item.x + radius, y: item.y + radius }
+  }
+
+  const size = Number(item.size || 86)
+  return { x: item.x + size, y: item.y + size }
+}
+
+const drawAreaResizeHandle = (ctx, item) => {
+  const handle = getAreaResizeHandle(item)
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(handle.x, handle.y, 8, 0, Math.PI * 2)
+  ctx.fillStyle = '#60a5fa'
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = '#0f172a'
+  ctx.stroke()
+  ctx.restore()
+}
+
+const hitAreaResizeHandle = (item, point) => {
+  const handle = getAreaResizeHandle(item)
+  const dx = point.x - handle.x
+  const dy = point.y - handle.y
+  return Math.sqrt(dx * dx + dy * dy) <= 12
+}
+
+const resizeAreaFromPoint = (item, point) => {
+  const dx = Math.abs(point.x - item.x)
+  const dy = Math.abs(point.y - item.y)
+
+  if (item.type === 'areaRect') {
+    return {
+      ...item,
+      width: Math.max(MIN_AREA_SIZE, dx * 2),
+      height: Math.max(MIN_AREA_SIZE, dy * 2)
+    }
+  }
+
+  if (item.type === 'areaSquare') {
+    const size = Math.max(MIN_AREA_SIZE, Math.max(dx, dy) * 2)
+    return {
+      ...item,
+      width: size
+    }
+  }
+
+  if (item.type === 'areaCircle') {
+    const radius = Math.max(MIN_AREA_SIZE / 2, Math.max(dx, dy))
+    return {
+      ...item,
+      radius
+    }
+  }
+
+  const size = Math.max(MIN_AREA_SIZE / 2, Math.max(dx, dy))
+  return {
+    ...item,
+    size
+  }
+}
+
 const drawSceneObjects = (ctx, objects, selectedId) => {
   objects.forEach((item) => {
     const isSelected = String(selectedId || '') === String(item.id || '')
@@ -432,6 +509,9 @@ const drawSceneObjects = (ctx, objects, selectedId) => {
 
     if (item.type === 'areaRect' || item.type === 'areaSquare' || item.type === 'areaCircle' || item.type === 'areaDiamond') {
       drawAreaShape(ctx, item, isSelected)
+      if (isSelected) {
+        drawAreaResizeHandle(ctx, item)
+      }
       return
     }
 
@@ -591,6 +671,7 @@ function SchemeTool() {
   const [sceneObjects, setSceneObjects] = useState([])
   const [selectedObjectId, setSelectedObjectId] = useState('')
   const [dragState, setDragState] = useState(null)
+  const [resizeState, setResizeState] = useState(null)
   const [arrowStart, setArrowStart] = useState(null)
   const [areaDraft, setAreaDraft] = useState(null)
   const [exportDataUrl, setExportDataUrl] = useState('')
@@ -746,6 +827,7 @@ function SchemeTool() {
       setAreaDraft({ toolType: activeTool, startPoint: point, endPoint: point })
       setSelectedObjectId('')
       setDragState(null)
+      setResizeState(null)
       return
     }
 
@@ -754,18 +836,28 @@ function SchemeTool() {
     if (activeTool === 'select') {
       if (hit) {
         setSelectedObjectId(hit.id)
+
+        if (isAreaToolType(hit.type) && hitAreaResizeHandle(hit, point)) {
+          setResizeState({ id: hit.id })
+          setDragState(null)
+          return
+        }
+
         if (hit.type !== 'arrowPlayerBall' && hit.type !== 'arrowBallDashed' && hit.type !== 'text') {
           setDragState({
             id: hit.id,
             offsetX: point.x - hit.x,
             offsetY: point.y - hit.y
           })
+          setResizeState(null)
         } else {
           setDragState(null)
+          setResizeState(null)
         }
       } else {
         setSelectedObjectId('')
         setDragState(null)
+        setResizeState(null)
       }
       return
     }
@@ -784,6 +876,18 @@ function SchemeTool() {
       if (!canvas) return
       const point = getCanvasPoint(canvas, event)
       setAreaDraft((prev) => (prev ? { ...prev, endPoint: point } : prev))
+      return
+    }
+
+    if (resizeState?.id) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const point = getCanvasPoint(canvas, event)
+      setSceneObjects((prev) => prev.map((item) => {
+        if (item.id !== resizeState.id) return item
+        if (!isAreaToolType(item.type)) return item
+        return resizeAreaFromPoint(item, point)
+      }))
       return
     }
 
@@ -822,6 +926,10 @@ function SchemeTool() {
     if (dragState) {
       setDragState(null)
     }
+
+    if (resizeState) {
+      setResizeState(null)
+    }
   }
 
   const removeSelectedObject = () => {
@@ -835,6 +943,7 @@ function SchemeTool() {
     setSelectedObjectId('')
     setArrowStart(null)
     setAreaDraft(null)
+    setResizeState(null)
   }
 
   const undoLastObject = () => {
