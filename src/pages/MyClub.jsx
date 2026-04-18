@@ -393,6 +393,22 @@ const normalizeComparableText = (value) => String(value || '')
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
 
+const hasSameExerciseReference = (leftItem, rightItem) => {
+  const leftSourceId = String(leftItem?.sourceExerciseId || '').trim()
+  const rightSourceId = String(rightItem?.sourceExerciseId || '').trim()
+  const sameSourceId = leftSourceId && rightSourceId && leftSourceId === rightSourceId
+
+  const leftYoutubeVideoId = String(leftItem?.youtube?.videoId || '').trim()
+  const rightYoutubeVideoId = String(rightItem?.youtube?.videoId || '').trim()
+  const sameYoutube = leftYoutubeVideoId && rightYoutubeVideoId && leftYoutubeVideoId === rightYoutubeVideoId
+
+  const leftName = normalizeComparableText(leftItem?.name)
+  const rightName = normalizeComparableText(rightItem?.name)
+  const sameName = leftName && rightName && leftName === rightName
+
+  return sameSourceId || sameYoutube || sameName
+}
+
 const isGenericTopCardName = (value) => /^karta\s*\d*$/i.test(String(value || '').trim())
 
 const buildSingleMetricMap = (metricIds, selectedMetricId) => {
@@ -1140,6 +1156,7 @@ function MyClub() {
         const youtube = item?.youtube && typeof item.youtube === 'object' ? item.youtube : {}
         return {
           id: String(item?.id || '').trim(),
+          sourceExerciseId: String(item?.sourceExerciseId || '').trim(),
           name: String(item?.name || '').trim(),
           description: String(item?.description || '').trim(),
           durationMinutes: Number.parseInt(String(item?.durationMinutes || 0), 10) || 0,
@@ -3564,12 +3581,7 @@ function MyClub() {
     setExerciseDatabaseItems((prev) => {
       const source = Array.isArray(prev) ? prev : []
 
-      const duplicate = source.some((entry) => {
-        const sameSourceId = String(entry?.sourceExerciseId || '').trim() && String(entry?.sourceExerciseId || '').trim() === String(sourceItem?.sourceExerciseId || '').trim()
-        const sameYoutube = String(entry?.youtube?.videoId || '').trim() && String(entry?.youtube?.videoId || '').trim() === String(sourceItem?.youtube?.videoId || '').trim()
-        const sameName = normalizeComparableText(entry?.name) && normalizeComparableText(entry?.name) === normalizeComparableText(sourceItem?.name)
-        return sameSourceId || sameYoutube || sameName
-      })
+      const duplicate = source.some((entry) => hasSameExerciseReference(entry, sourceItem))
 
       if (duplicate) {
         alreadyExists = true
@@ -3785,7 +3797,8 @@ function MyClub() {
     })
 
     if (activeExerciseDatabaseSection === 'publicExercises') {
-      return sourceItems
+      const clubItems = Array.isArray(exerciseDatabaseItems) ? exerciseDatabaseItems : []
+      return sourceItems.filter((publicItem) => !clubItems.some((clubItem) => hasSameExerciseReference(clubItem, publicItem)))
     }
 
     return sourceItems.filter((item) => {
