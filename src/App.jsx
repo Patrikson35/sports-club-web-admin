@@ -188,7 +188,12 @@ function AppContent() {
   const allowedSections = currentRole === 'admin'
     ? getRoleSections('admin', adminVisibleSections)
     : getRoleSections(currentRole, canUseRemoteSections ? remoteVisibleSections : null)
-  const canAccessSection = (sectionKey) => allowedSections.includes(sectionKey)
+  const canAccessSection = (sectionKey) => {
+    if (sectionKey === 'schemes') {
+      return allowedSections.includes('schemes') || allowedSections.includes('exercises')
+    }
+    return allowedSections.includes(sectionKey)
+  }
 
   const sidebarSections = [
     { key: 'clubs', to: '/clubs', icon: 'dashboard', label: 'Kluby' },
