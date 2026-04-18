@@ -1,0 +1,92 @@
+.scheme-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.scheme-toolbar {
+  align-items: flex-start;
+}
+
+.scheme-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.scheme-controls {
+  padding: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.scheme-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.scheme-tool-btn {
+  width: 100%;
+  border-radius: 10px;
+  min-height: 36px;
+}
+
+.scheme-tool-btn.active {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(14, 116, 144, 0.28);
+  color: #dff6ff;
+}
+
+.scheme-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scheme-actions .btn-edit,
+.scheme-actions .btn-secondary,
+.scheme-actions .manager-add-btn {
+  width: 100%;
+}
+
+.scheme-canvas-wrap {
+  padding: 0.9rem;
+}
+
+.scheme-canvas {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: #101827;
+  cursor: crosshair;
+}
+
+.scheme-preview {
+  margin-top: 0.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: rgba(2, 6, 23, 0.42);
+}
+
+.scheme-preview img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  display: block;
+}
+
+.scheme-hidden-link {
+  display: none;
+}
+
+@media (max-width: 1140px) {
+  .scheme-layout {
+    grid-template-columns: 1fr;
+  }
+}

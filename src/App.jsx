@@ -10,6 +10,7 @@ import Trainings from './pages/Trainings'
 import Matches from './pages/Matches'
 import Tests from './pages/Tests'
 import Exercises from './pages/Exercises'
+import SchemeTool from './pages/SchemeTool'
 import RegistrationApprovals from './pages/RegistrationApprovals'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -117,13 +118,13 @@ const normalizeClubLogoUrl = (value) => {
 }
 
 const roleSections = {
-  club: ['categories', 'coaches', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'membershipFees', 'communication'],
-  coach: ['categories', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'communication'],
-  assistant: ['categories', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'communication'],
+  club: ['categories', 'coaches', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'schemes', 'tests', 'membershipFees', 'communication'],
+  coach: ['categories', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'schemes', 'tests', 'communication'],
+  assistant: ['categories', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'schemes', 'tests', 'communication'],
   parent: ['attendance', 'matches', 'trainings', 'tests', 'membershipFees', 'communication'],
   player: ['attendance', 'matches', 'trainings', 'tests'],
-  private_coach: ['categories', 'players', 'attendance', 'trainings', 'exercises', 'tests', 'communication'],
-  admin: ['clubs', 'categories', 'coaches', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'tests', 'membershipFees', 'communication', 'registrations']
+  private_coach: ['categories', 'players', 'attendance', 'trainings', 'exercises', 'schemes', 'tests', 'communication'],
+  admin: ['clubs', 'categories', 'coaches', 'players', 'attendance', 'matches', 'trainings', 'exercises', 'schemes', 'tests', 'membershipFees', 'communication', 'registrations']
 }
 
 const readAdminVisibleSections = () => {
@@ -199,6 +200,7 @@ function AppContent() {
     { key: 'matches', to: '/matches', icon: 'sports_soccer', label: 'Zápasy' },
     { key: 'trainings', to: '/trainings', icon: 'fitness_center', label: 'Tréningy' },
     { key: 'exercises', to: '/exercises', icon: 'psychology', label: 'Cvičenia' },
+    { key: 'schemes', to: '/schemes', icon: 'gesture', label: 'Schémy' },
     { key: 'tests', to: '/tests', icon: 'assignment', label: 'Testy' },
     { key: 'membershipFees', to: '/membership-fees', icon: 'payments', label: 'Členské poplatky' },
     { key: 'communication', to: '/communication', icon: 'manage_accounts', label: 'Komunikácia' },
@@ -521,6 +523,7 @@ function AppContent() {
               />
               <Route path="/trainings" element={canAccessSection('trainings') ? <Trainings /> : <Navigate to="/" />} />
               <Route path="/exercises" element={canAccessSection('exercises') ? <Exercises /> : <Navigate to="/" />} />
+              <Route path="/schemes" element={canAccessSection('schemes') ? <SchemeTool /> : <Navigate to="/" />} />
               <Route path="/tests" element={canAccessSection('tests') ? <Tests /> : <Navigate to="/" />} />
               <Route path="/membership-fees" element={canAccessSection('membershipFees') ? <SectionPlaceholder title="Členské poplatky" description="Evidencia členských poplatkov" /> : <Navigate to="/" />} />
               <Route path="/communication" element={canAccessSection('communication') ? <SectionPlaceholder title="Komunikácia" description="Správy, notifikácie a komunikácia" /> : <Navigate to="/" />} />
