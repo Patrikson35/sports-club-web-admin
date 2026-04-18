@@ -24,14 +24,15 @@
 
 .scheme-tools {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 0.5rem;
 }
 
 .scheme-tool-btn {
   width: 100%;
   border-radius: 10px;
-  min-height: 36px;
+  min-height: 38px;
+  text-align: left;
 }
 
 .scheme-tool-btn.active {

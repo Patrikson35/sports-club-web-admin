@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { api } from '../api'
 import './SchemeTool.css'
 
 const SPORTS = {
@@ -14,18 +15,31 @@ const TEAM_COLORS = {
   yellow: '#f5c24a'
 }
 
+const SURFACE_OPTIONS = [
+  { key: 'full', label: 'Celé ihrisko' },
+  { key: 'half', label: 'Polka ihriska' },
+  { key: 'quarter', label: 'Štvrtka ihriska (šestnástka)' },
+  { key: 'blank', label: 'Plocha (bez čiar)' }
+]
+
 const TOOL_OPTIONS = [
   { key: 'select', label: 'Výber' },
   { key: 'player', label: 'Hráč' },
   { key: 'ball', label: 'Lopta' },
   { key: 'cone', label: 'Kužeľ' },
-  { key: 'arrow', label: 'Šípka' },
+  { key: 'arrowPlayerBall', label: 'Pohyb hráča s loptou' },
+  { key: 'arrowBallDashed', label: 'Pohyb lopty (preruš.)' },
+  { key: 'areaRect', label: 'Area: obdĺžnik' },
+  { key: 'areaSquare', label: 'Area: štvorec' },
+  { key: 'areaCircle', label: 'Area: kruh' },
+  { key: 'areaDiamond', label: 'Area: diamant' },
   { key: 'text', label: 'Text' }
 ]
 
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+const isArrowTool = (toolKey) => toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
 
 const getCanvasPoint = (canvas, event) => {
   const rect = canvas.getBoundingClientRect()
@@ -131,30 +145,94 @@ const drawHockeyField = (ctx, width, height) => {
   ctx.strokeRect(width - 20 - goalW, (height - goalH) / 2, goalW, goalH)
 }
 
-const drawField = (ctx, sportKey, width, height) => {
-  if (sportKey === 'basketball') {
-    drawBasketballField(ctx, width, height)
-    return
+const getSurfaceRect = (surfaceKey, width, height) => {
+  const margin = 18
+  if (surfaceKey === 'half') {
+    return {
+      x: width * 0.35,
+      y: margin,
+      width: width * 0.63 - margin,
+      height: height - margin * 2
+    }
   }
 
-  if (sportKey === 'hockey') {
-    drawHockeyField(ctx, width, height)
-    return
+  if (surfaceKey === 'quarter') {
+    return {
+      x: width * 0.56,
+      y: height * 0.18,
+      width: width * 0.41,
+      height: height * 0.64
+    }
   }
 
-  drawFootballField(ctx, width, height)
+  return {
+    x: margin,
+    y: margin,
+    width: width - margin * 2,
+    height: height - margin * 2
+  }
 }
 
-const drawArrow = (ctx, fromX, fromY, toX, toY, color) => {
+const drawBlankSurface = (ctx, sportKey, width, height) => {
+  if (sportKey === 'basketball') {
+    ctx.fillStyle = '#d9b073'
+  } else if (sportKey === 'hockey') {
+    ctx.fillStyle = '#dbe9f7'
+  } else {
+    ctx.fillStyle = '#8fb357'
+  }
+  ctx.fillRect(0, 0, width, height)
+}
+
+const drawField = (ctx, sportKey, surfaceKey, width, height) => {
+  ctx.clearRect(0, 0, width, height)
+  drawBlankSurface(ctx, sportKey, width, height)
+
+  if (surfaceKey === 'blank') {
+    return
+  }
+
+  const rect = getSurfaceRect(surfaceKey, width, height)
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(rect.x, rect.y, rect.width, rect.height)
+  ctx.clip()
+  ctx.translate(rect.x, rect.y)
+
+  if (sportKey === 'basketball') {
+    drawBasketballField(ctx, rect.width, rect.height)
+  } else if (sportKey === 'hockey') {
+    drawHockeyField(ctx, rect.width, rect.height)
+  } else {
+    drawFootballField(ctx, rect.width, rect.height)
+  }
+
+  ctx.restore()
+
+  if (surfaceKey === 'half' || surfaceKey === 'quarter') {
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.32)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([8, 8])
+    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+    ctx.setLineDash([])
+  }
+}
+
+const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false) => {
   const angle = Math.atan2(toY - fromY, toX - fromX)
   const headLength = 16
 
   ctx.strokeStyle = color
   ctx.lineWidth = 4
+  if (dashed) {
+    ctx.setLineDash([12, 8])
+  }
   ctx.beginPath()
   ctx.moveTo(fromX, fromY)
   ctx.lineTo(toX, toY)
   ctx.stroke()
+  ctx.setLineDash([])
 
   ctx.fillStyle = color
   ctx.beginPath()
@@ -165,10 +243,86 @@ const drawArrow = (ctx, fromX, fromY, toX, toY, color) => {
   ctx.fill()
 }
 
+const drawAreaShape = (ctx, item, isSelected) => {
+  ctx.save()
+  ctx.strokeStyle = item.color || 'rgba(255, 243, 196, 0.95)'
+  ctx.fillStyle = item.fillColor || 'rgba(255, 243, 196, 0.18)'
+  ctx.lineWidth = 2
+
+  if (item.type === 'areaRect' || item.type === 'areaSquare') {
+    const width = Number(item.width || 120)
+    const height = item.type === 'areaSquare' ? width : Number(item.height || 80)
+    ctx.fillRect(item.x - width / 2, item.y - height / 2, width, height)
+    ctx.strokeRect(item.x - width / 2, item.y - height / 2, width, height)
+  } else if (item.type === 'areaCircle') {
+    const radius = Number(item.radius || 62)
+    ctx.beginPath()
+    ctx.arc(item.x, item.y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+  } else if (item.type === 'areaDiamond') {
+    const size = Number(item.size || 86)
+    ctx.beginPath()
+    ctx.moveTo(item.x, item.y - size)
+    ctx.lineTo(item.x + size, item.y)
+    ctx.lineTo(item.x, item.y + size)
+    ctx.lineTo(item.x - size, item.y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+  }
+
+  if (isSelected) {
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.setLineDash([7, 5])
+    if (item.type === 'areaRect' || item.type === 'areaSquare') {
+      const width = Number(item.width || 120)
+      const height = item.type === 'areaSquare' ? width : Number(item.height || 80)
+      ctx.strokeRect(item.x - width / 2 - 5, item.y - height / 2 - 5, width + 10, height + 10)
+    } else if (item.type === 'areaCircle') {
+      const radius = Number(item.radius || 62)
+      ctx.beginPath()
+      ctx.arc(item.x, item.y, radius + 6, 0, Math.PI * 2)
+      ctx.stroke()
+    } else if (item.type === 'areaDiamond') {
+      const size = Number(item.size || 86)
+      ctx.beginPath()
+      ctx.moveTo(item.x, item.y - size - 6)
+      ctx.lineTo(item.x + size + 6, item.y)
+      ctx.lineTo(item.x, item.y + size + 6)
+      ctx.lineTo(item.x - size - 6, item.y)
+      ctx.closePath()
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+  }
+
+  ctx.restore()
+}
+
 const drawSceneObjects = (ctx, objects, selectedId) => {
   objects.forEach((item) => {
-    if (item.type === 'arrow') {
-      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#f6f0ad')
+    if (item.type === 'arrowPlayerBall') {
+      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#f6f0ad', false)
+
+      ctx.beginPath()
+      ctx.arc(item.fromX, item.fromY, 6, 0, Math.PI * 2)
+      ctx.fillStyle = '#f8fafc'
+      ctx.fill()
+      ctx.strokeStyle = '#101828'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+      return
+    }
+
+    if (item.type === 'arrowBallDashed') {
+      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#cbe0ff', true)
+      return
+    }
+
+    if (item.type === 'areaRect' || item.type === 'areaSquare' || item.type === 'areaCircle' || item.type === 'areaDiamond') {
+      drawAreaShape(ctx, item, String(selectedId || '') === String(item.id || ''))
       return
     }
 
@@ -255,10 +409,43 @@ const hitTest = (objects, point) => {
   for (let i = objects.length - 1; i >= 0; i -= 1) {
     const item = objects[i]
 
-    if (item.type === 'arrow') {
+    if (item.type === 'arrowPlayerBall' || item.type === 'arrowBallDashed') {
       const minX = Math.min(item.fromX, item.toX) - 12
       const maxX = Math.max(item.fromX, item.toX) + 12
       const minY = Math.min(item.fromY, item.toY) - 12
+          if (item.type === 'areaRect' || item.type === 'areaSquare') {
+            const width = Number(item.width || 120)
+            const height = item.type === 'areaSquare' ? width : Number(item.height || 80)
+            if (
+              point.x >= item.x - width / 2
+              && point.x <= item.x + width / 2
+              && point.y >= item.y - height / 2
+              && point.y <= item.y + height / 2
+            ) {
+              return item
+            }
+            continue
+          }
+
+          if (item.type === 'areaCircle') {
+            const radius = Number(item.radius || 62)
+            const dx = point.x - item.x
+            const dy = point.y - item.y
+            if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+              return item
+            }
+            continue
+          }
+
+          if (item.type === 'areaDiamond') {
+            const size = Number(item.size || 86)
+            const normalized = (Math.abs(point.x - item.x) / size) + (Math.abs(point.y - item.y) / size)
+            if (normalized <= 1) {
+              return item
+            }
+            continue
+          }
+
       const maxY = Math.max(item.fromY, item.toY) + 12
       if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
         return item
@@ -291,6 +478,7 @@ function SchemeTool() {
   const nextIdRef = useRef(1)
 
   const [sportKey, setSportKey] = useState('football')
+  const [surfaceKey, setSurfaceKey] = useState('full')
   const [activeTool, setActiveTool] = useState('select')
   const [activeTeamColor, setActiveTeamColor] = useState('red')
   const [sceneObjects, setSceneObjects] = useState([])
@@ -302,25 +490,74 @@ function SchemeTool() {
   const activeSportLabel = useMemo(() => SPORTS[sportKey]?.label || 'Šport', [sportKey])
 
   useEffect(() => {
+    let isMounted = true
+
+    const readSportFromUser = () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        const candidates = [user?.sportKey, user?.sport, user?.clubSportKey, user?.clubSport]
+        const normalized = candidates
+          .map((item) => String(item || '').trim().toLowerCase())
+          .find((item) => item === 'football' || item === 'basketball' || item === 'hockey')
+        return normalized || ''
+      } catch {
+        return ''
+      }
+    }
+
+    const mapSport = (value) => {
+      const normalized = String(value || '').trim().toLowerCase()
+      if (normalized === 'futbal') return 'football'
+      if (normalized === 'basketbal') return 'basketball'
+      if (normalized === 'hokej') return 'hockey'
+      if (normalized === 'football' || normalized === 'basketball' || normalized === 'hockey') return normalized
+      return ''
+    }
+
+    const loadClubSport = async () => {
+      const fromUser = mapSport(readSportFromUser())
+      if (fromUser && isMounted) {
+        setSportKey(fromUser)
+      }
+
+      try {
+        const club = await api.getMyClub()
+        if (!isMounted) return
+        const fromClub = mapSport(club?.sportKey || club?.sport)
+        if (fromClub) {
+          setSportKey(fromClub)
+        }
+      } catch {
+        // Keep fallback sport when club sport cannot be resolved.
+      }
+    }
+
+    loadClubSport()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    drawField(ctx, sportKey, canvas.width, canvas.height)
+    drawField(ctx, sportKey, surfaceKey, canvas.width, canvas.height)
     drawSceneObjects(ctx, sceneObjects, selectedObjectId)
 
     if (arrowStart) {
       ctx.beginPath()
       ctx.arc(arrowStart.x, arrowStart.y, 7, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(246, 240, 173, 0.95)'
+      ctx.fillStyle = arrowStart.type === 'arrowBallDashed' ? 'rgba(203, 224, 255, 0.95)' : 'rgba(246, 240, 173, 0.95)'
       ctx.fill()
       ctx.strokeStyle = '#101828'
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  }, [sportKey, sceneObjects, selectedObjectId, arrowStart])
+  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, arrowStart])
 
   const createId = () => {
     const id = `scheme-item-${nextIdRef.current}`
@@ -348,25 +585,58 @@ function SchemeTool() {
       return
     }
 
-    if (tool === 'arrow') {
+    if (isArrowTool(tool)) {
       if (!arrowStart) {
-        setArrowStart(point)
+        setArrowStart({ ...point, type: tool })
         return
       }
 
+      const arrowType = String(arrowStart?.type || tool)
       setSceneObjects((prev) => [
         ...prev,
         {
           id: createId(),
-          type: 'arrow',
+          type: arrowType,
           fromX: arrowStart.x,
           fromY: arrowStart.y,
           toX: point.x,
           toY: point.y,
-          color: '#fff4a8'
+          color: arrowType === 'arrowBallDashed' ? '#cbe0ff' : '#fff4a8'
         }
       ])
       setArrowStart(null)
+      return
+    }
+
+    if (tool === 'areaRect') {
+      setSceneObjects((prev) => [
+        ...prev,
+        { id: createId(), type: 'areaRect', x: point.x, y: point.y, width: 170, height: 100, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
+      ])
+      return
+    }
+
+    if (tool === 'areaSquare') {
+      setSceneObjects((prev) => [
+        ...prev,
+        { id: createId(), type: 'areaSquare', x: point.x, y: point.y, width: 128, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
+      ])
+      return
+    }
+
+    if (tool === 'areaCircle') {
+      setSceneObjects((prev) => [
+        ...prev,
+        { id: createId(), type: 'areaCircle', x: point.x, y: point.y, radius: 68, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
+      ])
+      return
+    }
+
+    if (tool === 'areaDiamond') {
+      setSceneObjects((prev) => [
+        ...prev,
+        { id: createId(), type: 'areaDiamond', x: point.x, y: point.y, size: 82, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
+      ])
       return
     }
 
@@ -395,7 +665,7 @@ function SchemeTool() {
     if (activeTool === 'select') {
       if (hit) {
         setSelectedObjectId(hit.id)
-        if (hit.type !== 'arrow' && hit.type !== 'text') {
+        if (hit.type !== 'arrowPlayerBall' && hit.type !== 'arrowBallDashed' && hit.type !== 'text') {
           setDragState({
             id: hit.id,
             offsetX: point.x - hit.x,
@@ -411,7 +681,7 @@ function SchemeTool() {
       return
     }
 
-    if (hit && activeTool !== 'arrow') {
+    if (hit && !isArrowTool(activeTool)) {
       setSelectedObjectId(hit.id)
       return
     }
@@ -471,7 +741,7 @@ function SchemeTool() {
 
     if (exportLinkRef.current) {
       exportLinkRef.current.href = dataUrl
-      exportLinkRef.current.download = `schema-${sportKey}-${Date.now()}.png`
+      exportLinkRef.current.download = `schema-${sportKey}-${surfaceKey}-${Date.now()}.png`
       exportLinkRef.current.click()
     }
   }
@@ -481,17 +751,17 @@ function SchemeTool() {
       <div className="unified-toolbar scheme-toolbar">
         <div>
           <h2 className="manager-section-title">Editor športových schém</h2>
-          <p className="unified-muted">Šport: {activeSportLabel}. Vyber nástroj, kresli prvky a exportuj PNG.</p>
+          <p className="unified-muted">Šport klubu: {activeSportLabel}. Vyber plochu, nástroj, kresli a exportuj PNG.</p>
         </div>
       </div>
 
       <div className="scheme-layout">
         <aside className="card settings-placeholder-card scheme-controls">
           <div className="form-group">
-            <label htmlFor="scheme-sport">Šport</label>
-            <select id="scheme-sport" value={sportKey} onChange={(event) => setSportKey(String(event.target.value || 'football'))}>
-              {Object.values(SPORTS).map((sport) => (
-                <option key={sport.key} value={sport.key}>{sport.label}</option>
+            <label htmlFor="scheme-surface">Plocha</label>
+            <select id="scheme-surface" value={surfaceKey} onChange={(event) => setSurfaceKey(String(event.target.value || 'full'))}>
+              {SURFACE_OPTIONS.map((surface) => (
+                <option key={surface.key} value={surface.key}>{surface.label}</option>
               ))}
             </select>
           </div>
@@ -504,7 +774,9 @@ function SchemeTool() {
                 className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
                 onClick={() => {
                   setActiveTool(tool.key)
-                  if (tool.key !== 'arrow') {
+                  if (!isArrowTool(tool.key)) {
+                    setArrowStart(null)
+                  } else if (arrowStart?.type && arrowStart.type !== tool.key) {
                     setArrowStart(null)
                   }
                 }}
@@ -534,7 +806,11 @@ function SchemeTool() {
           </div>
 
           {arrowStart ? (
-            <p className="manager-empty-text" style={{ margin: 0 }}>Šípka: klikni na cieľový bod.</p>
+            <p className="manager-empty-text" style={{ margin: 0 }}>
+              {arrowStart.type === 'arrowBallDashed'
+                ? 'Šípka pohybu lopty: klikni na cieľový bod.'
+                : 'Šípka pohybu hráča s loptou: klikni na cieľový bod.'}
+            </p>
           ) : null}
 
           {exportDataUrl ? (
