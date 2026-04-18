@@ -7421,6 +7421,15 @@ function MyClub() {
                           <button
                             type="button"
                             className="btn-secondary"
+                            onClick={() => {
+                              window.location.href = '/schemes'
+                            }}
+                          >
+                            Vytvoriť obrázok
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
                             onClick={clearExerciseImage}
                             disabled={!exerciseFormDraft.imageUrl}
                           >
