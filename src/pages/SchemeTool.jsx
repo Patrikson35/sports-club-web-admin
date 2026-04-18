@@ -18,7 +18,7 @@ const TEAM_COLORS = {
 const SURFACE_OPTIONS = [
   { key: 'full', label: 'Celé ihrisko' },
   { key: 'half', label: 'Polka ihriska' },
-  { key: 'quarter', label: 'Štvrtka ihriska (šestnástka)' },
+  { key: 'third', label: 'Tretina ihriska' },
   { key: 'blank', label: 'Plocha (bez čiar)' }
 ]
 
@@ -27,6 +27,7 @@ const TOOL_OPTIONS = [
   { key: 'player', label: 'Hráč' },
   { key: 'ball', label: 'Lopta' },
   { key: 'cone', label: 'Kužeľ' },
+  { key: 'arrowPlayerStraight', label: 'Pohyb hráča bez lopty' },
   { key: 'arrowPlayerBall', label: 'Pohyb hráča s loptou' },
   { key: 'arrowBallDashed', label: 'Pohyb lopty (preruš.)' },
   { key: 'areaRect', label: 'Area: obdĺžnik' },
@@ -39,7 +40,9 @@ const TOOL_OPTIONS = [
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
-const isArrowTool = (toolKey) => toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
+const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
+
+const MIN_AREA_SIZE = 26
 
 const getCanvasPoint = (canvas, event) => {
   const rect = canvas.getBoundingClientRect()
@@ -145,31 +148,30 @@ const drawHockeyField = (ctx, width, height) => {
   ctx.strokeRect(width - 20 - goalW, (height - goalH) / 2, goalW, goalH)
 }
 
-const getSurfaceRect = (surfaceKey, width, height) => {
-  const margin = 18
+const getSourceCropRect = (surfaceKey, width, height) => {
   if (surfaceKey === 'half') {
     return {
-      x: width * 0.35,
-      y: margin,
-      width: width * 0.63 - margin,
-      height: height - margin * 2
+      x: width * 0.5,
+      y: 0,
+      width: width * 0.5,
+      height
     }
   }
 
-  if (surfaceKey === 'quarter') {
+  if (surfaceKey === 'third') {
     return {
-      x: width * 0.56,
-      y: height * 0.18,
-      width: width * 0.41,
-      height: height * 0.64
+      x: width * (2 / 3),
+      y: 0,
+      width: width / 3,
+      height
     }
   }
 
   return {
-    x: margin,
-    y: margin,
-    width: width - margin * 2,
-    height: height - margin * 2
+    x: 0,
+    y: 0,
+    width,
+    height
   }
 }
 
@@ -184,6 +186,16 @@ const drawBlankSurface = (ctx, sportKey, width, height) => {
   ctx.fillRect(0, 0, width, height)
 }
 
+const drawFullTemplate = (ctx, sportKey, width, height) => {
+  if (sportKey === 'basketball') {
+    drawBasketballField(ctx, width, height)
+  } else if (sportKey === 'hockey') {
+    drawHockeyField(ctx, width, height)
+  } else {
+    drawFootballField(ctx, width, height)
+  }
+}
+
 const drawField = (ctx, sportKey, surfaceKey, width, height) => {
   ctx.clearRect(0, 0, width, height)
   drawBlankSurface(ctx, sportKey, width, height)
@@ -192,31 +204,32 @@ const drawField = (ctx, sportKey, surfaceKey, width, height) => {
     return
   }
 
-  const rect = getSurfaceRect(surfaceKey, width, height)
-
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(rect.x, rect.y, rect.width, rect.height)
-  ctx.clip()
-  ctx.translate(rect.x, rect.y)
-
-  if (sportKey === 'basketball') {
-    drawBasketballField(ctx, rect.width, rect.height)
-  } else if (sportKey === 'hockey') {
-    drawHockeyField(ctx, rect.width, rect.height)
-  } else {
-    drawFootballField(ctx, rect.width, rect.height)
+  if (surfaceKey === 'full') {
+    drawFullTemplate(ctx, sportKey, width, height)
+    return
   }
 
-  ctx.restore()
+  const sourceCanvas = document.createElement('canvas')
+  sourceCanvas.width = width
+  sourceCanvas.height = height
+  const sourceCtx = sourceCanvas.getContext('2d')
+  if (!sourceCtx) return
 
-  if (surfaceKey === 'half' || surfaceKey === 'quarter') {
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.32)'
-    ctx.lineWidth = 2
-    ctx.setLineDash([8, 8])
-    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
-    ctx.setLineDash([])
-  }
+  drawBlankSurface(sourceCtx, sportKey, width, height)
+  drawFullTemplate(sourceCtx, sportKey, width, height)
+
+  const crop = getSourceCropRect(surfaceKey, width, height)
+  ctx.drawImage(
+    sourceCanvas,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    width,
+    height
+  )
 }
 
 const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false) => {
@@ -241,6 +254,95 @@ const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false) => {
   ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6))
   ctx.closePath()
   ctx.fill()
+}
+
+const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color) => {
+  const dx = toX - fromX
+  const dy = toY - fromY
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  if (distance < 8) return
+
+  const steps = Math.max(24, Math.floor(distance / 6))
+  const amplitude = 8
+  const frequency = (Math.PI * 2) / 26
+  const nx = -dy / distance
+  const ny = dx / distance
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = 4
+  ctx.beginPath()
+
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps
+    const baseX = fromX + dx * t
+    const baseY = fromY + dy * t
+    const wave = Math.sin(t * distance * frequency) * amplitude
+    const px = baseX + nx * wave
+    const py = baseY + ny * wave
+
+    if (i === 0) {
+      ctx.moveTo(px, py)
+    } else {
+      ctx.lineTo(px, py)
+    }
+  }
+
+  ctx.stroke()
+
+  drawArrow(ctx, fromX + dx * 0.93, fromY + dy * 0.93, toX, toY, color, false)
+}
+
+const buildAreaFromDrag = (toolType, startPoint, endPoint) => {
+  const width = Math.max(MIN_AREA_SIZE, Math.abs(endPoint.x - startPoint.x))
+  const height = Math.max(MIN_AREA_SIZE, Math.abs(endPoint.y - startPoint.y))
+  const centerX = (startPoint.x + endPoint.x) / 2
+  const centerY = (startPoint.y + endPoint.y) / 2
+
+  if (toolType === 'areaRect') {
+    return {
+      type: 'areaRect',
+      x: centerX,
+      y: centerY,
+      width,
+      height,
+      color: 'rgba(255, 243, 196, 0.98)',
+      fillColor: 'rgba(255, 243, 196, 0.2)'
+    }
+  }
+
+  if (toolType === 'areaSquare') {
+    const size = Math.max(width, height)
+    return {
+      type: 'areaSquare',
+      x: centerX,
+      y: centerY,
+      width: size,
+      color: 'rgba(255, 243, 196, 0.98)',
+      fillColor: 'rgba(255, 243, 196, 0.2)'
+    }
+  }
+
+  if (toolType === 'areaCircle') {
+    const radius = Math.max(MIN_AREA_SIZE / 2, Math.sqrt((endPoint.x - startPoint.x) ** 2 + (endPoint.y - startPoint.y) ** 2) / 2)
+    return {
+      type: 'areaCircle',
+      x: centerX,
+      y: centerY,
+      radius,
+      color: 'rgba(255, 243, 196, 0.98)',
+      fillColor: 'rgba(255, 243, 196, 0.2)'
+    }
+  }
+
+  const size = Math.max(width, height) / 2
+  return {
+    type: 'areaDiamond',
+    x: centerX,
+    y: centerY,
+    size,
+    color: 'rgba(255, 243, 196, 0.98)',
+    fillColor: 'rgba(255, 243, 196, 0.2)'
+  }
 }
 
 const drawAreaShape = (ctx, item, isSelected) => {
@@ -303,8 +405,15 @@ const drawAreaShape = (ctx, item, isSelected) => {
 
 const drawSceneObjects = (ctx, objects, selectedId) => {
   objects.forEach((item) => {
+    const isSelected = String(selectedId || '') === String(item.id || '')
+
+    if (item.type === 'arrowPlayerStraight') {
+      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#e8f2b7', false)
+      return
+    }
+
     if (item.type === 'arrowPlayerBall') {
-      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#f6f0ad', false)
+      drawWavyArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#f6f0ad')
 
       ctx.beginPath()
       ctx.arc(item.fromX, item.fromY, 6, 0, Math.PI * 2)
@@ -322,7 +431,7 @@ const drawSceneObjects = (ctx, objects, selectedId) => {
     }
 
     if (item.type === 'areaRect' || item.type === 'areaSquare' || item.type === 'areaCircle' || item.type === 'areaDiamond') {
-      drawAreaShape(ctx, item, String(selectedId || '') === String(item.id || ''))
+      drawAreaShape(ctx, item, isSelected)
       return
     }
 
@@ -332,8 +441,6 @@ const drawSceneObjects = (ctx, objects, selectedId) => {
       ctx.fillText(String(item.text || 'Text'), item.x, item.y)
       return
     }
-
-    const isSelected = String(selectedId || '') === String(item.id || '')
 
     if (item.type === 'player') {
       ctx.beginPath()
@@ -409,7 +516,7 @@ const hitTest = (objects, point) => {
   for (let i = objects.length - 1; i >= 0; i -= 1) {
     const item = objects[i]
 
-    if (item.type === 'arrowPlayerBall' || item.type === 'arrowBallDashed') {
+    if (item.type === 'arrowPlayerStraight' || item.type === 'arrowPlayerBall' || item.type === 'arrowBallDashed') {
       const minX = Math.min(item.fromX, item.toX) - 12
       const maxX = Math.max(item.fromX, item.toX) + 12
       const minY = Math.min(item.fromY, item.toY) - 12
@@ -485,6 +592,7 @@ function SchemeTool() {
   const [selectedObjectId, setSelectedObjectId] = useState('')
   const [dragState, setDragState] = useState(null)
   const [arrowStart, setArrowStart] = useState(null)
+  const [areaDraft, setAreaDraft] = useState(null)
   const [exportDataUrl, setExportDataUrl] = useState('')
 
   const activeSportLabel = useMemo(() => SPORTS[sportKey]?.label || 'Šport', [sportKey])
@@ -548,6 +656,10 @@ function SchemeTool() {
     drawField(ctx, sportKey, surfaceKey, canvas.width, canvas.height)
     drawSceneObjects(ctx, sceneObjects, selectedObjectId)
 
+    if (areaDraft?.toolType && areaDraft?.startPoint && areaDraft?.endPoint) {
+      drawAreaShape(ctx, buildAreaFromDrag(areaDraft.toolType, areaDraft.startPoint, areaDraft.endPoint), true)
+    }
+
     if (arrowStart) {
       ctx.beginPath()
       ctx.arc(arrowStart.x, arrowStart.y, 7, 0, Math.PI * 2)
@@ -557,7 +669,7 @@ function SchemeTool() {
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, arrowStart])
+  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, arrowStart, areaDraft])
 
   const createId = () => {
     const id = `scheme-item-${nextIdRef.current}`
@@ -601,42 +713,10 @@ function SchemeTool() {
           fromY: arrowStart.y,
           toX: point.x,
           toY: point.y,
-          color: arrowType === 'arrowBallDashed' ? '#cbe0ff' : '#fff4a8'
+          color: arrowType === 'arrowBallDashed' ? '#cbe0ff' : (arrowType === 'arrowPlayerStraight' ? '#e8f2b7' : '#fff4a8')
         }
       ])
       setArrowStart(null)
-      return
-    }
-
-    if (tool === 'areaRect') {
-      setSceneObjects((prev) => [
-        ...prev,
-        { id: createId(), type: 'areaRect', x: point.x, y: point.y, width: 170, height: 100, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
-      ])
-      return
-    }
-
-    if (tool === 'areaSquare') {
-      setSceneObjects((prev) => [
-        ...prev,
-        { id: createId(), type: 'areaSquare', x: point.x, y: point.y, width: 128, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
-      ])
-      return
-    }
-
-    if (tool === 'areaCircle') {
-      setSceneObjects((prev) => [
-        ...prev,
-        { id: createId(), type: 'areaCircle', x: point.x, y: point.y, radius: 68, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
-      ])
-      return
-    }
-
-    if (tool === 'areaDiamond') {
-      setSceneObjects((prev) => [
-        ...prev,
-        { id: createId(), type: 'areaDiamond', x: point.x, y: point.y, size: 82, color: 'rgba(255, 243, 196, 0.98)', fillColor: 'rgba(255, 243, 196, 0.2)' }
-      ])
       return
     }
 
@@ -660,6 +740,15 @@ function SchemeTool() {
     if (!canvas) return
 
     const point = getCanvasPoint(canvas, event)
+    const isAreaTool = activeTool === 'areaRect' || activeTool === 'areaSquare' || activeTool === 'areaCircle' || activeTool === 'areaDiamond'
+
+    if (isAreaTool) {
+      setAreaDraft({ toolType: activeTool, startPoint: point, endPoint: point })
+      setSelectedObjectId('')
+      setDragState(null)
+      return
+    }
+
     const hit = hitTest(sceneObjects, point)
 
     if (activeTool === 'select') {
@@ -690,6 +779,14 @@ function SchemeTool() {
   }
 
   const handlePointerMove = (event) => {
+    if (areaDraft?.toolType) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const point = getCanvasPoint(canvas, event)
+      setAreaDraft((prev) => (prev ? { ...prev, endPoint: point } : prev))
+      return
+    }
+
     if (!dragState) return
 
     const canvas = canvasRef.current
@@ -710,6 +807,18 @@ function SchemeTool() {
   }
 
   const handlePointerUp = () => {
+    if (areaDraft?.toolType && areaDraft?.startPoint && areaDraft?.endPoint) {
+      const areaObject = buildAreaFromDrag(areaDraft.toolType, areaDraft.startPoint, areaDraft.endPoint)
+      setSceneObjects((prev) => [
+        ...prev,
+        {
+          id: createId(),
+          ...areaObject
+        }
+      ])
+      setAreaDraft(null)
+    }
+
     if (dragState) {
       setDragState(null)
     }
@@ -725,6 +834,7 @@ function SchemeTool() {
     setSceneObjects([])
     setSelectedObjectId('')
     setArrowStart(null)
+    setAreaDraft(null)
   }
 
   const undoLastObject = () => {
@@ -779,6 +889,9 @@ function SchemeTool() {
                   } else if (arrowStart?.type && arrowStart.type !== tool.key) {
                     setArrowStart(null)
                   }
+                  if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
+                    setAreaDraft(null)
+                  }
                 }}
               >
                 {tool.label}
@@ -809,7 +922,15 @@ function SchemeTool() {
             <p className="manager-empty-text" style={{ margin: 0 }}>
               {arrowStart.type === 'arrowBallDashed'
                 ? 'Šípka pohybu lopty: klikni na cieľový bod.'
-                : 'Šípka pohybu hráča s loptou: klikni na cieľový bod.'}
+                : (arrowStart.type === 'arrowPlayerStraight'
+                    ? 'Šípka pohybu hráča bez lopty: klikni na cieľový bod.'
+                    : 'Šípka pohybu hráča s loptou: klikni na cieľový bod.')}
+            </p>
+          ) : null}
+
+          {areaDraft?.toolType ? (
+            <p className="manager-empty-text" style={{ margin: 0 }}>
+              Area: podrž a ťahaj myšou pre veľkosť, potom pusti.
             </p>
           ) : null}
 
