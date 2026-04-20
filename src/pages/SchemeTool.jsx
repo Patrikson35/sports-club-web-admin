@@ -539,15 +539,15 @@ const toLocalPoint = (point, itemX, itemY, rotationDeg = 0) => {
   }
 }
 
-const isPointInRotatedRect = (point, item) => {
+const isPointInRotatedRect = (point, item, padding = 0) => {
   const width = Number(item.width || 0)
   const height = Number(item.height || 0)
   const local = toLocalPoint(point, item.x, item.y, item.rotation)
   return (
-    local.x >= -width / 2
-    && local.x <= width / 2
-    && local.y >= -height / 2
-    && local.y <= height / 2
+    local.x >= -(width / 2 + padding)
+    && local.x <= (width / 2 + padding)
+    && local.y >= -(height / 2 + padding)
+    && local.y <= (height / 2 + padding)
   )
 }
 
@@ -899,7 +899,7 @@ const hitTest = (objects, point) => {
 
     if (item.type === 'ladder' || item.type === 'miniGoal' || item.type === 'hurdle') {
       if (isRotatableAidType(item.type)) {
-        if (isPointInRotatedRect(point, item)) {
+        if (isPointInRotatedRect(point, item, 8)) {
           return item
         }
         continue
@@ -907,7 +907,12 @@ const hitTest = (objects, point) => {
 
       const width = Number(item.width || 62)
       const height = Number(item.height || 30)
-      if (point.x >= item.x - width / 2 && point.x <= item.x + width / 2 && point.y >= item.y - height / 2 && point.y <= item.y + height / 2) {
+      if (
+        point.x >= item.x - width / 2 - 8
+        && point.x <= item.x + width / 2 + 8
+        && point.y >= item.y - height / 2 - 8
+        && point.y <= item.y + height / 2 + 8
+      ) {
         return item
       }
       continue
@@ -1151,6 +1156,14 @@ function SchemeTool() {
     const canvas = canvasRef.current
     if (!canvas) return
 
+    if (typeof canvas.setPointerCapture === 'function') {
+      try {
+        canvas.setPointerCapture(event.pointerId)
+      } catch {
+        // No-op: pointer capture may fail on unsupported environments.
+      }
+    }
+
     const point = getCanvasPoint(canvas, event)
     const isAreaTool = activeTool === 'areaRect' || activeTool === 'areaSquare' || activeTool === 'areaCircle' || activeTool === 'areaDiamond'
 
@@ -1208,6 +1221,18 @@ function SchemeTool() {
     }
 
     if (hit && !isArrowTool(activeTool)) {
+      if (hit.type === 'ladder' || hit.type === 'miniGoal' || hit.type === 'hurdle') {
+        setSelectedObjectId(hit.id)
+        setDragState({
+          id: hit.id,
+          mode: 'object',
+          offsetX: point.x - hit.x,
+          offsetY: point.y - hit.y
+        })
+        setResizeState(null)
+        return
+      }
+
       setSelectedObjectId(hit.id)
       return
     }
@@ -1279,7 +1304,16 @@ function SchemeTool() {
     }))
   }
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (event) => {
+    const canvas = canvasRef.current
+    if (canvas && typeof canvas.releasePointerCapture === 'function') {
+      try {
+        canvas.releasePointerCapture(event.pointerId)
+      } catch {
+        // No-op: pointer capture may already be released.
+      }
+    }
+
     if (areaDraft?.toolType && areaDraft?.startPoint && areaDraft?.endPoint) {
       const areaObject = buildAreaFromDrag(areaDraft.toolType, areaDraft.startPoint, areaDraft.endPoint)
       setSceneObjects((prev) => [
