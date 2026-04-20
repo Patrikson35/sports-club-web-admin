@@ -65,6 +65,24 @@ const TOOL_SHORT = {
   text: 'TX'
 }
 
+const TOOL_ICON = {
+  select: '⌖',
+  player: '◉',
+  ball: '●',
+  cone: '▲',
+  ladder: '▦',
+  miniGoal: '⊓',
+  hurdle: '≋',
+  arrowPlayerStraight: '➜',
+  arrowPlayerBall: '↝',
+  arrowBallDashed: '⇢',
+  areaRect: '▭',
+  areaSquare: '□',
+  areaCircle: '◯',
+  areaDiamond: '◇',
+  text: 'T'
+}
+
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
@@ -1554,6 +1572,7 @@ function SchemeTool() {
                           key={tool.key}
                           type="button"
                           className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
+                          title={tool.label}
                           onClick={() => {
                             setActiveTool(tool.key)
                             if (!isArrowTool(tool.key)) {
@@ -1566,7 +1585,7 @@ function SchemeTool() {
                             }
                           }}
                         >
-                          <span className="scheme-tool-badge" aria-hidden="true">{TOOL_SHORT[tool.key] || 'TL'}</span>
+                          <span className="scheme-tool-icon" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || '•'}</span>
                           <span className="scheme-tool-label">{tool.label}</span>
                         </button>
                       )
