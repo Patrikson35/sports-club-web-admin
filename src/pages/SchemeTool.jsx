@@ -1223,7 +1223,7 @@ function SchemeTool() {
     const point = getCanvasPoint(canvas, event)
     const isAreaTool = activeTool === 'areaRect' || activeTool === 'areaSquare' || activeTool === 'areaCircle' || activeTool === 'areaDiamond'
 
-    if (activeTool === 'select' && selectedObject && isRotatableAidType(selectedObject.type) && hitRotationHandle(selectedObject, point)) {
+    if (selectedObject && isRotatableAidType(selectedObject.type) && hitRotationHandle(selectedObject, point)) {
       setRotateState({ id: selectedObject.id })
       setDragState(null)
       setResizeState(null)
