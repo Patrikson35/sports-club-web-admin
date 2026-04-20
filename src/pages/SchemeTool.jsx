@@ -33,6 +33,7 @@ const TOOL_OPTIONS = [
   { key: 'arrowPlayerStraight', label: 'Pohyb hráča bez lopty' },
   { key: 'arrowPlayerBall', label: 'Pohyb hráča s loptou' },
   { key: 'arrowBallDashed', label: 'Pohyb lopty (preruš.)' },
+  { key: 'arrowShotDouble', label: 'Strela (dvojitá šípka)' },
   { key: 'areaRect', label: 'Area: obdĺžnik' },
   { key: 'areaSquare', label: 'Area: štvorec' },
   { key: 'areaCircle', label: 'Area: kruh' },
@@ -43,7 +44,7 @@ const TOOL_OPTIONS = [
 const TOOL_GROUPS = [
   { title: 'Zaklad', keys: ['select', 'player', 'ball', 'cone'] },
   { title: 'Pomocky', keys: ['ladder', 'miniGoal', 'hurdle'] },
-  { title: 'Pohyby', keys: ['arrowPlayerStraight', 'arrowPlayerBall', 'arrowBallDashed'] },
+  { title: 'Pohyby', keys: ['arrowPlayerStraight', 'arrowPlayerBall', 'arrowBallDashed', 'arrowShotDouble'] },
   { title: 'Zony', keys: ['areaRect', 'areaSquare', 'areaCircle', 'areaDiamond', 'text'] }
 ]
 
@@ -58,6 +59,7 @@ const TOOL_SHORT = {
   arrowPlayerStraight: 'PB',
   arrowPlayerBall: 'PL',
   arrowBallDashed: 'LP',
+  arrowShotDouble: 'ST',
   areaRect: 'OR',
   areaSquare: 'ST',
   areaCircle: 'KR',
@@ -76,6 +78,7 @@ const TOOL_ICON = {
   arrowPlayerStraight: 'arrow_right_alt',
   arrowPlayerBall: 'rebase_edit',
   arrowBallDashed: 'trending_flat',
+  arrowShotDouble: 'keyboard_double_arrow_right',
   areaRect: 'rectangle',
   areaSquare: 'crop_square',
   areaCircle: 'circle',
@@ -86,11 +89,16 @@ const TOOL_ICON = {
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
-const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
+const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed' || toolKey === 'arrowShotDouble'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
 const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle'
-const getArrowColor = (arrowType) => (arrowType === 'arrowBallDashed' ? '#cbe0ff' : (arrowType === 'arrowPlayerStraight' ? '#e8f2b7' : '#fff4a8'))
+const getArrowColor = (arrowType) => {
+  if (arrowType === 'arrowBallDashed') return '#cbe0ff'
+  if (arrowType === 'arrowPlayerStraight') return '#e8f2b7'
+  if (arrowType === 'arrowShotDouble') return '#ffd1a0'
+  return '#fff4a8'
+}
 
 const MIN_AREA_SIZE = 26
 
@@ -371,6 +379,143 @@ const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) 
   } else {
     drawArrow(ctx, fromX + dx * 0.93, fromY + dy * 0.93, toX, toY, color, false)
   }
+}
+
+const drawDoubleArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) => {
+  const offset = 5
+  let tangentX = toX - fromX
+  let tangentY = toY - fromY
+
+  if (controlPoint) {
+    const t = 0.5
+    tangentX = 2 * (1 - t) * (controlPoint.x - fromX) + 2 * t * (toX - controlPoint.x)
+    tangentY = 2 * (1 - t) * (controlPoint.y - fromY) + 2 * t * (toY - controlPoint.y)
+  }
+
+  const tangentLength = Math.hypot(tangentX, tangentY) || 1
+  const nx = -tangentY / tangentLength
+  const ny = tangentX / tangentLength
+
+  const upper = {
+    fromX: fromX + nx * offset,
+    fromY: fromY + ny * offset,
+    toX: toX + nx * offset,
+    toY: toY + ny * offset,
+    controlPoint: controlPoint
+      ? {
+          x: controlPoint.x + nx * offset,
+          y: controlPoint.y + ny * offset
+        }
+      : null
+  }
+
+  const lower = {
+    fromX: fromX - nx * offset,
+    fromY: fromY - ny * offset,
+    toX: toX - nx * offset,
+    toY: toY - ny * offset,
+    controlPoint: controlPoint
+      ? {
+          x: controlPoint.x - nx * offset,
+          y: controlPoint.y - ny * offset
+        }
+      : null
+  }
+
+  drawArrow(ctx, upper.fromX, upper.fromY, upper.toX, upper.toY, color, false, upper.controlPoint)
+  drawArrow(ctx, lower.fromX, lower.fromY, lower.toX, lower.toY, color, false, lower.controlPoint)
+}
+
+const drawSoccerBall = (ctx, x, y, isSelected) => {
+  ctx.save()
+
+  const shell = ctx.createRadialGradient(x - 3, y - 4, 2, x, y, 10)
+  shell.addColorStop(0, '#ffffff')
+  shell.addColorStop(1, '#e7edf3')
+
+  ctx.beginPath()
+  ctx.arc(x, y, 9, 0, Math.PI * 2)
+  ctx.fillStyle = shell
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = '#111827'
+  ctx.stroke()
+
+  const patches = [
+    { x: 0, y: -3.2, r: 1.6 },
+    { x: 3.1, y: -0.2, r: 1.35 },
+    { x: 1.8, y: 3.1, r: 1.35 },
+    { x: -1.8, y: 3.1, r: 1.35 },
+    { x: -3.1, y: -0.2, r: 1.35 }
+  ]
+  ctx.fillStyle = '#111827'
+  patches.forEach((patch) => {
+    ctx.beginPath()
+    ctx.arc(x + patch.x, y + patch.y, patch.r, 0, Math.PI * 2)
+    ctx.fill()
+  })
+
+  if (isSelected) {
+    ctx.beginPath()
+    ctx.arc(x, y, 14, 0, Math.PI * 2)
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+const drawTrainingCone = (ctx, x, y, isSelected) => {
+  ctx.save()
+
+  const shadow = ctx.createRadialGradient(x, y + 12, 2, x, y + 12, 18)
+  shadow.addColorStop(0, 'rgba(17,24,39,0.26)')
+  shadow.addColorStop(1, 'rgba(17,24,39,0)')
+  ctx.fillStyle = shadow
+  ctx.beginPath()
+  ctx.ellipse(x, y + 12, 15, 6, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  const body = ctx.createLinearGradient(x, y - 14, x, y + 13)
+  body.addColorStop(0, '#ffbf5a')
+  body.addColorStop(1, '#e78323')
+
+  ctx.fillStyle = body
+  ctx.beginPath()
+  ctx.moveTo(x, y - 15)
+  ctx.lineTo(x - 10, y + 11)
+  ctx.lineTo(x + 10, y + 11)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.fillStyle = '#fff6de'
+  ctx.beginPath()
+  ctx.moveTo(x - 6, y - 1)
+  ctx.lineTo(x + 6, y - 1)
+  ctx.lineTo(x + 4.5, y + 3.7)
+  ctx.lineTo(x - 4.5, y + 3.7)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.strokeStyle = '#b96516'
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.moveTo(x, y - 15)
+  ctx.lineTo(x - 10, y + 11)
+  ctx.lineTo(x + 10, y + 11)
+  ctx.closePath()
+  ctx.stroke()
+
+  if (isSelected) {
+    ctx.beginPath()
+    ctx.arc(x, y, 16, 0, Math.PI * 2)
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+
+  ctx.restore()
 }
 
 const getCurveControlFromTrail = (fromX, fromY, toX, toY, trail = []) => {
@@ -916,6 +1061,11 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
       return
     }
 
+    if (item.type === 'arrowShotDouble') {
+      drawDoubleArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#ffd1a0', controlPoint)
+      return
+    }
+
     if (item.type === 'areaRect' || item.type === 'areaSquare' || item.type === 'areaCircle' || item.type === 'areaDiamond') {
       drawAreaShape(ctx, item, isSelected)
       if (isSelected) {
@@ -942,42 +1092,12 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
     }
 
     if (item.type === 'ball') {
-      ctx.beginPath()
-      ctx.arc(item.x, item.y, 9, 0, Math.PI * 2)
-      ctx.fillStyle = '#f6f6f6'
-      ctx.fill()
-      ctx.lineWidth = 2
-      ctx.strokeStyle = '#141b26'
-      ctx.stroke()
-
-      if (isSelected) {
-        ctx.beginPath()
-        ctx.arc(item.x, item.y, 14, 0, Math.PI * 2)
-        ctx.strokeStyle = '#101828'
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-
+      drawSoccerBall(ctx, item.x, item.y, isSelected)
       return
     }
 
     if (item.type === 'cone') {
-      ctx.fillStyle = '#f5a623'
-      ctx.beginPath()
-      ctx.moveTo(item.x, item.y - 14)
-      ctx.lineTo(item.x - 11, item.y + 12)
-      ctx.lineTo(item.x + 11, item.y + 12)
-      ctx.closePath()
-      ctx.fill()
-
-      if (isSelected) {
-        ctx.beginPath()
-        ctx.arc(item.x, item.y, 16, 0, Math.PI * 2)
-        ctx.strokeStyle = '#101828'
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-
+      drawTrainingCone(ctx, item.x, item.y, isSelected)
       return
     }
 
@@ -1034,7 +1154,7 @@ const hitTest = (objects, point) => {
       continue
     }
 
-    if (item.type === 'arrowPlayerStraight' || item.type === 'arrowPlayerBall' || item.type === 'arrowBallDashed') {
+    if (isArrowTool(item.type)) {
       const hasControl = Number.isFinite(Number(item.controlX)) && Number.isFinite(Number(item.controlY))
       const controlX = hasControl ? Number(item.controlX) : null
       const controlY = hasControl ? Number(item.controlY) : null
@@ -1147,7 +1267,7 @@ function SchemeTool() {
       const duplicatedId = createId()
       const duplicatedItem = { ...selectedItem, id: duplicatedId }
 
-      if (duplicatedItem.type === 'arrowPlayerStraight' || duplicatedItem.type === 'arrowPlayerBall' || duplicatedItem.type === 'arrowBallDashed') {
+      if (isArrowTool(duplicatedItem.type)) {
         duplicatedItem.fromX = Number(duplicatedItem.fromX || 0) + offset
         duplicatedItem.fromY = Number(duplicatedItem.fromY || 0) + offset
         duplicatedItem.toX = Number(duplicatedItem.toX || 0) + offset
@@ -1243,6 +1363,8 @@ function SchemeTool() {
 
       if (arrowStart.type === 'arrowPlayerBall') {
         drawWavyArrow(ctx, arrowStart.fromX, arrowStart.fromY, arrowStart.toX, arrowStart.toY, getArrowColor(arrowStart.type), draftControlPoint)
+      } else if (arrowStart.type === 'arrowShotDouble') {
+        drawDoubleArrow(ctx, arrowStart.fromX, arrowStart.fromY, arrowStart.toX, arrowStart.toY, getArrowColor(arrowStart.type), draftControlPoint)
       } else {
         drawArrow(
           ctx,
@@ -1308,7 +1430,7 @@ function SchemeTool() {
           fromY: arrowStart.y,
           toX: point.x,
           toY: point.y,
-          color: arrowType === 'arrowBallDashed' ? '#cbe0ff' : (arrowType === 'arrowPlayerStraight' ? '#e8f2b7' : '#fff4a8')
+          color: getArrowColor(arrowType)
         }
       ])
       setArrowStart(null)
@@ -1810,7 +1932,9 @@ function SchemeTool() {
                 ? 'Pohyb lopty: podrž a ťahaj myšou.'
                 : (arrowStart.type === 'arrowPlayerStraight'
                     ? 'Pohyb hráča bez lopty: podrž a ťahaj myšou.'
-                    : 'Pohyb hráča s loptou: podrž a ťahaj myšou.')}
+                    : (arrowStart.type === 'arrowShotDouble'
+                        ? 'Strela: podrž a ťahaj myšou.'
+                        : 'Pohyb hráča s loptou: podrž a ťahaj myšou.'))}
             </p>
           ) : null}
 
