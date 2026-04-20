@@ -23,22 +23,86 @@
 }
 
 .scheme-tools {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
+}
+
+.scheme-tools-shell {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.scheme-tool-group {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 0.55rem;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0.45));
+}
+
+.scheme-tool-group-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: rgba(148, 198, 255, 0.85);
+}
+
+.scheme-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.38rem;
 }
 
 .scheme-tool-btn {
   width: 100%;
   border-radius: 10px;
-  min-height: 38px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
   text-align: left;
+  border: 1px solid rgba(100, 116, 139, 0.4);
+  background: rgba(15, 23, 42, 0.42);
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.scheme-tool-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(125, 211, 252, 0.48);
 }
 
 .scheme-tool-btn.active {
-  border-color: rgba(56, 189, 248, 0.55);
-  background: rgba(14, 116, 144, 0.28);
+  border-color: rgba(56, 189, 248, 0.85);
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.4), rgba(29, 78, 216, 0.38));
   color: #dff6ff;
+  box-shadow: 0 8px 20px rgba(14, 116, 144, 0.25);
+}
+
+.scheme-tool-badge {
+  min-width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.scheme-tool-btn.active .scheme-tool-badge {
+  background: rgba(186, 230, 253, 0.26);
+  border-color: rgba(186, 230, 253, 0.65);
+}
+
+.scheme-tool-label {
+  font-size: 0.72rem;
+  line-height: 1.18;
+  font-weight: 600;
 }
 
 .scheme-actions {

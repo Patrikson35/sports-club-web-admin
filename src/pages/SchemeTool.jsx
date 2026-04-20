@@ -40,6 +40,31 @@ const TOOL_OPTIONS = [
   { key: 'text', label: 'Text' }
 ]
 
+const TOOL_GROUPS = [
+  { title: 'Zaklad', keys: ['select', 'player', 'ball', 'cone'] },
+  { title: 'Pomocky', keys: ['ladder', 'miniGoal', 'hurdle'] },
+  { title: 'Pohyby', keys: ['arrowPlayerStraight', 'arrowPlayerBall', 'arrowBallDashed'] },
+  { title: 'Zony', keys: ['areaRect', 'areaSquare', 'areaCircle', 'areaDiamond', 'text'] }
+]
+
+const TOOL_SHORT = {
+  select: 'SEL',
+  player: 'HR',
+  ball: 'LP',
+  cone: 'KZ',
+  ladder: 'RB',
+  miniGoal: 'BR',
+  hurdle: 'PR',
+  arrowPlayerStraight: 'PB',
+  arrowPlayerBall: 'PL',
+  arrowBallDashed: 'LP',
+  areaRect: 'OR',
+  areaSquare: 'ST',
+  areaCircle: 'KR',
+  areaDiamond: 'DM',
+  text: 'TX'
+}
+
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
@@ -1515,26 +1540,41 @@ function SchemeTool() {
           </div>
 
           <div className="scheme-tools">
-            {TOOL_OPTIONS.map((tool) => (
-              <button
-                key={tool.key}
-                type="button"
-                className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveTool(tool.key)
-                  if (!isArrowTool(tool.key)) {
-                    setArrowStart(null)
-                  } else if (arrowStart?.type && arrowStart.type !== tool.key) {
-                    setArrowStart(null)
-                  }
-                  if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
-                    setAreaDraft(null)
-                  }
-                }}
-              >
-                {tool.label}
-              </button>
-            ))}
+            <div className="scheme-tools-shell">
+              {TOOL_GROUPS.map((group) => (
+                <div key={group.title} className="scheme-tool-group">
+                  <p className="scheme-tool-group-title">{group.title}</p>
+                  <div className="scheme-tool-grid">
+                    {group.keys.map((toolKey) => {
+                      const tool = TOOL_OPTIONS.find((candidate) => candidate.key === toolKey)
+                      if (!tool) return null
+
+                      return (
+                        <button
+                          key={tool.key}
+                          type="button"
+                          className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
+                          onClick={() => {
+                            setActiveTool(tool.key)
+                            if (!isArrowTool(tool.key)) {
+                              setArrowStart(null)
+                            } else if (arrowStart?.type && arrowStart.type !== tool.key) {
+                              setArrowStart(null)
+                            }
+                            if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
+                              setAreaDraft(null)
+                            }
+                          }}
+                        >
+                          <span className="scheme-tool-badge" aria-hidden="true">{TOOL_SHORT[tool.key] || 'TL'}</span>
+                          <span className="scheme-tool-label">{tool.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {activeTool === 'player' ? (
