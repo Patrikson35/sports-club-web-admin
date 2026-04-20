@@ -66,21 +66,21 @@ const TOOL_SHORT = {
 }
 
 const TOOL_ICON = {
-  select: '⌖',
-  player: '◉',
-  ball: '●',
-  cone: '▲',
-  ladder: '▦',
-  miniGoal: '⊓',
-  hurdle: '≋',
-  arrowPlayerStraight: '➜',
-  arrowPlayerBall: '↝',
-  arrowBallDashed: '⇢',
-  areaRect: '▭',
-  areaSquare: '□',
-  areaCircle: '◯',
-  areaDiamond: '◇',
-  text: 'T'
+  select: 'gesture_select',
+  player: 'person',
+  ball: 'sports_soccer',
+  cone: 'change_history',
+  ladder: 'grid_4x4',
+  miniGoal: 'crop_16_9',
+  hurdle: 'horizontal_rule',
+  arrowPlayerStraight: 'arrow_right_alt',
+  arrowPlayerBall: 'rebase_edit',
+  arrowBallDashed: 'trending_flat',
+  areaRect: 'rectangle',
+  areaSquare: 'crop_square',
+  areaCircle: 'circle',
+  areaDiamond: 'diamond',
+  text: 'title'
 }
 
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
@@ -1585,7 +1585,7 @@ function SchemeTool() {
                             }
                           }}
                         >
-                          <span className="scheme-tool-icon" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || '•'}</span>
+                          <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
                           <span className="scheme-tool-label">{tool.label}</span>
                         </button>
                       )
