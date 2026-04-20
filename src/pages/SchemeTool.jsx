@@ -282,8 +282,18 @@ const drawField = (ctx, sportKey, surfaceKey, width, height) => {
   )
 }
 
-const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false) => {
-  const angle = Math.atan2(toY - fromY, toX - fromX)
+const getQuadraticPoint = (fromX, fromY, controlX, controlY, toX, toY, t) => {
+  const inv = 1 - t
+  return {
+    x: inv * inv * fromX + 2 * inv * t * controlX + t * t * toX,
+    y: inv * inv * fromY + 2 * inv * t * controlY + t * t * toY
+  }
+}
+
+const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false, controlPoint = null) => {
+  const angle = controlPoint
+    ? Math.atan2(toY - controlPoint.y, toX - controlPoint.x)
+    : Math.atan2(toY - fromY, toX - fromX)
   const headLength = 16
 
   ctx.strokeStyle = color
@@ -293,7 +303,11 @@ const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false) => {
   }
   ctx.beginPath()
   ctx.moveTo(fromX, fromY)
-  ctx.lineTo(toX, toY)
+  if (controlPoint) {
+    ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, toX, toY)
+  } else {
+    ctx.lineTo(toX, toY)
+  }
   ctx.stroke()
   ctx.setLineDash([])
 
@@ -306,7 +320,12 @@ const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false) => {
   ctx.fill()
 }
 
-const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color) => {
+const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) => {
+  if (controlPoint) {
+    drawArrow(ctx, fromX, fromY, toX, toY, color, false, controlPoint)
+    return
+  }
+
   const dx = toX - fromX
   const dy = toY - fromY
   const distance = Math.sqrt(dx * dx + dy * dy)
@@ -340,6 +359,34 @@ const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color) => {
   ctx.stroke()
 
   drawArrow(ctx, fromX + dx * 0.93, fromY + dy * 0.93, toX, toY, color, false)
+}
+
+const getCurveControlFromTrail = (fromX, fromY, toX, toY, trail = []) => {
+  if (!Array.isArray(trail) || trail.length < 3) return null
+
+  const dx = toX - fromX
+  const dy = toY - fromY
+  const baseLength = Math.hypot(dx, dy)
+  if (baseLength < 18) return null
+
+  let bestPoint = null
+  let bestDistance = 0
+
+  trail.forEach((point) => {
+    const px = Number(point?.x)
+    const py = Number(point?.y)
+    if (!Number.isFinite(px) || !Number.isFinite(py)) return
+
+    const distance = Math.abs(((dy * px) - (dx * py) + (toX * fromY) - (toY * fromX)) / baseLength)
+    if (distance > bestDistance) {
+      bestDistance = distance
+      bestPoint = { x: px, y: py }
+    }
+  })
+
+  if (!bestPoint || bestDistance < 16) return null
+
+  return bestPoint
 }
 
 const buildAreaFromDrag = (toolType, startPoint, endPoint) => {
@@ -830,14 +877,17 @@ const drawPlayerStickman = (ctx, item, isSelected) => {
 const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
   objects.forEach((item) => {
     const isSelected = String(selectedId || '') === String(item.id || '')
+    const controlPoint = Number.isFinite(Number(item.controlX)) && Number.isFinite(Number(item.controlY))
+      ? { x: Number(item.controlX), y: Number(item.controlY) }
+      : null
 
     if (item.type === 'arrowPlayerStraight') {
-      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#e8f2b7', false)
+      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#e8f2b7', false, controlPoint)
       return
     }
 
     if (item.type === 'arrowPlayerBall') {
-      drawWavyArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#f6f0ad')
+      drawWavyArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#f6f0ad', controlPoint)
 
       ctx.beginPath()
       ctx.arc(item.fromX, item.fromY, 6, 0, Math.PI * 2)
@@ -850,7 +900,7 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
     }
 
     if (item.type === 'arrowBallDashed') {
-      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#cbe0ff', true)
+      drawArrow(ctx, item.fromX, item.fromY, item.toX, item.toY, item.color || '#cbe0ff', true, controlPoint)
       return
     }
 
@@ -973,10 +1023,13 @@ const hitTest = (objects, point) => {
     }
 
     if (item.type === 'arrowPlayerStraight' || item.type === 'arrowPlayerBall' || item.type === 'arrowBallDashed') {
-      const minX = Math.min(item.fromX, item.toX) - 12
-      const maxX = Math.max(item.fromX, item.toX) + 12
-      const minY = Math.min(item.fromY, item.toY) - 12
-      const maxY = Math.max(item.fromY, item.toY) + 12
+      const hasControl = Number.isFinite(Number(item.controlX)) && Number.isFinite(Number(item.controlY))
+      const controlX = hasControl ? Number(item.controlX) : null
+      const controlY = hasControl ? Number(item.controlY) : null
+      const minX = Math.min(item.fromX, item.toX, ...(hasControl ? [controlX] : [])) - 12
+      const maxX = Math.max(item.fromX, item.toX, ...(hasControl ? [controlX] : [])) + 12
+      const minY = Math.min(item.fromY, item.toY, ...(hasControl ? [controlY] : [])) - 12
+      const maxY = Math.max(item.fromY, item.toY, ...(hasControl ? [controlY] : [])) + 12
       if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
         return item
       }
@@ -1087,6 +1140,10 @@ function SchemeTool() {
         duplicatedItem.fromY = Number(duplicatedItem.fromY || 0) + offset
         duplicatedItem.toX = Number(duplicatedItem.toX || 0) + offset
         duplicatedItem.toY = Number(duplicatedItem.toY || 0) + offset
+        if (Number.isFinite(Number(duplicatedItem.controlX)) && Number.isFinite(Number(duplicatedItem.controlY))) {
+          duplicatedItem.controlX = Number(duplicatedItem.controlX || 0) + offset
+          duplicatedItem.controlY = Number(duplicatedItem.controlY || 0) + offset
+        }
       } else {
         duplicatedItem.x = Number(duplicatedItem.x || 0) + offset
         duplicatedItem.y = Number(duplicatedItem.y || 0) + offset
@@ -1168,8 +1225,12 @@ function SchemeTool() {
     }
 
     if (arrowStart?.type && Number.isFinite(arrowStart.fromX) && Number.isFinite(arrowStart.toX)) {
+      const draftControlPoint = Number.isFinite(Number(arrowStart.controlX)) && Number.isFinite(Number(arrowStart.controlY))
+        ? { x: Number(arrowStart.controlX), y: Number(arrowStart.controlY) }
+        : null
+
       if (arrowStart.type === 'arrowPlayerBall') {
-        drawWavyArrow(ctx, arrowStart.fromX, arrowStart.fromY, arrowStart.toX, arrowStart.toY, getArrowColor(arrowStart.type))
+        drawWavyArrow(ctx, arrowStart.fromX, arrowStart.fromY, arrowStart.toX, arrowStart.toY, getArrowColor(arrowStart.type), draftControlPoint)
       } else {
         drawArrow(
           ctx,
@@ -1178,7 +1239,8 @@ function SchemeTool() {
           arrowStart.toX,
           arrowStart.toY,
           getArrowColor(arrowStart.type),
-          arrowStart.type === 'arrowBallDashed'
+          arrowStart.type === 'arrowBallDashed',
+          draftControlPoint
         )
       }
 
@@ -1314,7 +1376,8 @@ function SchemeTool() {
         fromX: point.x,
         fromY: point.y,
         toX: point.x,
-        toY: point.y
+        toY: point.y,
+        trail: [{ x: point.x, y: point.y }]
       })
       setSelectedObjectId('')
       setDragState(null)
@@ -1346,7 +1409,9 @@ function SchemeTool() {
               fromX: Number(hit.fromX || 0),
               fromY: Number(hit.fromY || 0),
               toX: Number(hit.toX || 0),
-              toY: Number(hit.toY || 0)
+              toY: Number(hit.toY || 0),
+              controlX: Number.isFinite(Number(hit.controlX)) ? Number(hit.controlX) : null,
+              controlY: Number.isFinite(Number(hit.controlY)) ? Number(hit.controlY) : null
             })
           } else {
             setDragState({
@@ -1409,10 +1474,19 @@ function SchemeTool() {
       const point = getCanvasPoint(canvas, event)
       setArrowStart((prev) => {
         if (!prev) return prev
+        const nextToX = clamp(point.x, 8, canvas.width - 8)
+        const nextToY = clamp(point.y, 8, canvas.height - 8)
+        const nextTrail = [...(Array.isArray(prev.trail) ? prev.trail : []), { x: nextToX, y: nextToY }]
+        const limitedTrail = nextTrail.length > 60 ? nextTrail.slice(nextTrail.length - 60) : nextTrail
+        const control = getCurveControlFromTrail(prev.fromX, prev.fromY, nextToX, nextToY, limitedTrail)
+
         return {
           ...prev,
-          toX: clamp(point.x, 8, canvas.width - 8),
-          toY: clamp(point.y, 8, canvas.height - 8)
+          toX: nextToX,
+          toY: nextToY,
+          trail: limitedTrail,
+          controlX: control?.x,
+          controlY: control?.y
         }
       })
       return
@@ -1474,7 +1548,9 @@ function SchemeTool() {
           fromX: nextFromX,
           fromY: nextFromY,
           toX: nextToX,
-          toY: nextToY
+          toY: nextToY,
+          controlX: Number.isFinite(Number(dragState.controlX)) ? Number(dragState.controlX) + dx : item.controlX,
+          controlY: Number.isFinite(Number(dragState.controlY)) ? Number(dragState.controlY) + dy : item.controlY
         }
       }))
       return
@@ -1518,6 +1594,14 @@ function SchemeTool() {
     if (arrowStart?.type && Number.isFinite(arrowStart.fromX) && Number.isFinite(arrowStart.toX)) {
       const distance = Math.hypot(arrowStart.toX - arrowStart.fromX, arrowStart.toY - arrowStart.fromY)
       if (distance >= 8) {
+        const controlPoint = getCurveControlFromTrail(
+          arrowStart.fromX,
+          arrowStart.fromY,
+          arrowStart.toX,
+          arrowStart.toY,
+          Array.isArray(arrowStart.trail) ? arrowStart.trail : []
+        )
+
         setSceneObjects((prev) => [
           ...prev,
           {
@@ -1527,7 +1611,9 @@ function SchemeTool() {
             fromY: arrowStart.fromY,
             toX: arrowStart.toX,
             toY: arrowStart.toY,
-            color: getArrowColor(arrowStart.type)
+            color: getArrowColor(arrowStart.type),
+            controlX: controlPoint?.x,
+            controlY: controlPoint?.y
           }
         ])
       }
