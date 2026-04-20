@@ -1015,6 +1015,16 @@ function SchemeTool() {
     }
 
     const handleKeyDown = (event) => {
+      const key = String(event.key || '')
+
+      if ((key === 'Delete' || key === 'Backspace') && selectedObjectId) {
+        if (isTypingContext(event.target)) return
+        event.preventDefault()
+        setSceneObjects((prev) => prev.filter((item) => String(item?.id || '') !== String(selectedObjectId)))
+        setSelectedObjectId('')
+        return
+      }
+
       if (!(event.ctrlKey || event.metaKey) || String(event.key || '').toLowerCase() !== 'd') return
       if (isTypingContext(event.target)) return
       if (!selectedObjectId) return
