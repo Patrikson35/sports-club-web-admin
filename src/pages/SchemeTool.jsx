@@ -46,6 +46,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
+const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal'
 
 const MIN_AREA_SIZE = 26
 
@@ -526,30 +527,52 @@ const resizeAreaFromPoint = (item, point, handleKey = 'se') => {
   }
 }
 
+const toLocalPoint = (point, itemX, itemY, rotationDeg = 0) => {
+  const angle = (Number(rotationDeg || 0) * Math.PI) / 180
+  const cos = Math.cos(-angle)
+  const sin = Math.sin(-angle)
+  const dx = point.x - itemX
+  const dy = point.y - itemY
+  return {
+    x: dx * cos - dy * sin,
+    y: dx * sin + dy * cos
+  }
+}
+
+const isPointInRotatedRect = (point, item) => {
+  const width = Number(item.width || 0)
+  const height = Number(item.height || 0)
+  const local = toLocalPoint(point, item.x, item.y, item.rotation)
+  return (
+    local.x >= -width / 2
+    && local.x <= width / 2
+    && local.y >= -height / 2
+    && local.y <= height / 2
+  )
+}
+
 const drawLadder = (ctx, item, isSelected) => {
-  const width = Number(item.width || 92)
-  const height = Number(item.height || 42)
-  const left = item.x - width / 2
-  const top = item.y - height / 2
+  const cellCount = Math.max(2, Number(item.cells || 4))
+  const width = Number(item.width || 128)
+  const height = Number(item.height || 32)
+  const left = -width / 2
+  const top = -height / 2
+  const cellSize = Math.min(height, width / cellCount)
+  const totalCellsWidth = cellSize * cellCount
+  const startX = -totalCellsWidth / 2
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
 
   ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
   ctx.lineWidth = 3
   ctx.strokeStyle = '#f59e0b'
 
-  ctx.beginPath()
-  ctx.moveTo(left, top)
-  ctx.lineTo(left, top + height)
-  ctx.moveTo(left + width, top)
-  ctx.lineTo(left + width, top + height)
-  ctx.stroke()
-
-  const rungs = 4
-  for (let i = 1; i <= rungs; i += 1) {
-    const y = top + (height * i) / (rungs + 1)
-    ctx.beginPath()
-    ctx.moveTo(left + 5, y)
-    ctx.lineTo(left + width - 5, y)
-    ctx.stroke()
+  for (let i = 0; i < cellCount; i += 1) {
+    const x = startX + i * cellSize
+    ctx.strokeRect(x, -cellSize / 2, cellSize, cellSize)
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.08)'
+    ctx.fillRect(x, -cellSize / 2, cellSize, cellSize)
   }
 
   if (isSelected) {
@@ -565,10 +588,13 @@ const drawLadder = (ctx, item, isSelected) => {
 const drawMiniGoal = (ctx, item, isSelected) => {
   const width = Number(item.width || 78)
   const height = Number(item.height || 40)
-  const left = item.x - width / 2
-  const top = item.y - height / 2
+  const left = -width / 2
+  const top = -height / 2
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
 
   ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
   ctx.lineWidth = 3
   ctx.strokeStyle = '#f8fafc'
   ctx.strokeRect(left, top, width, height)
@@ -624,6 +650,16 @@ const drawHurdle = (ctx, item, isSelected) => {
     ctx.setLineDash([])
   }
   ctx.restore()
+}
+
+const rotateAidItem = (item, stepDeg) => {
+  if (!isRotatableAidType(item.type)) return item
+  const current = Number(item.rotation || 0)
+  const next = ((current + stepDeg) % 360 + 360) % 360
+  return {
+    ...item,
+    rotation: next
+  }
 }
 
 const drawPlayerCircle = (ctx, item, isSelected) => {
@@ -862,14 +898,16 @@ const hitTest = (objects, point) => {
     }
 
     if (item.type === 'ladder' || item.type === 'miniGoal' || item.type === 'hurdle') {
-      const width = Number(item.width || (item.type === 'ladder' ? 92 : item.type === 'miniGoal' ? 78 : 62))
-      const height = Number(item.height || (item.type === 'ladder' ? 42 : item.type === 'miniGoal' ? 40 : 30))
-      if (
-        point.x >= item.x - width / 2
-        && point.x <= item.x + width / 2
-        && point.y >= item.y - height / 2
-        && point.y <= item.y + height / 2
-      ) {
+      if (isRotatableAidType(item.type)) {
+        if (isPointInRotatedRect(point, item)) {
+          return item
+        }
+        continue
+      }
+
+      const width = Number(item.width || 62)
+      const height = Number(item.height || 30)
+      if (point.x >= item.x - width / 2 && point.x <= item.x + width / 2 && point.y >= item.y - height / 2 && point.y <= item.y + height / 2) {
         return item
       }
       continue
@@ -905,6 +943,10 @@ function SchemeTool() {
   const [exportDataUrl, setExportDataUrl] = useState('')
 
   const activeSportLabel = useMemo(() => SPORTS[sportKey]?.label || 'Šport', [sportKey])
+  const selectedObject = useMemo(
+    () => sceneObjects.find((item) => String(item.id || '') === String(selectedObjectId || '')) || null,
+    [sceneObjects, selectedObjectId]
+  )
 
   useEffect(() => {
     const isTypingContext = (eventTarget) => {
@@ -1085,13 +1127,16 @@ function SchemeTool() {
     }
 
     if (tool === 'ladder') {
-      base.width = 92
-      base.height = 42
+      base.width = 128
+      base.height = 32
+      base.cells = 4
+      base.rotation = 0
     }
 
     if (tool === 'miniGoal') {
       base.width = 78
       base.height = 40
+      base.rotation = 0
     }
 
     if (tool === 'hurdle') {
@@ -1270,6 +1315,27 @@ function SchemeTool() {
     setResizeState(null)
   }
 
+  const rotateSelectedAid = (stepDeg) => {
+    if (!selectedObjectId) return
+    setSceneObjects((prev) => prev.map((item) => {
+      if (String(item.id || '') !== String(selectedObjectId)) return item
+      return rotateAidItem(item, stepDeg)
+    }))
+  }
+
+  const setSelectedAidRotation = (nextRotation) => {
+    if (!selectedObjectId) return
+    const normalized = ((Number(nextRotation || 0) % 360) + 360) % 360
+    setSceneObjects((prev) => prev.map((item) => {
+      if (String(item.id || '') !== String(selectedObjectId)) return item
+      if (!isRotatableAidType(item.type)) return item
+      return {
+        ...item,
+        rotation: normalized
+      }
+    }))
+  }
+
   const undoLastObject = () => {
     setSceneObjects((prev) => prev.slice(0, -1))
     setSelectedObjectId('')
@@ -1356,6 +1422,26 @@ function SchemeTool() {
             <button type="button" className="btn-secondary" onClick={removeSelectedObject} disabled={!selectedObjectId}>Odstrániť vybrané</button>
             <button type="button" className="manager-add-btn category-form-toggle-cancel" onClick={clearScene} disabled={sceneObjects.length === 0 && !arrowStart}>Vymazať všetko</button>
           </div>
+
+          {selectedObject && isRotatableAidType(selectedObject.type) ? (
+            <div className="form-group">
+              <label>Otáčanie objektu</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(-15)}>↺ -15°</button>
+                <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(15)}>↻ +15°</button>
+              </div>
+              <label htmlFor="scheme-rotation" style={{ marginTop: 10 }}>Uhol (°)</label>
+              <input
+                id="scheme-rotation"
+                type="range"
+                min="0"
+                max="345"
+                step="15"
+                value={Number(selectedObject.rotation || 0)}
+                onChange={(event) => setSelectedAidRotation(Number(event.target.value || 0))}
+              />
+            </div>
+          ) : null}
 
           {arrowStart ? (
             <p className="manager-empty-text" style={{ margin: 0 }}>
