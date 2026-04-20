@@ -321,11 +321,6 @@ const drawArrow = (ctx, fromX, fromY, toX, toY, color, dashed = false, controlPo
 }
 
 const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) => {
-  if (controlPoint) {
-    drawArrow(ctx, fromX, fromY, toX, toY, color, false, controlPoint)
-    return
-  }
-
   const dx = toX - fromX
   const dy = toY - fromY
   const distance = Math.sqrt(dx * dx + dy * dy)
@@ -334,8 +329,6 @@ const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) 
   const steps = Math.max(24, Math.floor(distance / 6))
   const amplitude = 8
   const frequency = (Math.PI * 2) / 26
-  const nx = -dy / distance
-  const ny = dx / distance
 
   ctx.strokeStyle = color
   ctx.lineWidth = 4
@@ -343,8 +336,22 @@ const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) 
 
   for (let i = 0; i <= steps; i += 1) {
     const t = i / steps
-    const baseX = fromX + dx * t
-    const baseY = fromY + dy * t
+    let baseX = fromX + dx * t
+    let baseY = fromY + dy * t
+    let tanX = dx
+    let tanY = dy
+
+    if (controlPoint) {
+      const p = getQuadraticPoint(fromX, fromY, controlPoint.x, controlPoint.y, toX, toY, t)
+      baseX = p.x
+      baseY = p.y
+      tanX = 2 * (1 - t) * (controlPoint.x - fromX) + 2 * t * (toX - controlPoint.x)
+      tanY = 2 * (1 - t) * (controlPoint.y - fromY) + 2 * t * (toY - controlPoint.y)
+    }
+
+    const tanLength = Math.hypot(tanX, tanY) || 1
+    const nx = -tanY / tanLength
+    const ny = tanX / tanLength
     const wave = Math.sin(t * distance * frequency) * amplitude
     const px = baseX + nx * wave
     const py = baseY + ny * wave
@@ -358,7 +365,12 @@ const drawWavyArrow = (ctx, fromX, fromY, toX, toY, color, controlPoint = null) 
 
   ctx.stroke()
 
-  drawArrow(ctx, fromX + dx * 0.93, fromY + dy * 0.93, toX, toY, color, false)
+  if (controlPoint) {
+    const nearEnd = getQuadraticPoint(fromX, fromY, controlPoint.x, controlPoint.y, toX, toY, 0.93)
+    drawArrow(ctx, nearEnd.x, nearEnd.y, toX, toY, color, false)
+  } else {
+    drawArrow(ctx, fromX + dx * 0.93, fromY + dy * 0.93, toX, toY, color, false)
+  }
 }
 
 const getCurveControlFromTrail = (fromX, fromY, toX, toY, trail = []) => {
