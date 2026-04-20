@@ -90,6 +90,7 @@ const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey ==
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
 const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle'
+const getArrowColor = (arrowType) => (arrowType === 'arrowBallDashed' ? '#cbe0ff' : (arrowType === 'arrowPlayerStraight' ? '#e8f2b7' : '#fff4a8'))
 
 const MIN_AREA_SIZE = 26
 
@@ -1166,13 +1167,27 @@ function SchemeTool() {
       drawAreaShape(ctx, buildAreaFromDrag(areaDraft.toolType, areaDraft.startPoint, areaDraft.endPoint), true)
     }
 
-    if (arrowStart) {
+    if (arrowStart?.type && Number.isFinite(arrowStart.fromX) && Number.isFinite(arrowStart.toX)) {
+      if (arrowStart.type === 'arrowPlayerBall') {
+        drawWavyArrow(ctx, arrowStart.fromX, arrowStart.fromY, arrowStart.toX, arrowStart.toY, getArrowColor(arrowStart.type))
+      } else {
+        drawArrow(
+          ctx,
+          arrowStart.fromX,
+          arrowStart.fromY,
+          arrowStart.toX,
+          arrowStart.toY,
+          getArrowColor(arrowStart.type),
+          arrowStart.type === 'arrowBallDashed'
+        )
+      }
+
       ctx.beginPath()
-      ctx.arc(arrowStart.x, arrowStart.y, 7, 0, Math.PI * 2)
-      ctx.fillStyle = arrowStart.type === 'arrowBallDashed' ? 'rgba(203, 224, 255, 0.95)' : 'rgba(246, 240, 173, 0.95)'
+      ctx.arc(arrowStart.fromX, arrowStart.fromY, 6, 0, Math.PI * 2)
+      ctx.fillStyle = '#f8fafc'
       ctx.fill()
       ctx.strokeStyle = '#101828'
-      ctx.lineWidth = 2
+      ctx.lineWidth = 1.4
       ctx.stroke()
     }
   }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, selectedObject, arrowStart, areaDraft, activePlayerStyle])
@@ -1289,6 +1304,22 @@ function SchemeTool() {
       setDragState(null)
       setResizeState(null)
       setRotateState(null)
+      setArrowStart(null)
+      return
+    }
+
+    if (isArrowTool(activeTool)) {
+      setArrowStart({
+        type: activeTool,
+        fromX: point.x,
+        fromY: point.y,
+        toX: point.x,
+        toY: point.y
+      })
+      setSelectedObjectId('')
+      setDragState(null)
+      setResizeState(null)
+      setRotateState(null)
       return
     }
 
@@ -1369,6 +1400,21 @@ function SchemeTool() {
       if (!canvas) return
       const point = getCanvasPoint(canvas, event)
       setAreaDraft((prev) => (prev ? { ...prev, endPoint: point } : prev))
+      return
+    }
+
+    if (arrowStart?.type) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const point = getCanvasPoint(canvas, event)
+      setArrowStart((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          toX: clamp(point.x, 8, canvas.width - 8),
+          toY: clamp(point.y, 8, canvas.height - 8)
+        }
+      })
       return
     }
 
@@ -1467,6 +1513,25 @@ function SchemeTool() {
         }
       ])
       setAreaDraft(null)
+    }
+
+    if (arrowStart?.type && Number.isFinite(arrowStart.fromX) && Number.isFinite(arrowStart.toX)) {
+      const distance = Math.hypot(arrowStart.toX - arrowStart.fromX, arrowStart.toY - arrowStart.fromY)
+      if (distance >= 8) {
+        setSceneObjects((prev) => [
+          ...prev,
+          {
+            id: createId(),
+            type: arrowStart.type,
+            fromX: arrowStart.fromX,
+            fromY: arrowStart.fromY,
+            toX: arrowStart.toX,
+            toY: arrowStart.toY,
+            color: getArrowColor(arrowStart.type)
+          }
+        ])
+      }
+      setArrowStart(null)
     }
 
     if (dragState) {
@@ -1644,10 +1709,10 @@ function SchemeTool() {
           {arrowStart ? (
             <p className="manager-empty-text" style={{ margin: 0 }}>
               {arrowStart.type === 'arrowBallDashed'
-                ? 'Šípka pohybu lopty: klikni na cieľový bod.'
+                ? 'Pohyb lopty: podrž a ťahaj myšou.'
                 : (arrowStart.type === 'arrowPlayerStraight'
-                    ? 'Šípka pohybu hráča bez lopty: klikni na cieľový bod.'
-                    : 'Šípka pohybu hráča s loptou: klikni na cieľový bod.')}
+                    ? 'Pohyb hráča bez lopty: podrž a ťahaj myšou.'
+                    : 'Pohyb hráča s loptou: podrž a ťahaj myšou.')}
             </p>
           ) : null}
 
