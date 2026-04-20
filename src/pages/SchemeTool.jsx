@@ -46,7 +46,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
-const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal'
+const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle'
 
 const MIN_AREA_SIZE = 26
 
@@ -551,6 +551,53 @@ const isPointInRotatedRect = (point, item, padding = 0) => {
   )
 }
 
+const getRotationHandlePoint = (item) => {
+  const width = Number(item.width || 60)
+  const height = Number(item.height || 30)
+  const angle = (Number(item.rotation || 0) * Math.PI) / 180
+  const localX = 0
+  const localY = -(height / 2 + Math.max(22, Math.min(40, width * 0.22)))
+  return {
+    x: item.x + localX * Math.cos(angle) - localY * Math.sin(angle),
+    y: item.y + localX * Math.sin(angle) + localY * Math.cos(angle)
+  }
+}
+
+const hitRotationHandle = (item, point) => {
+  const handle = getRotationHandlePoint(item)
+  const dx = point.x - handle.x
+  const dy = point.y - handle.y
+  return Math.sqrt(dx * dx + dy * dy) <= 13
+}
+
+const drawRotationHandle = (ctx, item) => {
+  const angle = (Number(item.rotation || 0) * Math.PI) / 180
+  const height = Number(item.height || 30)
+  const anchorLocalY = -height / 2
+  const anchor = {
+    x: item.x - anchorLocalY * Math.sin(angle),
+    y: item.y + anchorLocalY * Math.cos(angle)
+  }
+  const handle = getRotationHandlePoint(item)
+
+  ctx.save()
+  ctx.strokeStyle = '#1d4ed8'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(anchor.x, anchor.y)
+  ctx.lineTo(handle.x, handle.y)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(handle.x, handle.y, 8, 0, Math.PI * 2)
+  ctx.fillStyle = '#60a5fa'
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = '#0f172a'
+  ctx.stroke()
+  ctx.restore()
+}
+
 const drawLadder = (ctx, item, isSelected) => {
   const cellCount = Math.max(2, Number(item.cells || 4))
   const width = Number(item.width || 128)
@@ -629,10 +676,13 @@ const drawMiniGoal = (ctx, item, isSelected) => {
 const drawHurdle = (ctx, item, isSelected) => {
   const width = Number(item.width || 62)
   const height = Number(item.height || 30)
-  const left = item.x - width / 2
-  const top = item.y - height / 2
+  const left = -width / 2
+  const top = -height / 2
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
 
   ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
   ctx.strokeStyle = '#ef4444'
   ctx.lineWidth = 4
   ctx.beginPath()
@@ -943,6 +993,7 @@ function SchemeTool() {
   const [selectedObjectId, setSelectedObjectId] = useState('')
   const [dragState, setDragState] = useState(null)
   const [resizeState, setResizeState] = useState(null)
+  const [rotateState, setRotateState] = useState(null)
   const [arrowStart, setArrowStart] = useState(null)
   const [areaDraft, setAreaDraft] = useState(null)
   const [exportDataUrl, setExportDataUrl] = useState('')
@@ -1054,6 +1105,10 @@ function SchemeTool() {
     drawField(ctx, sportKey, surfaceKey, canvas.width, canvas.height)
     drawSceneObjects(ctx, sceneObjects, selectedObjectId, activePlayerStyle)
 
+    if (selectedObject && isRotatableAidType(selectedObject.type)) {
+      drawRotationHandle(ctx, selectedObject)
+    }
+
     if (areaDraft?.toolType && areaDraft?.startPoint && areaDraft?.endPoint) {
       drawAreaShape(ctx, buildAreaFromDrag(areaDraft.toolType, areaDraft.startPoint, areaDraft.endPoint), true)
     }
@@ -1067,7 +1122,7 @@ function SchemeTool() {
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, arrowStart, areaDraft, activePlayerStyle])
+  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, selectedObject, arrowStart, areaDraft, activePlayerStyle])
 
   const createId = () => {
     const id = `scheme-item-${nextIdRef.current}`
@@ -1147,6 +1202,7 @@ function SchemeTool() {
     if (tool === 'hurdle') {
       base.width = 62
       base.height = 30
+      base.rotation = 0
     }
 
     setSceneObjects((prev) => [...prev, base])
@@ -1167,11 +1223,19 @@ function SchemeTool() {
     const point = getCanvasPoint(canvas, event)
     const isAreaTool = activeTool === 'areaRect' || activeTool === 'areaSquare' || activeTool === 'areaCircle' || activeTool === 'areaDiamond'
 
+    if (activeTool === 'select' && selectedObject && isRotatableAidType(selectedObject.type) && hitRotationHandle(selectedObject, point)) {
+      setRotateState({ id: selectedObject.id })
+      setDragState(null)
+      setResizeState(null)
+      return
+    }
+
     if (isAreaTool) {
       setAreaDraft({ toolType: activeTool, startPoint: point, endPoint: point })
       setSelectedObjectId('')
       setDragState(null)
       setResizeState(null)
+      setRotateState(null)
       return
     }
 
@@ -1185,6 +1249,7 @@ function SchemeTool() {
         if (resizeHandleKey) {
           setResizeState({ id: hit.id, handleKey: resizeHandleKey })
           setDragState(null)
+          setRotateState(null)
           return
         }
 
@@ -1208,14 +1273,17 @@ function SchemeTool() {
             })
           }
           setResizeState(null)
+          setRotateState(null)
         } else {
           setDragState(null)
           setResizeState(null)
+          setRotateState(null)
         }
       } else {
         setSelectedObjectId('')
         setDragState(null)
         setResizeState(null)
+        setRotateState(null)
       }
       return
     }
@@ -1230,10 +1298,12 @@ function SchemeTool() {
           offsetY: point.y - hit.y
         })
         setResizeState(null)
+        setRotateState(null)
         return
       }
 
       setSelectedObjectId(hit.id)
+      setRotateState(null)
       return
     }
 
@@ -1257,6 +1327,26 @@ function SchemeTool() {
         if (item.id !== resizeState.id) return item
         if (!isAreaToolType(item.type)) return item
         return resizeAreaFromPoint(item, point, resizeState.handleKey)
+      }))
+      return
+    }
+
+    if (rotateState?.id) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const point = getCanvasPoint(canvas, event)
+      setSceneObjects((prev) => prev.map((item) => {
+        if (item.id !== rotateState.id) return item
+        if (!isRotatableAidType(item.type)) return item
+
+        const dx = point.x - item.x
+        const dy = point.y - item.y
+        const degrees = ((Math.atan2(dy, dx) * 180) / Math.PI + 90 + 360) % 360
+
+        return {
+          ...item,
+          rotation: degrees
+        }
       }))
       return
     }
@@ -1333,6 +1423,10 @@ function SchemeTool() {
     if (resizeState) {
       setResizeState(null)
     }
+
+    if (rotateState) {
+      setRotateState(null)
+    }
   }
 
   const removeSelectedObject = () => {
@@ -1347,6 +1441,7 @@ function SchemeTool() {
     setArrowStart(null)
     setAreaDraft(null)
     setResizeState(null)
+    setRotateState(null)
   }
 
   const rotateSelectedAid = (stepDeg) => {
