@@ -27,6 +27,9 @@ const TOOL_OPTIONS = [
   { key: 'player', label: 'Hráč' },
   { key: 'ball', label: 'Lopta' },
   { key: 'cone', label: 'Kužeľ' },
+  { key: 'ladder', label: 'Koordinačný rebrík' },
+  { key: 'miniGoal', label: 'Bránka' },
+  { key: 'hurdle', label: 'Prekážka' },
   { key: 'arrowPlayerStraight', label: 'Pohyb hráča bez lopty' },
   { key: 'arrowPlayerBall', label: 'Pohyb hráča s loptou' },
   { key: 'arrowBallDashed', label: 'Pohyb lopty (preruš.)' },
@@ -42,7 +45,7 @@ const DEFAULT_CANVAS = { width: 1100, height: 650 }
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
-const AREA_HANDLE_KEYS = ['nw', 'ne', 'sw', 'se']
+const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
 
 const MIN_AREA_SIZE = 26
 
@@ -523,7 +526,178 @@ const resizeAreaFromPoint = (item, point, handleKey = 'se') => {
   }
 }
 
-const drawSceneObjects = (ctx, objects, selectedId) => {
+const drawLadder = (ctx, item, isSelected) => {
+  const width = Number(item.width || 92)
+  const height = Number(item.height || 42)
+  const left = item.x - width / 2
+  const top = item.y - height / 2
+
+  ctx.save()
+  ctx.lineWidth = 3
+  ctx.strokeStyle = '#f59e0b'
+
+  ctx.beginPath()
+  ctx.moveTo(left, top)
+  ctx.lineTo(left, top + height)
+  ctx.moveTo(left + width, top)
+  ctx.lineTo(left + width, top + height)
+  ctx.stroke()
+
+  const rungs = 4
+  for (let i = 1; i <= rungs; i += 1) {
+    const y = top + (height * i) / (rungs + 1)
+    ctx.beginPath()
+    ctx.moveTo(left + 5, y)
+    ctx.lineTo(left + width - 5, y)
+    ctx.stroke()
+  }
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(left - 6, top - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+  ctx.restore()
+}
+
+const drawMiniGoal = (ctx, item, isSelected) => {
+  const width = Number(item.width || 78)
+  const height = Number(item.height || 40)
+  const left = item.x - width / 2
+  const top = item.y - height / 2
+
+  ctx.save()
+  ctx.lineWidth = 3
+  ctx.strokeStyle = '#f8fafc'
+  ctx.strokeRect(left, top, width, height)
+
+  ctx.lineWidth = 1.5
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)'
+  for (let i = 1; i < 5; i += 1) {
+    const x = left + (width * i) / 5
+    ctx.beginPath()
+    ctx.moveTo(x, top)
+    ctx.lineTo(x, top + height)
+    ctx.stroke()
+  }
+  for (let i = 1; i < 3; i += 1) {
+    const y = top + (height * i) / 3
+    ctx.beginPath()
+    ctx.moveTo(left, y)
+    ctx.lineTo(left + width, y)
+    ctx.stroke()
+  }
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(left - 6, top - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+  ctx.restore()
+}
+
+const drawHurdle = (ctx, item, isSelected) => {
+  const width = Number(item.width || 62)
+  const height = Number(item.height || 30)
+  const left = item.x - width / 2
+  const top = item.y - height / 2
+
+  ctx.save()
+  ctx.strokeStyle = '#ef4444'
+  ctx.lineWidth = 4
+  ctx.beginPath()
+  ctx.moveTo(left, top + height)
+  ctx.lineTo(left, top + 8)
+  ctx.lineTo(left + width, top + 8)
+  ctx.lineTo(left + width, top + height)
+  ctx.stroke()
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(left - 6, top - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+  ctx.restore()
+}
+
+const drawPlayerCircle = (ctx, item, isSelected) => {
+  ctx.beginPath()
+  ctx.arc(item.x, item.y, 16, 0, Math.PI * 2)
+  ctx.fillStyle = item.color || TEAM_COLORS.red
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+
+  if (item.number) {
+    ctx.font = '700 14px "Segoe UI", Arial, sans-serif'
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(item.number), item.x, item.y)
+    ctx.textAlign = 'start'
+    ctx.textBaseline = 'alphabetic'
+  }
+
+  if (isSelected) {
+    ctx.beginPath()
+    ctx.arc(item.x, item.y, 21, 0, Math.PI * 2)
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+}
+
+const drawPlayerStickman = (ctx, item, isSelected) => {
+  const color = item.color || TEAM_COLORS.red
+
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = 4
+  ctx.lineCap = 'round'
+
+  ctx.beginPath()
+  ctx.arc(item.x, item.y - 13, 7, 0, Math.PI * 2)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(item.x, item.y - 6)
+  ctx.lineTo(item.x, item.y + 12)
+  ctx.moveTo(item.x - 10, item.y + 1)
+  ctx.lineTo(item.x + 10, item.y + 1)
+  ctx.moveTo(item.x, item.y + 12)
+  ctx.lineTo(item.x - 9, item.y + 24)
+  ctx.moveTo(item.x, item.y + 12)
+  ctx.lineTo(item.x + 9, item.y + 24)
+  ctx.stroke()
+
+  if (item.number) {
+    ctx.font = '700 12px "Segoe UI", Arial, sans-serif'
+    ctx.fillStyle = '#101828'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(String(item.number), item.x, item.y + 37)
+    ctx.textAlign = 'start'
+  }
+
+  if (isSelected) {
+    ctx.beginPath()
+    ctx.arc(item.x, item.y + 4, 26, 0, Math.PI * 2)
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
   objects.forEach((item) => {
     const isSelected = String(selectedId || '') === String(item.id || '')
 
@@ -566,32 +740,12 @@ const drawSceneObjects = (ctx, objects, selectedId) => {
     }
 
     if (item.type === 'player') {
-      ctx.beginPath()
-      ctx.arc(item.x, item.y, 16, 0, Math.PI * 2)
-      ctx.fillStyle = item.color || TEAM_COLORS.red
-      ctx.fill()
-      ctx.lineWidth = 2
-      ctx.strokeStyle = '#ffffff'
-      ctx.stroke()
-
-      if (item.number) {
-        ctx.font = '700 14px "Segoe UI", Arial, sans-serif'
-        ctx.fillStyle = '#ffffff'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(String(item.number), item.x, item.y)
-        ctx.textAlign = 'start'
-        ctx.textBaseline = 'alphabetic'
+      const itemStyle = isPlayerStyle(item.playerStyle) ? item.playerStyle : playerStyle
+      if (itemStyle === 'stickman') {
+        drawPlayerStickman(ctx, item, isSelected)
+      } else {
+        drawPlayerCircle(ctx, item, isSelected)
       }
-
-      if (isSelected) {
-        ctx.beginPath()
-        ctx.arc(item.x, item.y, 21, 0, Math.PI * 2)
-        ctx.strokeStyle = '#101828'
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-
       return
     }
 
@@ -631,6 +785,22 @@ const drawSceneObjects = (ctx, objects, selectedId) => {
         ctx.lineWidth = 2
         ctx.stroke()
       }
+
+      return
+    }
+
+    if (item.type === 'ladder') {
+      drawLadder(ctx, item, isSelected)
+      return
+    }
+
+    if (item.type === 'miniGoal') {
+      drawMiniGoal(ctx, item, isSelected)
+      return
+    }
+
+    if (item.type === 'hurdle') {
+      drawHurdle(ctx, item, isSelected)
     }
   })
 }
@@ -691,6 +861,20 @@ const hitTest = (objects, point) => {
       continue
     }
 
+    if (item.type === 'ladder' || item.type === 'miniGoal' || item.type === 'hurdle') {
+      const width = Number(item.width || (item.type === 'ladder' ? 92 : item.type === 'miniGoal' ? 78 : 62))
+      const height = Number(item.height || (item.type === 'ladder' ? 42 : item.type === 'miniGoal' ? 40 : 30))
+      if (
+        point.x >= item.x - width / 2
+        && point.x <= item.x + width / 2
+        && point.y >= item.y - height / 2
+        && point.y <= item.y + height / 2
+      ) {
+        return item
+      }
+      continue
+    }
+
     const radius = item.type === 'ball' ? 12 : 18
     const dx = point.x - item.x
     const dy = point.y - item.y
@@ -711,6 +895,7 @@ function SchemeTool() {
   const [surfaceKey, setSurfaceKey] = useState('full')
   const [activeTool, setActiveTool] = useState('select')
   const [activeTeamColor, setActiveTeamColor] = useState('red')
+  const [activePlayerStyle, setActivePlayerStyle] = useState('circle')
   const [sceneObjects, setSceneObjects] = useState([])
   const [selectedObjectId, setSelectedObjectId] = useState('')
   const [dragState, setDragState] = useState(null)
@@ -820,7 +1005,7 @@ function SchemeTool() {
     if (!ctx) return
 
     drawField(ctx, sportKey, surfaceKey, canvas.width, canvas.height)
-    drawSceneObjects(ctx, sceneObjects, selectedObjectId)
+    drawSceneObjects(ctx, sceneObjects, selectedObjectId, activePlayerStyle)
 
     if (areaDraft?.toolType && areaDraft?.startPoint && areaDraft?.endPoint) {
       drawAreaShape(ctx, buildAreaFromDrag(areaDraft.toolType, areaDraft.startPoint, areaDraft.endPoint), true)
@@ -835,7 +1020,7 @@ function SchemeTool() {
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, arrowStart, areaDraft])
+  }, [sportKey, surfaceKey, sceneObjects, selectedObjectId, arrowStart, areaDraft, activePlayerStyle])
 
   const createId = () => {
     const id = `scheme-item-${nextIdRef.current}`
@@ -896,6 +1081,22 @@ function SchemeTool() {
     if (tool === 'player') {
       base.color = TEAM_COLORS[activeTeamColor] || TEAM_COLORS.red
       base.number = ''
+      base.playerStyle = activePlayerStyle
+    }
+
+    if (tool === 'ladder') {
+      base.width = 92
+      base.height = 42
+    }
+
+    if (tool === 'miniGoal') {
+      base.width = 78
+      base.height = 40
+    }
+
+    if (tool === 'hurdle') {
+      base.width = 62
+      base.height = 30
     }
 
     setSceneObjects((prev) => [...prev, base])
@@ -929,12 +1130,25 @@ function SchemeTool() {
           return
         }
 
-        if (hit.type !== 'arrowPlayerBall' && hit.type !== 'arrowBallDashed' && hit.type !== 'text') {
-          setDragState({
-            id: hit.id,
-            offsetX: point.x - hit.x,
-            offsetY: point.y - hit.y
-          })
+        if (hit.type !== 'text') {
+          if (isArrowTool(hit.type)) {
+            setDragState({
+              id: hit.id,
+              mode: 'arrow',
+              startPoint: point,
+              fromX: Number(hit.fromX || 0),
+              fromY: Number(hit.fromY || 0),
+              toX: Number(hit.toX || 0),
+              toY: Number(hit.toY || 0)
+            })
+          } else {
+            setDragState({
+              id: hit.id,
+              mode: 'object',
+              offsetX: point.x - hit.x,
+              offsetY: point.y - hit.y
+            })
+          }
           setResizeState(null)
         } else {
           setDragState(null)
@@ -983,6 +1197,30 @@ function SchemeTool() {
     if (!canvas) return
 
     const point = getCanvasPoint(canvas, event)
+
+    if (dragState.mode === 'arrow') {
+      const dx = point.x - dragState.startPoint.x
+      const dy = point.y - dragState.startPoint.y
+      setSceneObjects((prev) => prev.map((item) => {
+        if (item.id !== dragState.id) return item
+        if (!isArrowTool(item.type)) return item
+
+        const nextFromX = clamp(dragState.fromX + dx, 10, canvas.width - 10)
+        const nextFromY = clamp(dragState.fromY + dy, 10, canvas.height - 10)
+        const nextToX = clamp(dragState.toX + dx, 10, canvas.width - 10)
+        const nextToY = clamp(dragState.toY + dy, 10, canvas.height - 10)
+
+        return {
+          ...item,
+          fromX: nextFromX,
+          fromY: nextFromY,
+          toX: nextToX,
+          toY: nextToY
+        }
+      }))
+      return
+    }
+
     const nextX = clamp(point.x - dragState.offsetX, 24, canvas.width - 24)
     const nextY = clamp(point.y - dragState.offsetY, 24, canvas.height - 24)
 
@@ -1102,6 +1340,12 @@ function SchemeTool() {
                 <option value="blue">Modrá</option>
                 <option value="white">Biela</option>
                 <option value="yellow">Žltá</option>
+              </select>
+
+              <label htmlFor="scheme-player-style" style={{ marginTop: 10 }}>Vzhľad hráča</label>
+              <select id="scheme-player-style" value={activePlayerStyle} onChange={(event) => setActivePlayerStyle(String(event.target.value || 'circle'))}>
+                <option value="circle">Krúžky</option>
+                <option value="stickman">Panáčikovia</option>
               </select>
             </div>
           ) : null}
