@@ -87,7 +87,7 @@ const TOOL_ICON = {
 }
 
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
-const HURDLE_DRAG_SPACING = 56
+const HURDLE_DRAG_SPACING = 44
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed' || toolKey === 'arrowShotDouble'
