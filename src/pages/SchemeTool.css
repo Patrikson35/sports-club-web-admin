@@ -141,13 +141,13 @@
 
 .scheme-canvas-stage {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 50px minmax(0, 1fr);
   gap: 0.45rem;
   align-items: stretch;
 }
 
 .scheme-minibar {
-  width: 40px;
+  width: 50px;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   background: rgba(15, 23, 42, 0.5);
@@ -155,14 +155,14 @@
   flex-direction: column;
   gap: 0.28rem;
   align-items: center;
-  padding: 0.28rem 0.2rem;
+  padding: 0.34rem 0.24rem;
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
 .scheme-minibar-btn {
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   background: rgba(15, 23, 42, 0.52);
@@ -186,7 +186,7 @@
 }
 
 .scheme-minibar-btn .material-symbols-outlined {
-  font-size: 1rem;
+  font-size: 1.06rem;
   font-variation-settings: 'FILL' 0, 'wght' 550, 'GRAD' 0, 'opsz' 24;
 }
 

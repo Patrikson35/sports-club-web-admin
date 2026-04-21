@@ -92,7 +92,10 @@ const MINI_BAR_TOOLS = [
   'cone',
   'ladder',
   'hurdle',
-  'areaRect'
+  'areaRect',
+  'areaSquare',
+  'areaCircle',
+  'areaDiamond'
 ]
 
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
