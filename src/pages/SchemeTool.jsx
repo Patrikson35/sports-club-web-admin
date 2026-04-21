@@ -137,6 +137,16 @@ const MINI_BAR_SECTIONS = [
   }
 ]
 
+const MINI_CUSTOM_GLYPH_TOOLS = new Set([
+  'disc',
+  'flag',
+  'arrowBallDashed',
+  'arrowPlayerBall',
+  'arrowShotDouble',
+  'cone',
+  'hurdle'
+])
+
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 const HURDLE_DRAG_SPACING = 44
 
@@ -2203,7 +2213,7 @@ function SchemeTool() {
                             aria-label={tool.label}
                             onClick={() => activateTool(tool.key)}
                           >
-                            {tool.key === 'disc' || tool.key === 'flag'
+                            {MINI_CUSTOM_GLYPH_TOOLS.has(tool.key)
                               ? <span className={`scheme-mini-tool-glyph ${tool.key}`} aria-hidden="true" />
                               : <span className="material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>}
                           </button>

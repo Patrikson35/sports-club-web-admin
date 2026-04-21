@@ -269,6 +269,118 @@
   width: 18px;
   height: 18px;
   display: block;
+  position: relative;
+}
+
+.scheme-mini-tool-glyph.arrowBallDashed,
+.scheme-mini-tool-glyph.arrowPlayerBall,
+.scheme-mini-tool-glyph.arrowShotDouble,
+.scheme-mini-tool-glyph.hurdle {
+  width: 22px;
+}
+
+.scheme-mini-tool-glyph.arrowBallDashed::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 13px;
+  border-top: 2px dashed #f8fafc;
+}
+
+.scheme-mini-tool-glyph.arrowBallDashed::after {
+  content: '';
+  position: absolute;
+  right: 1px;
+  top: 4px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid #f8fafc;
+}
+
+.scheme-mini-tool-glyph.arrowPlayerBall::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 7px;
+  width: 14px;
+  height: 5px;
+  border-top: 2px solid #f8fafc;
+  border-bottom: 2px solid #f8fafc;
+  border-radius: 8px;
+  transform: skewX(-16deg);
+}
+
+.scheme-mini-tool-glyph.arrowPlayerBall::after {
+  content: '';
+  position: absolute;
+  right: 1px;
+  top: 4px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid #f8fafc;
+}
+
+.scheme-mini-tool-glyph.arrowShotDouble::before,
+.scheme-mini-tool-glyph.arrowShotDouble::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+}
+
+.scheme-mini-tool-glyph.arrowShotDouble::before {
+  top: 6px;
+  width: 13px;
+  height: 6px;
+  border-top: 2px solid #f8fafc;
+  border-bottom: 2px solid #f8fafc;
+}
+
+.scheme-mini-tool-glyph.arrowShotDouble::after {
+  left: auto;
+  right: 1px;
+  top: 5px;
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid #f8fafc;
+}
+
+.scheme-mini-tool-glyph.cone {
+  width: 16px;
+  height: 16px;
+  margin: 1px auto;
+  background: linear-gradient(to top, #f97316 0 35%, #fb923c 35% 70%, #fdba74 70% 100%);
+  clip-path: polygon(50% 0%, 86% 84%, 14% 84%);
+  border-bottom: 2px solid #7c2d12;
+}
+
+.scheme-mini-tool-glyph.hurdle::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 6px;
+  width: 16px;
+  border-top: 2px solid #f8fafc;
+}
+
+.scheme-mini-tool-glyph.hurdle::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 6px;
+  width: 14px;
+  height: 9px;
+  border-left: 2px solid #f8fafc;
+  border-right: 2px solid #f8fafc;
+  border-bottom: 2px solid transparent;
+  border-radius: 0 0 2px 2px;
 }
 
 .scheme-mini-tool-glyph.disc {
