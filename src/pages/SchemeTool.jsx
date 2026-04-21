@@ -29,6 +29,8 @@ const TOOL_OPTIONS = [
   { key: 'select', label: 'Výber' },
   { key: 'player', label: 'Hráč' },
   { key: 'ball', label: 'Lopta' },
+  { key: 'disc', label: 'Disk' },
+  { key: 'flag', label: 'Vlajka' },
   { key: 'cone', label: 'Kužeľ' },
   { key: 'ladder', label: 'Koordinačný rebrík' },
   { key: 'miniGoal', label: 'Bránka' },
@@ -48,6 +50,8 @@ const TOOL_SHORT = {
   select: 'SEL',
   player: 'HR',
   ball: 'LP',
+  disc: 'DS',
+  flag: 'FL',
   cone: 'KZ',
   ladder: 'RB',
   miniGoal: 'BR',
@@ -67,6 +71,8 @@ const TOOL_ICON = {
   select: 'gesture_select',
   player: 'person',
   ball: 'sports_soccer',
+  disc: 'radio_button_checked',
+  flag: 'flag',
   cone: 'change_history',
   ladder: 'grid_4x4',
   miniGoal: 'crop_16_9',
@@ -112,6 +118,9 @@ const MINI_BAR_SECTIONS = [
     title: 'Pomôcky',
     items: [
       { kind: 'tool', key: 'ball' },
+      { kind: 'tool', key: 'miniGoal' },
+      { kind: 'tool', key: 'disc' },
+      { kind: 'tool', key: 'flag' },
       { kind: 'tool', key: 'cone' },
       { kind: 'tool', key: 'ladder' },
       { kind: 'tool', key: 'hurdle' }
@@ -135,7 +144,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed' || toolKey === 'arrowShotDouble'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
-const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle'
+const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle' || type === 'flag'
 const getArrowColor = (arrowType) => {
   if (arrowType === 'arrowBallDashed') return '#cbe0ff'
   if (arrowType === 'arrowPlayerStraight') return '#e8f2b7'
@@ -1059,6 +1068,61 @@ const drawHurdle = (ctx, item, isSelected) => {
   ctx.restore()
 }
 
+const drawDisc = (ctx, item, isSelected) => {
+  ctx.save()
+  ctx.beginPath()
+  ctx.ellipse(item.x, item.y + 1, 13, 6.5, 0, 0, Math.PI * 2)
+  ctx.fillStyle = '#ffad42'
+  ctx.fill()
+  ctx.lineWidth = 1.6
+  ctx.strokeStyle = '#9a4e0f'
+  ctx.stroke()
+
+  if (isSelected) {
+    ctx.beginPath()
+    ctx.arc(item.x, item.y, 18, 0, Math.PI * 2)
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+const drawFlag = (ctx, item, isSelected) => {
+  const width = Number(item.width || 26)
+  const height = Number(item.height || 42)
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
+
+  ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
+
+  ctx.lineWidth = 2.2
+  ctx.strokeStyle = '#e2e8f0'
+  ctx.beginPath()
+  ctx.moveTo(-width / 2 + 4, height / 2)
+  ctx.lineTo(-width / 2 + 4, -height / 2)
+  ctx.stroke()
+
+  ctx.fillStyle = '#ef4444'
+  ctx.beginPath()
+  ctx.moveTo(-width / 2 + 5, -height / 2 + 3)
+  ctx.lineTo(width / 2, -height / 2 + 9)
+  ctx.lineTo(-width / 2 + 5, -height / 2 + 16)
+  ctx.closePath()
+  ctx.fill()
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(-width / 2 - 6, -height / 2 - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+
+  ctx.restore()
+}
+
 const rotateAidItem = (item, stepDeg) => {
   if (!isRotatableAidType(item.type)) return item
   const current = Number(item.rotation || 0)
@@ -1236,6 +1300,11 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
       return
     }
 
+    if (item.type === 'disc') {
+      drawDisc(ctx, item, isSelected)
+      return
+    }
+
     if (item.type === 'ladder') {
       drawLadder(ctx, item, isSelected)
       return
@@ -1248,6 +1317,11 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
 
     if (item.type === 'hurdle') {
       drawHurdle(ctx, item, isSelected)
+      return
+    }
+
+    if (item.type === 'flag') {
+      drawFlag(ctx, item, isSelected)
     }
   })
 }
@@ -1311,22 +1385,8 @@ const hitTest = (objects, point) => {
       continue
     }
 
-    if (item.type === 'ladder' || item.type === 'miniGoal' || item.type === 'hurdle') {
-      if (isRotatableAidType(item.type)) {
-        if (isPointInRotatedRect(point, item, 8)) {
-          return item
-        }
-        continue
-      }
-
-      const width = Number(item.width || 62)
-      const height = Number(item.height || 30)
-      if (
-        point.x >= item.x - width / 2 - 8
-        && point.x <= item.x + width / 2 + 8
-        && point.y >= item.y - height / 2 - 8
-        && point.y <= item.y + height / 2 + 8
-      ) {
+    if (isRotatableAidType(item.type)) {
+      if (isPointInRotatedRect(point, item, 8)) {
         return item
       }
       continue
@@ -1610,6 +1670,12 @@ function SchemeTool() {
       base.rotation = 0
     }
 
+    if (tool === 'flag') {
+      base.width = 26
+      base.height = 42
+      base.rotation = 0
+    }
+
     setSceneObjects((prev) => [...prev, base])
   }
 
@@ -1733,7 +1799,7 @@ function SchemeTool() {
     }
 
     if (hit && !isArrowTool(activeTool)) {
-      if (hit.type === 'ladder' || hit.type === 'miniGoal' || hit.type === 'hurdle') {
+      if (isRotatableAidType(hit.type)) {
         setSelectedObjectId(hit.id)
         setDragState({
           id: hit.id,
@@ -2137,7 +2203,9 @@ function SchemeTool() {
                             aria-label={tool.label}
                             onClick={() => activateTool(tool.key)}
                           >
-                            <span className="material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
+                            {tool.key === 'disc' || tool.key === 'flag'
+                              ? <span className={`scheme-mini-tool-glyph ${tool.key}`} aria-hidden="true" />
+                              : <span className="material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>}
                           </button>
                         )
                       })}
