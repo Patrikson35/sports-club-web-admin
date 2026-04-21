@@ -1544,9 +1544,11 @@ function SchemeTool() {
       setArrowStart(null)
       hurdleDrawRef.current = {
         firstId: hurdleId,
-        firstAligned: false,
-        lastPlacedX: point.x,
-        lastPlacedY: point.y
+        originX: point.x,
+        originY: point.y,
+        directionX: null,
+        directionY: null,
+        placedCount: 0
       }
       return
     }
@@ -1663,37 +1665,40 @@ function SchemeTool() {
       const point = getCanvasPoint(canvas, event)
 
       const state = hurdleDrawRef.current
-      let lastX = Number(state.lastPlacedX || 0)
-      let lastY = Number(state.lastPlacedY || 0)
-      let dx = point.x - lastX
-      let dy = point.y - lastY
-      let distance = Math.hypot(dx, dy)
+      const originX = Number(state.originX || 0)
+      const originY = Number(state.originY || 0)
 
-      if (distance < HURDLE_DRAG_SPACING) {
-        return
+      let directionX = Number(state.directionX)
+      let directionY = Number(state.directionY)
+
+      if (!Number.isFinite(directionX) || !Number.isFinite(directionY)) {
+        const initialDx = point.x - originX
+        const initialDy = point.y - originY
+        const initialDistance = Math.hypot(initialDx, initialDy)
+        if (initialDistance < 10) return
+
+        directionX = initialDx / initialDistance
+        directionY = initialDy / initialDistance
       }
 
-      const rotation = (getRotationFromVector(dx, dy) + 90) % 360
-      const newHurdles = []
+      const projection = ((point.x - originX) * directionX) + ((point.y - originY) * directionY)
+      const targetCount = Math.max(0, Math.floor(projection / HURDLE_DRAG_SPACING))
+      const placedCount = Number.isFinite(Number(state.placedCount)) ? Number(state.placedCount) : 0
+      const toCreate = targetCount - placedCount
+      const rotation = (getRotationFromVector(directionX, directionY) + 90) % 360
 
-      while (distance >= HURDLE_DRAG_SPACING) {
-        const nextX = lastX + (dx / distance) * HURDLE_DRAG_SPACING
-        const nextY = lastY + (dy / distance) * HURDLE_DRAG_SPACING
+      const newHurdles = []
+      for (let i = 1; i <= toCreate; i += 1) {
+        const step = placedCount + i
+        const nextX = originX + directionX * step * HURDLE_DRAG_SPACING
+        const nextY = originY + directionY * step * HURDLE_DRAG_SPACING
         newHurdles.push(createHurdleItem(createId(), nextX, nextY, rotation))
-        lastX = nextX
-        lastY = nextY
-        dx = point.x - lastX
-        dy = point.y - lastY
-        distance = Math.hypot(dx, dy)
       }
 
       setSceneObjects((prev) => {
-        let next = prev
-        if (!state.firstAligned) {
-          next = next.map((item) => (String(item.id || '') === String(state.firstId)
-            ? { ...item, rotation }
-            : item))
-        }
+        let next = prev.map((item) => (String(item.id || '') === String(state.firstId)
+          ? { ...item, rotation }
+          : item))
         if (newHurdles.length > 0) {
           next = [...next, ...newHurdles]
         }
@@ -1702,9 +1707,9 @@ function SchemeTool() {
 
       hurdleDrawRef.current = {
         ...state,
-        firstAligned: true,
-        lastPlacedX: lastX,
-        lastPlacedY: lastY
+        directionX,
+        directionY,
+        placedCount: placedCount + Math.max(0, toCreate)
       }
       return
     }
