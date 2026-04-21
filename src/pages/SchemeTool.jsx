@@ -87,6 +87,7 @@ const TOOL_ICON = {
 }
 
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
+const HURDLE_DRAG_SPACING = 56
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed' || toolKey === 'arrowShotDouble'
@@ -99,6 +100,17 @@ const getArrowColor = (arrowType) => {
   if (arrowType === 'arrowShotDouble') return '#ffd1a0'
   return '#fff4a8'
 }
+const getRotationFromVector = (dx, dy) => ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360
+
+const createHurdleItem = (id, x, y, rotation = 0) => ({
+  id,
+  type: 'hurdle',
+  x,
+  y,
+  width: 62,
+  height: 30,
+  rotation
+})
 
 const MIN_AREA_SIZE = 26
 
@@ -1212,6 +1224,7 @@ function SchemeTool() {
   const canvasRef = useRef(null)
   const exportLinkRef = useRef(null)
   const nextIdRef = useRef(1)
+  const hurdleDrawRef = useRef(null)
 
   const [sportKey, setSportKey] = useState('football')
   const [surfaceKey, setSurfaceKey] = useState('full')
@@ -1520,6 +1533,24 @@ function SchemeTool() {
       return
     }
 
+    if (activeTool === 'hurdle') {
+      const hurdleId = createId()
+      setSceneObjects((prev) => [...prev, createHurdleItem(hurdleId, point.x, point.y, 0)])
+      setSelectedObjectId(hurdleId)
+      setDragState(null)
+      setResizeState(null)
+      setRotateState(null)
+      setAreaDraft(null)
+      setArrowStart(null)
+      hurdleDrawRef.current = {
+        firstId: hurdleId,
+        firstAligned: false,
+        lastPlacedX: point.x,
+        lastPlacedY: point.y
+      }
+      return
+    }
+
     const hit = hitTest(sceneObjects, point)
 
     if (activeTool === 'select') {
@@ -1623,6 +1654,58 @@ function SchemeTool() {
           controlY: control?.y
         }
       })
+      return
+    }
+
+    if (activeTool === 'hurdle' && hurdleDrawRef.current) {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const point = getCanvasPoint(canvas, event)
+
+      const state = hurdleDrawRef.current
+      let lastX = Number(state.lastPlacedX || 0)
+      let lastY = Number(state.lastPlacedY || 0)
+      let dx = point.x - lastX
+      let dy = point.y - lastY
+      let distance = Math.hypot(dx, dy)
+
+      if (distance < HURDLE_DRAG_SPACING) {
+        return
+      }
+
+      const rotation = getRotationFromVector(dx, dy)
+      const newHurdles = []
+
+      while (distance >= HURDLE_DRAG_SPACING) {
+        const nextX = lastX + (dx / distance) * HURDLE_DRAG_SPACING
+        const nextY = lastY + (dy / distance) * HURDLE_DRAG_SPACING
+        newHurdles.push(createHurdleItem(createId(), nextX, nextY, rotation))
+        lastX = nextX
+        lastY = nextY
+        dx = point.x - lastX
+        dy = point.y - lastY
+        distance = Math.hypot(dx, dy)
+      }
+
+      setSceneObjects((prev) => {
+        let next = prev
+        if (!state.firstAligned) {
+          next = next.map((item) => (String(item.id || '') === String(state.firstId)
+            ? { ...item, rotation }
+            : item))
+        }
+        if (newHurdles.length > 0) {
+          next = [...next, ...newHurdles]
+        }
+        return next
+      })
+
+      hurdleDrawRef.current = {
+        ...state,
+        firstAligned: true,
+        lastPlacedX: lastX,
+        lastPlacedY: lastY
+      }
       return
     }
 
@@ -1765,6 +1848,8 @@ function SchemeTool() {
     if (rotateState) {
       setRotateState(null)
     }
+
+    hurdleDrawRef.current = null
   }
 
   const removeSelectedObject = () => {
@@ -1780,6 +1865,7 @@ function SchemeTool() {
     setAreaDraft(null)
     setResizeState(null)
     setRotateState(null)
+    hurdleDrawRef.current = null
   }
 
   const rotateSelectedAid = (stepDeg) => {
