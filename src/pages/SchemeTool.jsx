@@ -82,6 +82,19 @@ const TOOL_ICON = {
   text: 'title'
 }
 
+const MINI_BAR_TOOLS = [
+  'player',
+  'ball',
+  'arrowBallDashed',
+  'arrowPlayerBall',
+  'arrowPlayerStraight',
+  'arrowShotDouble',
+  'cone',
+  'ladder',
+  'hurdle',
+  'areaRect'
+]
+
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
 const HURDLE_DRAG_SPACING = 44
 
@@ -1975,6 +1988,18 @@ function SchemeTool() {
     }
   }
 
+  const activateTool = (toolKey) => {
+    setActiveTool(toolKey)
+    if (!isArrowTool(toolKey)) {
+      setArrowStart(null)
+    } else if (arrowStart?.type && arrowStart.type !== toolKey) {
+      setArrowStart(null)
+    }
+    if (!(toolKey === 'areaRect' || toolKey === 'areaSquare' || toolKey === 'areaCircle' || toolKey === 'areaDiamond')) {
+      setAreaDraft(null)
+    }
+  }
+
   return (
     <div className="unified-page scheme-page">
       <div className="unified-toolbar scheme-toolbar">
@@ -2002,16 +2027,38 @@ function SchemeTool() {
             ))}
           </div>
 
-          <canvas
-            ref={canvasRef}
-            className="scheme-canvas"
-            width={DEFAULT_CANVAS.width}
-            height={DEFAULT_CANVAS.height}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-          />
+            <div className="scheme-canvas-stage">
+              <div className="scheme-minibar" role="toolbar" aria-label="Mini nástroje">
+                {MINI_BAR_TOOLS.map((toolKey) => {
+                  const tool = TOOL_OPTIONS.find((candidate) => candidate.key === toolKey)
+                  if (!tool) return null
+
+                  return (
+                    <button
+                      key={`mini-${tool.key}`}
+                      type="button"
+                      className={`scheme-minibar-btn ${activeTool === tool.key ? 'active' : ''}`}
+                      title={tool.label}
+                      aria-label={tool.label}
+                      onClick={() => activateTool(tool.key)}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <canvas
+                ref={canvasRef}
+                className="scheme-canvas"
+                width={DEFAULT_CANVAS.width}
+                height={DEFAULT_CANVAS.height}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              />
+            </div>
 
           <div className="scheme-under-canvas">
             <div className="scheme-tool-row" role="toolbar" aria-label="Nástroje schémy">
@@ -2022,17 +2069,7 @@ function SchemeTool() {
                   className={`btn-secondary scheme-tool-btn scheme-tool-btn--compact ${activeTool === tool.key ? 'active' : ''}`}
                   title={tool.label}
                   aria-label={tool.label}
-                  onClick={() => {
-                    setActiveTool(tool.key)
-                    if (!isArrowTool(tool.key)) {
-                      setArrowStart(null)
-                    } else if (arrowStart?.type && arrowStart.type !== tool.key) {
-                      setArrowStart(null)
-                    }
-                    if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
-                      setAreaDraft(null)
-                    }
-                  }}
+                  onClick={() => activateTool(tool.key)}
                 >
                   <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
                   <span className="scheme-tool-label">{tool.label}</span>
