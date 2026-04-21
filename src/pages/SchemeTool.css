@@ -141,21 +141,22 @@
 
 .scheme-canvas-stage {
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr);
+  grid-template-columns: 100px minmax(0, 1fr);
   gap: 0.45rem;
   align-items: stretch;
 }
 
 .scheme-minibar {
-  width: 50px;
+  width: 100px;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   background: rgba(15, 23, 42, 0.5);
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-  align-items: center;
-  padding: 0.34rem 0.24rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  justify-items: center;
+  align-content: start;
+  padding: 0.34rem;
   overflow-y: auto;
   scrollbar-width: thin;
 }
