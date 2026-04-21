@@ -627,7 +627,10 @@ const drawSoccerBall = (ctx, x, y, isSelected) => {
   ctx.restore()
 }
 
-const drawTrainingCone = (ctx, x, y, isSelected) => {
+const drawTrainingCone = (ctx, item, isSelected) => {
+  const x = Number(item.x || 0)
+  const y = Number(item.y || 0)
+  const coneColor = item.color || '#e78323'
   ctx.save()
 
   const shadow = ctx.createRadialGradient(x, y + 12, 2, x, y + 12, 18)
@@ -638,11 +641,7 @@ const drawTrainingCone = (ctx, x, y, isSelected) => {
   ctx.ellipse(x, y + 12, 15, 6, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  const body = ctx.createLinearGradient(x, y - 14, x, y + 13)
-  body.addColorStop(0, '#ffbf5a')
-  body.addColorStop(1, '#e78323')
-
-  ctx.fillStyle = body
+  ctx.fillStyle = coneColor
   ctx.beginPath()
   ctx.moveTo(x, y - 15)
   ctx.lineTo(x - 10, y + 11)
@@ -1092,7 +1091,7 @@ const drawHurdle = (ctx, item, isSelected) => {
   ctx.save()
   ctx.translate(item.x, item.y)
   ctx.rotate(rotation)
-  ctx.strokeStyle = '#ef4444'
+  ctx.strokeStyle = item.color || '#ef4444'
   ctx.lineWidth = 4
   ctx.beginPath()
   ctx.moveTo(left, top + height)
@@ -1115,7 +1114,7 @@ const drawDisc = (ctx, item, isSelected) => {
   ctx.save()
   ctx.beginPath()
   ctx.ellipse(item.x, item.y + 1, 13, 6.5, 0, 0, Math.PI * 2)
-  ctx.fillStyle = '#ffad42'
+  ctx.fillStyle = item.color || '#ffad42'
   ctx.fill()
   ctx.lineWidth = 1.6
   ctx.strokeStyle = '#9a4e0f'
@@ -1147,7 +1146,7 @@ const drawFlag = (ctx, item, isSelected) => {
   ctx.lineTo(-width / 2 + 4, -height / 2)
   ctx.stroke()
 
-  ctx.fillStyle = '#ef4444'
+  ctx.fillStyle = item.color || '#ef4444'
   ctx.beginPath()
   ctx.moveTo(-width / 2 + 5, -height / 2 + 3)
   ctx.lineTo(width / 2, -height / 2 + 9)
@@ -1339,7 +1338,7 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
     }
 
     if (item.type === 'cone') {
-      drawTrainingCone(ctx, item.x, item.y, isSelected)
+      drawTrainingCone(ctx, item, isSelected)
       return
     }
 
