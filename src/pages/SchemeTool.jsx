@@ -16,13 +16,14 @@ const TEAM_COLORS = {
 }
 
 const SURFACE_OPTIONS = [
-  { key: 'full', label: 'Celé ihrisko' },
-  { key: 'halfLeft', label: 'Polka - ľavá' },
-  { key: 'halfRight', label: 'Polka - pravá' },
-  { key: 'thirdLeft', label: 'Tretina - ľavá' },
-  { key: 'thirdCenter', label: 'Tretina - stred' },
-  { key: 'thirdRight', label: 'Tretina - pravá' },
-  { key: 'blank', label: 'Plocha (bez čiar)' }
+  { key: 'rectangle', label: 'Rectangle' },
+  { key: 'twoRectangles', label: 'Two Rectangles' },
+  { key: 'threeRectangles', label: 'Three Rectangles' },
+  { key: 'fullPitch', label: 'Full Pitch' },
+  { key: 'blankCanvas', label: 'Blank Canvas' },
+  { key: 'halfPitch', label: 'Half Pitch' },
+  { key: 'squarePitch', label: 'Square Pitch' },
+  { key: 'penaltyBox', label: 'Penalty Box' }
 ]
 
 const TOOL_OPTIONS = [
@@ -221,49 +222,35 @@ const drawHockeyField = (ctx, width, height) => {
   ctx.strokeRect(width - 20 - goalW, (height - goalH) / 2, goalW, goalH)
 }
 
-const getSourceCropRect = (surfaceKey, width, height) => {
-  if (surfaceKey === 'halfLeft') {
-    return {
-      x: 0,
-      y: 0,
-      width: width * 0.5,
-      height
-    }
-  }
-
-  if (surfaceKey === 'halfRight') {
+const getSurfaceCropConfig = (surfaceKey, width, height) => {
+  if (surfaceKey === 'halfPitch') {
     return {
       x: width * 0.5,
       y: 0,
       width: width * 0.5,
-      height
+      height,
+      rotateVertical: true
     }
   }
 
-  if (surfaceKey === 'thirdLeft') {
+  if (surfaceKey === 'squarePitch') {
+    const side = Math.min(width, height)
     return {
-      x: 0,
-      y: 0,
-      width: width / 3,
-      height
+      x: (width - side) / 2,
+      y: (height - side) / 2,
+      width: side,
+      height: side,
+      rotateVertical: false
     }
   }
 
-  if (surfaceKey === 'thirdCenter') {
+  if (surfaceKey === 'penaltyBox') {
     return {
-      x: width / 3,
+      x: width * 0.7,
       y: 0,
-      width: width / 3,
-      height
-    }
-  }
-
-  if (surfaceKey === 'thirdRight') {
-    return {
-      x: width * (2 / 3),
-      y: 0,
-      width: width / 3,
-      height
+      width: width * 0.3,
+      height,
+      rotateVertical: true
     }
   }
 
@@ -271,7 +258,24 @@ const getSourceCropRect = (surfaceKey, width, height) => {
     x: 0,
     y: 0,
     width,
-    height
+    height,
+    rotateVertical: false
+  }
+}
+
+const drawRectanglesTemplate = (ctx, count, width, height) => {
+  const outerPad = 24
+  const gap = 12
+  const drawHeight = height - outerPad * 2
+  const drawWidth = width - outerPad * 2
+  const rectWidth = (drawWidth - gap * (count - 1)) / count
+
+  ctx.strokeStyle = 'rgba(245,249,252,0.96)'
+  ctx.lineWidth = 3
+
+  for (let i = 0; i < count; i += 1) {
+    const x = outerPad + i * (rectWidth + gap)
+    ctx.strokeRect(x, outerPad, rectWidth, drawHeight)
   }
 }
 
@@ -300,11 +304,26 @@ const drawField = (ctx, sportKey, surfaceKey, width, height) => {
   ctx.clearRect(0, 0, width, height)
   drawBlankSurface(ctx, sportKey, width, height)
 
-  if (surfaceKey === 'blank') {
+  if (surfaceKey === 'blankCanvas') {
     return
   }
 
-  if (surfaceKey === 'full') {
+  if (surfaceKey === 'rectangle') {
+    drawRectanglesTemplate(ctx, 1, width, height)
+    return
+  }
+
+  if (surfaceKey === 'twoRectangles') {
+    drawRectanglesTemplate(ctx, 2, width, height)
+    return
+  }
+
+  if (surfaceKey === 'threeRectangles') {
+    drawRectanglesTemplate(ctx, 3, width, height)
+    return
+  }
+
+  if (surfaceKey === 'fullPitch') {
     drawFullTemplate(ctx, sportKey, width, height)
     return
   }
@@ -318,18 +337,28 @@ const drawField = (ctx, sportKey, surfaceKey, width, height) => {
   drawBlankSurface(sourceCtx, sportKey, width, height)
   drawFullTemplate(sourceCtx, sportKey, width, height)
 
-  const crop = getSourceCropRect(surfaceKey, width, height)
-  ctx.drawImage(
-    sourceCanvas,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    width,
-    height
-  )
+  const crop = getSurfaceCropConfig(surfaceKey, width, height)
+
+  if (crop.rotateVertical) {
+    ctx.save()
+    ctx.translate(width / 2, height / 2)
+    ctx.rotate(-Math.PI / 2)
+    ctx.drawImage(
+      sourceCanvas,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
+      -height / 2,
+      -width / 2,
+      height,
+      width
+    )
+    ctx.restore()
+    return
+  }
+
+  ctx.drawImage(sourceCanvas, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height)
 }
 
 const getQuadraticPoint = (fromX, fromY, controlX, controlY, toX, toY, t) => {
@@ -1257,7 +1286,7 @@ function SchemeTool() {
   const hurdleDrawRef = useRef(null)
 
   const [sportKey, setSportKey] = useState('football')
-  const [surfaceKey, setSurfaceKey] = useState('full')
+  const [surfaceKey, setSurfaceKey] = useState('fullPitch')
   const [activeTool, setActiveTool] = useState('select')
   const [activeTeamColor, setActiveTeamColor] = useState('red')
   const [activePlayerStyle, setActivePlayerStyle] = useState('circle')

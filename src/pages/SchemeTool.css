@@ -191,55 +191,69 @@
   border-radius: 2px;
 }
 
-.scheme-surface-icon.half {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 73% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.halfLeft {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 27% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.halfRight {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 73% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.third {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.thirdLeft {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 33% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.thirdCenter {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 33% 50% / 1px 100% no-repeat,
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.thirdRight {
-  background:
-    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
-    rgba(34, 197, 94, 0.34);
-}
-
-.scheme-surface-icon.blank {
+.scheme-surface-icon.rectangle {
   background: rgba(34, 197, 94, 0.34);
 }
 
-.scheme-surface-icon.blank::after {
+.scheme-surface-icon.twoRectangles {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 50% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.threeRectangles {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 33% 50% / 1px 100% no-repeat,
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 73% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.fullPitch {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.7), rgba(241, 245, 249, 0.7)) 50% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.blankCanvas {
+  background: rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.blankCanvas::after {
   border-color: rgba(226, 232, 240, 0.22);
+}
+
+.scheme-surface-icon.halfPitch {
+  width: 24px;
+  height: 42px;
+  background:
+    linear-gradient(to bottom, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 50% 50% / 100% 1px no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.squarePitch {
+  width: 30px;
+  height: 30px;
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 50% 50% / 1px 100% no-repeat,
+    linear-gradient(to bottom, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 50% 50% / 100% 1px no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.penaltyBox {
+  width: 24px;
+  height: 42px;
+  background: rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.penaltyBox::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 10px;
+  bottom: 10px;
+  border: 1px solid rgba(241, 245, 249, 0.72);
+  border-radius: 2px;
 }
 
 .scheme-surface-label {
