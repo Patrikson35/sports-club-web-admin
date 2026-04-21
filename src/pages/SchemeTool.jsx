@@ -1458,6 +1458,7 @@ function SchemeTool() {
   const [activeTeamColor, setActiveTeamColor] = useState('red')
   const [activePlayerStyle, setActivePlayerStyle] = useState('circle')
   const [activePlayerPreset, setActivePlayerPreset] = useState('')
+  const [brushColor, setBrushColor] = useState('#ef4444')
   const [sceneObjects, setSceneObjects] = useState([])
   const [selectedObjectId, setSelectedObjectId] = useState('')
   const [dragState, setDragState] = useState(null)
@@ -1791,6 +1792,33 @@ function SchemeTool() {
     }
 
     const hit = hitTest(sceneObjects, point)
+
+    if (activeTool === 'brush') {
+      if (hit) {
+        const hitId = String(hit.id || '')
+        setSceneObjects((prev) => prev.map((item) => {
+          if (String(item.id || '') !== hitId) return item
+
+          if (isAreaToolType(item.type)) {
+            return {
+              ...item,
+              color: brushColor,
+              fillColor: applyAlphaToColor(brushColor, 0.2)
+            }
+          }
+
+          return {
+            ...item,
+            color: brushColor
+          }
+        }))
+        setSelectedObjectId(hitId)
+      }
+      setDragState(null)
+      setResizeState(null)
+      setRotateState(null)
+      return
+    }
 
     if (activeTool === 'select') {
       if (hit) {
@@ -2147,30 +2175,8 @@ function SchemeTool() {
     setSelectedObjectId('')
   }
 
-  const applyColorToSelectedObject = (colorValue) => {
-    const nextColor = String(colorValue || '').trim()
-    if (!nextColor || !selectedObjectId) return
-
-    setSceneObjects((prev) => prev.map((item) => {
-      if (String(item.id || '') !== String(selectedObjectId)) return item
-
-      if (isAreaToolType(item.type)) {
-        return {
-          ...item,
-          color: nextColor,
-          fillColor: applyAlphaToColor(nextColor, 0.2)
-        }
-      }
-
-      return {
-        ...item,
-        color: nextColor
-      }
-    }))
-  }
-
-  const openBrushForSelected = () => {
-    if (!selectedObjectId) return
+  const openBrushPicker = () => {
+    setActiveTool('brush')
     if (colorInputRef.current) {
       colorInputRef.current.click()
     }
@@ -2311,13 +2317,21 @@ function SchemeTool() {
               </button>
               <button
                 type="button"
-                className="scheme-bottom-btn"
+                className={`scheme-bottom-btn ${activeTool === 'brush' ? 'active' : ''}`}
                 title="Štetec"
                 aria-label="Štetec"
-                onClick={openBrushForSelected}
-                disabled={!selectedObjectId}
+                onClick={openBrushPicker}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">format_paint</span>
+              </button>
+              <button
+                type="button"
+                className={`scheme-bottom-btn ${activeTool === 'text' ? 'active' : ''}`}
+                title="Text"
+                aria-label="Text"
+                onClick={() => activateTool('text')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">title</span>
               </button>
               <button
                 type="button"
@@ -2361,8 +2375,14 @@ function SchemeTool() {
               <input
                 ref={colorInputRef}
                 type="color"
+                value={brushColor}
                 className="scheme-hidden-color-input"
-                onChange={(event) => applyColorToSelectedObject(event.target.value)}
+                onChange={(event) => {
+                  const nextColor = String(event.target.value || '').trim()
+                  if (!nextColor) return
+                  setBrushColor(nextColor)
+                  setActiveTool('brush')
+                }}
                 aria-label="Vybrať farbu"
               />
             </div>
