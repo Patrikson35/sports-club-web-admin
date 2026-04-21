@@ -197,7 +197,38 @@
     rgba(34, 197, 94, 0.34);
 }
 
+.scheme-surface-icon.halfLeft {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 27% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.halfRight {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 73% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
 .scheme-surface-icon.third {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.thirdLeft {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 33% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.thirdCenter {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 33% 50% / 1px 100% no-repeat,
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.thirdRight {
   background:
     linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
     rgba(34, 197, 94, 0.34);

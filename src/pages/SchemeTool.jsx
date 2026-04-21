@@ -17,8 +17,11 @@ const TEAM_COLORS = {
 
 const SURFACE_OPTIONS = [
   { key: 'full', label: 'Celé ihrisko' },
-  { key: 'half', label: 'Polka ihriska' },
-  { key: 'third', label: 'Tretina ihriska' },
+  { key: 'halfLeft', label: 'Polka - ľavá' },
+  { key: 'halfRight', label: 'Polka - pravá' },
+  { key: 'thirdLeft', label: 'Tretina - ľavá' },
+  { key: 'thirdCenter', label: 'Tretina - stred' },
+  { key: 'thirdRight', label: 'Tretina - pravá' },
   { key: 'blank', label: 'Plocha (bez čiar)' }
 ]
 
@@ -219,7 +222,16 @@ const drawHockeyField = (ctx, width, height) => {
 }
 
 const getSourceCropRect = (surfaceKey, width, height) => {
-  if (surfaceKey === 'half') {
+  if (surfaceKey === 'halfLeft') {
+    return {
+      x: 0,
+      y: 0,
+      width: width * 0.5,
+      height
+    }
+  }
+
+  if (surfaceKey === 'halfRight') {
     return {
       x: width * 0.5,
       y: 0,
@@ -228,7 +240,25 @@ const getSourceCropRect = (surfaceKey, width, height) => {
     }
   }
 
-  if (surfaceKey === 'third') {
+  if (surfaceKey === 'thirdLeft') {
+    return {
+      x: 0,
+      y: 0,
+      width: width / 3,
+      height
+    }
+  }
+
+  if (surfaceKey === 'thirdCenter') {
+    return {
+      x: width / 3,
+      y: 0,
+      width: width / 3,
+      height
+    }
+  }
+
+  if (surfaceKey === 'thirdRight') {
     return {
       x: width * (2 / 3),
       y: 0,
