@@ -1668,10 +1668,10 @@ function SchemeTool() {
       const originX = Number(state.originX || 0)
       const originY = Number(state.originY || 0)
 
-      let directionX = Number(state.directionX)
-      let directionY = Number(state.directionY)
+      let directionX = state.directionX
+      let directionY = state.directionY
 
-      if (!Number.isFinite(directionX) || !Number.isFinite(directionY)) {
+      if (!Number.isFinite(directionX) || !Number.isFinite(directionY) || Math.hypot(directionX, directionY) < 0.0001) {
         const initialDx = point.x - originX
         const initialDy = point.y - originY
         const initialDistance = Math.hypot(initialDx, initialDy)
