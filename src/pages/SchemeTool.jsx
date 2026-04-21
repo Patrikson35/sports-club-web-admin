@@ -1673,7 +1673,7 @@ function SchemeTool() {
         return
       }
 
-      const rotation = getRotationFromVector(dx, dy)
+      const rotation = (getRotationFromVector(dx, dy) + 90) % 360
       const newHurdles = []
 
       while (distance >= HURDLE_DRAG_SPACING) {
