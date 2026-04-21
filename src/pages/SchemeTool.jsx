@@ -155,6 +155,39 @@ const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey ==
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
 const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle' || type === 'flag'
+const applyAlphaToColor = (color, alpha = 0.2) => {
+  const normalized = String(color || '').trim()
+  if (!normalized) return `rgba(255, 243, 196, ${alpha})`
+
+  if (normalized.startsWith('#')) {
+    const hex = normalized.slice(1)
+    const parsed = hex.length === 3
+      ? hex.split('').map((char) => char + char).join('')
+      : hex
+
+    if (parsed.length === 6) {
+      const int = Number.parseInt(parsed, 16)
+      if (Number.isFinite(int)) {
+        const r = (int >> 16) & 255
+        const g = (int >> 8) & 255
+        const b = int & 255
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`
+      }
+    }
+  }
+
+  const rgbMatch = normalized.match(/^rgb\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\)$/i)
+  if (rgbMatch) {
+    return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${alpha})`
+  }
+
+  const rgbaMatch = normalized.match(/^rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([0-9.]+)\)$/i)
+  if (rgbaMatch) {
+    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha})`
+  }
+
+  return normalized
+}
 const getArrowColor = (arrowType) => {
   if (arrowType === 'arrowBallDashed') return '#cbe0ff'
   if (arrowType === 'arrowPlayerStraight') return '#e8f2b7'
@@ -1416,6 +1449,7 @@ const hitTest = (objects, point) => {
 function SchemeTool() {
   const canvasRef = useRef(null)
   const exportLinkRef = useRef(null)
+  const colorInputRef = useRef(null)
   const nextIdRef = useRef(1)
   const hurdleDrawRef = useRef(null)
 
@@ -2114,6 +2148,35 @@ function SchemeTool() {
     setSelectedObjectId('')
   }
 
+  const applyColorToSelectedObject = (colorValue) => {
+    const nextColor = String(colorValue || '').trim()
+    if (!nextColor || !selectedObjectId) return
+
+    setSceneObjects((prev) => prev.map((item) => {
+      if (String(item.id || '') !== String(selectedObjectId)) return item
+
+      if (isAreaToolType(item.type)) {
+        return {
+          ...item,
+          color: nextColor,
+          fillColor: applyAlphaToColor(nextColor, 0.2)
+        }
+      }
+
+      return {
+        ...item,
+        color: nextColor
+      }
+    }))
+  }
+
+  const openBrushForSelected = () => {
+    if (!selectedObjectId) return
+    if (colorInputRef.current) {
+      colorInputRef.current.click()
+    }
+  }
+
   const exportToPng = () => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -2237,20 +2300,72 @@ function SchemeTool() {
             </div>
 
           <div className="scheme-under-canvas">
-            <div className="scheme-tool-row" role="toolbar" aria-label="Nástroje schémy">
-              {TOOL_OPTIONS.map((tool) => (
-                <button
-                  key={tool.key}
-                  type="button"
-                  className={`btn-secondary scheme-tool-btn scheme-tool-btn--compact ${activeTool === tool.key ? 'active' : ''}`}
-                  title={tool.label}
-                  aria-label={tool.label}
-                  onClick={() => activateTool(tool.key)}
-                >
-                  <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
-                  <span className="scheme-tool-label">{tool.label}</span>
-                </button>
-              ))}
+            <div className="scheme-bottom-toolbar" role="toolbar" aria-label="Akcie pod plátnom">
+              <button
+                type="button"
+                className={`scheme-bottom-btn ${activeTool === 'select' ? 'active' : ''}`}
+                title="Výber"
+                aria-label="Výber"
+                onClick={() => activateTool('select')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">gesture_select</span>
+              </button>
+              <button
+                type="button"
+                className="scheme-bottom-btn"
+                title="Štetec"
+                aria-label="Štetec"
+                onClick={openBrushForSelected}
+                disabled={!selectedObjectId}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">format_paint</span>
+              </button>
+              <button
+                type="button"
+                className="scheme-bottom-btn"
+                title="Krok späť"
+                aria-label="Krok späť"
+                onClick={undoLastObject}
+                disabled={sceneObjects.length === 0}
+              >
+                <span className="scheme-bottom-icon undo" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="scheme-bottom-btn"
+                title="Odstrániť vybrané"
+                aria-label="Odstrániť vybrané"
+                onClick={removeSelectedObject}
+                disabled={!selectedObjectId}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">delete</span>
+              </button>
+              <button
+                type="button"
+                className="scheme-bottom-btn danger"
+                title="Vymazať všetko"
+                aria-label="Vymazať všetko"
+                onClick={clearScene}
+                disabled={sceneObjects.length === 0 && !arrowStart}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">delete_forever</span>
+              </button>
+              <button
+                type="button"
+                className="scheme-bottom-btn"
+                title="Export PNG"
+                aria-label="Export PNG"
+                onClick={exportToPng}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">image</span>
+              </button>
+              <input
+                ref={colorInputRef}
+                type="color"
+                className="scheme-hidden-color-input"
+                onChange={(event) => applyColorToSelectedObject(event.target.value)}
+                aria-label="Vybrať farbu"
+              />
             </div>
 
             {activeTool === 'player' ? (
@@ -2270,13 +2385,6 @@ function SchemeTool() {
                 </select>
               </div>
             ) : null}
-
-            <div className="scheme-actions">
-              <button type="button" className="btn-edit" onClick={exportToPng}>Export PNG</button>
-              <button type="button" className="btn-secondary" onClick={undoLastObject} disabled={sceneObjects.length === 0}>Späť</button>
-              <button type="button" className="btn-secondary" onClick={removeSelectedObject} disabled={!selectedObjectId}>Odstrániť vybrané</button>
-              <button type="button" className="manager-add-btn category-form-toggle-cancel" onClick={clearScene} disabled={sceneObjects.length === 0 && !arrowStart}>Vymazať všetko</button>
-            </div>
 
             {selectedObject && isRotatableAidType(selectedObject.type) ? (
               <div className="form-group">
