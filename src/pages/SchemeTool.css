@@ -12,7 +12,7 @@
 
 .scheme-layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.9rem;
   align-items: start;
 }
@@ -130,6 +130,13 @@
 
 .scheme-canvas-wrap {
   padding: 0.9rem;
+}
+
+.scheme-under-canvas {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
 }
 
 .scheme-surface-strip {
@@ -294,10 +301,6 @@
 }
 
 @media (max-width: 1140px) {
-  .scheme-layout {
-    grid-template-columns: 1fr;
-  }
-
   .scheme-tool-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

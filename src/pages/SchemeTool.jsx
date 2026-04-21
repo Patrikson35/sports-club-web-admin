@@ -22,7 +22,6 @@ const SURFACE_OPTIONS = [
   { key: 'fullPitch', label: 'Full Pitch' },
   { key: 'blankCanvas', label: 'Blank Canvas' },
   { key: 'halfPitch', label: 'Half Pitch' },
-  { key: 'squarePitch', label: 'Square Pitch' },
   { key: 'penaltyBox', label: 'Penalty Box' }
 ]
 
@@ -1993,119 +1992,6 @@ function SchemeTool() {
       </div>
 
       <div className="scheme-layout">
-        <aside className="card settings-placeholder-card scheme-controls">
-          <div className="scheme-tools">
-            <div className="scheme-tools-shell">
-              {TOOL_GROUPS.map((group) => (
-                <div key={group.title} className="scheme-tool-group">
-                  <p className="scheme-tool-group-title">{group.title}</p>
-                  <div className="scheme-tool-grid">
-                    {group.keys.map((toolKey) => {
-                      const tool = TOOL_OPTIONS.find((candidate) => candidate.key === toolKey)
-                      if (!tool) return null
-
-                      return (
-                        <button
-                          key={tool.key}
-                          type="button"
-                          className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
-                          title={tool.label}
-                          onClick={() => {
-                            setActiveTool(tool.key)
-                            if (!isArrowTool(tool.key)) {
-                              setArrowStart(null)
-                            } else if (arrowStart?.type && arrowStart.type !== tool.key) {
-                              setArrowStart(null)
-                            }
-                            if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
-                              setAreaDraft(null)
-                            }
-                          }}
-                        >
-                          <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
-                          <span className="scheme-tool-label">{tool.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {activeTool === 'player' ? (
-            <div className="form-group">
-              <label htmlFor="scheme-team-color">Farba tímu</label>
-              <select id="scheme-team-color" value={activeTeamColor} onChange={(event) => setActiveTeamColor(String(event.target.value || 'red'))}>
-                <option value="red">Červená</option>
-                <option value="blue">Modrá</option>
-                <option value="white">Biela</option>
-                <option value="yellow">Žltá</option>
-              </select>
-
-              <label htmlFor="scheme-player-style" style={{ marginTop: 10 }}>Vzhľad hráča</label>
-              <select id="scheme-player-style" value={activePlayerStyle} onChange={(event) => setActivePlayerStyle(String(event.target.value || 'circle'))}>
-                <option value="circle">Krúžky</option>
-                <option value="stickman">Panáčikovia</option>
-              </select>
-            </div>
-          ) : null}
-
-          <div className="scheme-actions">
-            <button type="button" className="btn-edit" onClick={exportToPng}>Export PNG</button>
-            <button type="button" className="btn-secondary" onClick={undoLastObject} disabled={sceneObjects.length === 0}>Späť</button>
-            <button type="button" className="btn-secondary" onClick={removeSelectedObject} disabled={!selectedObjectId}>Odstrániť vybrané</button>
-            <button type="button" className="manager-add-btn category-form-toggle-cancel" onClick={clearScene} disabled={sceneObjects.length === 0 && !arrowStart}>Vymazať všetko</button>
-          </div>
-
-          {selectedObject && isRotatableAidType(selectedObject.type) ? (
-            <div className="form-group">
-              <label>Otáčanie objektu</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(-15)}>↺ -15°</button>
-                <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(15)}>↻ +15°</button>
-              </div>
-              <label htmlFor="scheme-rotation" style={{ marginTop: 10 }}>Uhol (°)</label>
-              <input
-                id="scheme-rotation"
-                type="range"
-                min="0"
-                max="345"
-                step="15"
-                value={Number(selectedObject.rotation || 0)}
-                onChange={(event) => setSelectedAidRotation(Number(event.target.value || 0))}
-              />
-            </div>
-          ) : null}
-
-          {arrowStart ? (
-            <p className="manager-empty-text" style={{ margin: 0 }}>
-              {arrowStart.type === 'arrowBallDashed'
-                ? 'Pohyb lopty: podrž a ťahaj myšou.'
-                : (arrowStart.type === 'arrowPlayerStraight'
-                    ? 'Pohyb hráča bez lopty: podrž a ťahaj myšou.'
-                    : (arrowStart.type === 'arrowShotDouble'
-                        ? 'Strela: podrž a ťahaj myšou.'
-                        : 'Pohyb hráča s loptou: podrž a ťahaj myšou.'))}
-            </p>
-          ) : null}
-
-          {areaDraft?.toolType ? (
-            <p className="manager-empty-text" style={{ margin: 0 }}>
-              Area: podrž a ťahaj myšou pre veľkosť, potom pusti.
-            </p>
-          ) : null}
-
-          {exportDataUrl ? (
-            <div className="scheme-preview">
-              <p className="unified-muted" style={{ marginTop: 0 }}>Posledný export</p>
-              <img src={exportDataUrl} alt="Exportovaná schéma" />
-            </div>
-          ) : null}
-
-          <a ref={exportLinkRef} className="scheme-hidden-link" aria-hidden="true">download</a>
-        </aside>
-
         <section className="card settings-placeholder-card scheme-canvas-wrap">
           <div className="scheme-surface-strip" role="tablist" aria-label="Výber plochy ihriska">
             {SURFACE_OPTIONS.map((surface) => (
@@ -2133,6 +2019,119 @@ function SchemeTool() {
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
           />
+
+          <div className="scheme-under-canvas">
+            <div className="scheme-tools">
+              <div className="scheme-tools-shell">
+                {TOOL_GROUPS.map((group) => (
+                  <div key={group.title} className="scheme-tool-group">
+                    <p className="scheme-tool-group-title">{group.title}</p>
+                    <div className="scheme-tool-grid">
+                      {group.keys.map((toolKey) => {
+                        const tool = TOOL_OPTIONS.find((candidate) => candidate.key === toolKey)
+                        if (!tool) return null
+
+                        return (
+                          <button
+                            key={tool.key}
+                            type="button"
+                            className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
+                            title={tool.label}
+                            onClick={() => {
+                              setActiveTool(tool.key)
+                              if (!isArrowTool(tool.key)) {
+                                setArrowStart(null)
+                              } else if (arrowStart?.type && arrowStart.type !== tool.key) {
+                                setArrowStart(null)
+                              }
+                              if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
+                                setAreaDraft(null)
+                              }
+                            }}
+                          >
+                            <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
+                            <span className="scheme-tool-label">{tool.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {activeTool === 'player' ? (
+              <div className="form-group">
+                <label htmlFor="scheme-team-color">Farba tímu</label>
+                <select id="scheme-team-color" value={activeTeamColor} onChange={(event) => setActiveTeamColor(String(event.target.value || 'red'))}>
+                  <option value="red">Červená</option>
+                  <option value="blue">Modrá</option>
+                  <option value="white">Biela</option>
+                  <option value="yellow">Žltá</option>
+                </select>
+
+                <label htmlFor="scheme-player-style" style={{ marginTop: 10 }}>Vzhľad hráča</label>
+                <select id="scheme-player-style" value={activePlayerStyle} onChange={(event) => setActivePlayerStyle(String(event.target.value || 'circle'))}>
+                  <option value="circle">Krúžky</option>
+                  <option value="stickman">Panáčikovia</option>
+                </select>
+              </div>
+            ) : null}
+
+            <div className="scheme-actions">
+              <button type="button" className="btn-edit" onClick={exportToPng}>Export PNG</button>
+              <button type="button" className="btn-secondary" onClick={undoLastObject} disabled={sceneObjects.length === 0}>Späť</button>
+              <button type="button" className="btn-secondary" onClick={removeSelectedObject} disabled={!selectedObjectId}>Odstrániť vybrané</button>
+              <button type="button" className="manager-add-btn category-form-toggle-cancel" onClick={clearScene} disabled={sceneObjects.length === 0 && !arrowStart}>Vymazať všetko</button>
+            </div>
+
+            {selectedObject && isRotatableAidType(selectedObject.type) ? (
+              <div className="form-group">
+                <label>Otáčanie objektu</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(-15)}>↺ -15°</button>
+                  <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(15)}>↻ +15°</button>
+                </div>
+                <label htmlFor="scheme-rotation" style={{ marginTop: 10 }}>Uhol (°)</label>
+                <input
+                  id="scheme-rotation"
+                  type="range"
+                  min="0"
+                  max="345"
+                  step="15"
+                  value={Number(selectedObject.rotation || 0)}
+                  onChange={(event) => setSelectedAidRotation(Number(event.target.value || 0))}
+                />
+              </div>
+            ) : null}
+
+            {arrowStart ? (
+              <p className="manager-empty-text" style={{ margin: 0 }}>
+                {arrowStart.type === 'arrowBallDashed'
+                  ? 'Pohyb lopty: podrž a ťahaj myšou.'
+                  : (arrowStart.type === 'arrowPlayerStraight'
+                      ? 'Pohyb hráča bez lopty: podrž a ťahaj myšou.'
+                      : (arrowStart.type === 'arrowShotDouble'
+                          ? 'Strela: podrž a ťahaj myšou.'
+                          : 'Pohyb hráča s loptou: podrž a ťahaj myšou.'))}
+              </p>
+            ) : null}
+
+            {areaDraft?.toolType ? (
+              <p className="manager-empty-text" style={{ margin: 0 }}>
+                Area: podrž a ťahaj myšou pre veľkosť, potom pusti.
+              </p>
+            ) : null}
+
+            {exportDataUrl ? (
+              <div className="scheme-preview">
+                <p className="unified-muted" style={{ marginTop: 0 }}>Posledný export</p>
+                <img src={exportDataUrl} alt="Exportovaná schéma" />
+              </div>
+            ) : null}
+
+            <a ref={exportLinkRef} className="scheme-hidden-link" aria-hidden="true">download</a>
+          </div>
         </section>
       </div>
     </div>
