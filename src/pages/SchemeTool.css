@@ -595,6 +595,15 @@
   font-variation-settings: 'FILL' 0, 'wght' 560, 'GRAD' 0, 'opsz' 24;
 }
 
+.scheme-bottom-save-btn {
+  width: auto;
+  min-width: 74px;
+  padding: 0 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .scheme-bottom-icon.undo {
   width: 16px;
   height: 16px;

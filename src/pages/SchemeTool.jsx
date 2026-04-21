@@ -208,6 +208,22 @@ const createHurdleItem = (id, x, y, rotation = 0) => ({
 
 const MIN_AREA_SIZE = 26
 
+const resolveExerciseIdFromContext = () => {
+  const fromQuery = new URLSearchParams(window.location.search).get('exerciseId')
+  if (String(fromQuery || '').trim()) return String(fromQuery).trim()
+
+  const fromAltQuery = new URLSearchParams(window.location.search).get('id')
+  if (String(fromAltQuery || '').trim()) return String(fromAltQuery).trim()
+
+  const fromStorage = localStorage.getItem('schemeExerciseId')
+  if (String(fromStorage || '').trim()) return String(fromStorage).trim()
+
+  const fromSelectedStorage = localStorage.getItem('selectedExerciseId')
+  if (String(fromSelectedStorage || '').trim()) return String(fromSelectedStorage).trim()
+
+  return ''
+}
+
 const getCanvasPoint = (canvas, event) => {
   const rect = canvas.getBoundingClientRect()
   const scaleX = canvas.width / rect.width
@@ -1467,8 +1483,9 @@ function SchemeTool() {
   const [arrowStart, setArrowStart] = useState(null)
   const [areaDraft, setAreaDraft] = useState(null)
   const [exportDataUrl, setExportDataUrl] = useState('')
+  const [isSavingToExercise, setIsSavingToExercise] = useState(false)
+  const [saveStatusMessage, setSaveStatusMessage] = useState('')
 
-  const activeSportLabel = useMemo(() => SPORTS[sportKey]?.label || 'Šport', [sportKey])
   const selectedObject = useMemo(
     () => sceneObjects.find((item) => String(item.id || '') === String(selectedObjectId || '')) || null,
     [sceneObjects, selectedObjectId]
@@ -2196,6 +2213,54 @@ function SchemeTool() {
     }
   }
 
+  const savePngToExercise = async () => {
+    const canvas = canvasRef.current
+    if (!canvas || isSavingToExercise) return
+
+    let exerciseId = resolveExerciseIdFromContext()
+    if (!exerciseId) {
+      const promptedId = window.prompt('Zadaj ID cvičenia, do ktorého sa má uložiť obrázok:', '')
+      exerciseId = String(promptedId || '').trim()
+      if (!exerciseId) return
+      localStorage.setItem('schemeExerciseId', exerciseId)
+    }
+
+    setIsSavingToExercise(true)
+    setSaveStatusMessage('Ukladám obrázok do cvičenia...')
+
+    try {
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((nextBlob) => {
+          if (nextBlob) {
+            resolve(nextBlob)
+          } else {
+            reject(new Error('Nepodarilo sa pripraviť PNG.'))
+          }
+        }, 'image/png')
+      })
+
+      const fileName = `exercise-scheme-${exerciseId}-${Date.now()}.png`
+      const pngFile = new File([blob], fileName, { type: 'image/png' })
+      const uploadResult = await api.uploadImage(pngFile, 'exercise-schemes')
+      const uploadedImagePath = String(uploadResult?.relativePath || uploadResult?.fileUrl || '').trim()
+
+      if (!uploadedImagePath) {
+        throw new Error('Upload obrázka nevrátil cestu k súboru.')
+      }
+
+      await api.updateExercise(exerciseId, {
+        imageUrl: uploadedImagePath,
+        imageName: fileName
+      })
+
+      setSaveStatusMessage(`Uložené do cvičenia #${exerciseId}.`)
+    } catch (error) {
+      setSaveStatusMessage(error?.message ? `Ukladanie zlyhalo: ${error.message}` : 'Ukladanie zlyhalo.')
+    } finally {
+      setIsSavingToExercise(false)
+    }
+  }
+
   const activateTool = (toolKey, options = {}) => {
     setActiveTool(toolKey)
 
@@ -2221,7 +2286,6 @@ function SchemeTool() {
       <div className="unified-toolbar scheme-toolbar">
         <div>
           <h2 className="manager-section-title">Editor športových schém</h2>
-          <p className="unified-muted">Šport klubu: {activeSportLabel}. Vyber plochu, nástroj, kresli a exportuj PNG.</p>
         </div>
       </div>
 
@@ -2372,6 +2436,16 @@ function SchemeTool() {
               >
                 <span className="material-symbols-outlined" aria-hidden="true">image</span>
               </button>
+              <button
+                type="button"
+                className="scheme-bottom-btn scheme-bottom-save-btn"
+                title="Uložiť do cvičenia"
+                aria-label="Uložiť do cvičenia"
+                onClick={savePngToExercise}
+                disabled={isSavingToExercise}
+              >
+                Uložiť
+              </button>
               <input
                 ref={colorInputRef}
                 type="color"
@@ -2386,6 +2460,8 @@ function SchemeTool() {
                 aria-label="Vybrať farbu"
               />
             </div>
+
+            {saveStatusMessage ? <p className="unified-muted" style={{ margin: '0 auto', textAlign: 'center' }}>{saveStatusMessage}</p> : null}
 
             {activeTool === 'player' ? (
               <div className="form-group">
