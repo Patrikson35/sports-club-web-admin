@@ -82,20 +82,50 @@ const TOOL_ICON = {
   text: 'title'
 }
 
-const MINI_BAR_TOOLS = [
-  'player',
-  'ball',
-  'arrowBallDashed',
-  'arrowPlayerBall',
-  'arrowPlayerStraight',
-  'arrowShotDouble',
-  'cone',
-  'ladder',
-  'hurdle',
-  'areaRect',
-  'areaSquare',
-  'areaCircle',
-  'areaDiamond'
+const PLAYER_PRESET_CONFIG = {
+  redCircle: { label: 'Červený kruh', color: '#d3394a', shape: 'circle' },
+  blueTriangle: { label: 'Modrý trojuholník', color: '#2f77d0', shape: 'triangle' },
+  blueSquare: { label: 'Modrý štvorec', color: '#2f77d0', shape: 'square' },
+  blackHexagon: { label: 'Čierny šesťuholník', color: '#111827', shape: 'hexagon' }
+}
+
+const MINI_BAR_SECTIONS = [
+  {
+    title: 'Hráči',
+    items: [
+      { kind: 'playerPreset', key: 'redCircle' },
+      { kind: 'playerPreset', key: 'blueTriangle' },
+      { kind: 'playerPreset', key: 'blueSquare' },
+      { kind: 'playerPreset', key: 'blackHexagon' }
+    ]
+  },
+  {
+    title: 'Pohyby',
+    items: [
+      { kind: 'tool', key: 'arrowBallDashed' },
+      { kind: 'tool', key: 'arrowPlayerBall' },
+      { kind: 'tool', key: 'arrowPlayerStraight' },
+      { kind: 'tool', key: 'arrowShotDouble' }
+    ]
+  },
+  {
+    title: 'Pomôcky',
+    items: [
+      { kind: 'tool', key: 'ball' },
+      { kind: 'tool', key: 'cone' },
+      { kind: 'tool', key: 'ladder' },
+      { kind: 'tool', key: 'hurdle' }
+    ]
+  },
+  {
+    title: 'Area',
+    items: [
+      { kind: 'tool', key: 'areaRect' },
+      { kind: 'tool', key: 'areaSquare' },
+      { kind: 'tool', key: 'areaCircle' },
+      { kind: 'tool', key: 'areaDiamond' }
+    ]
+  }
 ]
 
 const DEFAULT_CANVAS = { width: 1100, height: 650 }
@@ -1040,9 +1070,35 @@ const rotateAidItem = (item, stepDeg) => {
 }
 
 const drawPlayerCircle = (ctx, item, isSelected) => {
+  const color = item.color || TEAM_COLORS.red
+  const shape = String(item.playerShape || 'circle')
+
   ctx.beginPath()
-  ctx.arc(item.x, item.y, 16, 0, Math.PI * 2)
-  ctx.fillStyle = item.color || TEAM_COLORS.red
+  if (shape === 'triangle') {
+    ctx.moveTo(item.x, item.y - 17)
+    ctx.lineTo(item.x - 15, item.y + 13)
+    ctx.lineTo(item.x + 15, item.y + 13)
+    ctx.closePath()
+  } else if (shape === 'square') {
+    ctx.rect(item.x - 15, item.y - 15, 30, 30)
+  } else if (shape === 'hexagon') {
+    const radius = 16
+    for (let i = 0; i < 6; i += 1) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2
+      const px = item.x + radius * Math.cos(angle)
+      const py = item.y + radius * Math.sin(angle)
+      if (i === 0) {
+        ctx.moveTo(px, py)
+      } else {
+        ctx.lineTo(px, py)
+      }
+    }
+    ctx.closePath()
+  } else {
+    ctx.arc(item.x, item.y, 16, 0, Math.PI * 2)
+  }
+
+  ctx.fillStyle = color
   ctx.fill()
   ctx.lineWidth = 2
   ctx.strokeStyle = '#ffffff'
@@ -1298,6 +1354,7 @@ function SchemeTool() {
   const [activeTool, setActiveTool] = useState('select')
   const [activeTeamColor, setActiveTeamColor] = useState('red')
   const [activePlayerStyle, setActivePlayerStyle] = useState('circle')
+  const [activePlayerPreset, setActivePlayerPreset] = useState('')
   const [sceneObjects, setSceneObjects] = useState([])
   const [selectedObjectId, setSelectedObjectId] = useState('')
   const [dragState, setDragState] = useState(null)
@@ -1525,9 +1582,13 @@ function SchemeTool() {
     }
 
     if (tool === 'player') {
-      base.color = TEAM_COLORS[activeTeamColor] || TEAM_COLORS.red
+      const preset = PLAYER_PRESET_CONFIG[activePlayerPreset]
+      base.color = preset?.color || TEAM_COLORS[activeTeamColor] || TEAM_COLORS.red
       base.number = ''
-      base.playerStyle = activePlayerStyle
+      base.playerStyle = preset ? 'circle' : activePlayerStyle
+      if (preset?.shape) {
+        base.playerShape = preset.shape
+      }
     }
 
     if (tool === 'ladder') {
@@ -1991,8 +2052,16 @@ function SchemeTool() {
     }
   }
 
-  const activateTool = (toolKey) => {
+  const activateTool = (toolKey, options = {}) => {
     setActiveTool(toolKey)
+
+    if (toolKey === 'player') {
+      setActivePlayerPreset(String(options.playerPreset || ''))
+      if (options.playerPreset) {
+        setActivePlayerStyle('circle')
+      }
+    }
+
     if (!isArrowTool(toolKey)) {
       setArrowStart(null)
     } else if (arrowStart?.type && arrowStart.type !== toolKey) {
@@ -2032,23 +2101,49 @@ function SchemeTool() {
 
             <div className="scheme-canvas-stage">
               <div className="scheme-minibar" role="toolbar" aria-label="Mini nástroje">
-                {MINI_BAR_TOOLS.map((toolKey) => {
-                  const tool = TOOL_OPTIONS.find((candidate) => candidate.key === toolKey)
-                  if (!tool) return null
+                {MINI_BAR_SECTIONS.map((section) => (
+                  <div key={section.title} className="scheme-minibar-section">
+                    <p className="scheme-minibar-section-title">{section.title}</p>
+                    <div className="scheme-minibar-grid">
+                      {section.items.map((item) => {
+                        if (item.kind === 'playerPreset') {
+                          const preset = PLAYER_PRESET_CONFIG[item.key]
+                          if (!preset) return null
+                          const isActive = activeTool === 'player' && activePlayerPreset === item.key
 
-                  return (
-                    <button
-                      key={`mini-${tool.key}`}
-                      type="button"
-                      className={`scheme-minibar-btn ${activeTool === tool.key ? 'active' : ''}`}
-                      title={tool.label}
-                      aria-label={tool.label}
-                      onClick={() => activateTool(tool.key)}
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
-                    </button>
-                  )
-                })}
+                          return (
+                            <button
+                              key={`mini-player-${item.key}`}
+                              type="button"
+                              className={`scheme-minibar-btn ${isActive ? 'active' : ''}`}
+                              title={preset.label}
+                              aria-label={preset.label}
+                              onClick={() => activateTool('player', { playerPreset: item.key })}
+                            >
+                              <span className={`scheme-player-preset-glyph ${preset.shape}`} style={{ '--preset-color': preset.color }} aria-hidden="true" />
+                            </button>
+                          )
+                        }
+
+                        const tool = TOOL_OPTIONS.find((candidate) => candidate.key === item.key)
+                        if (!tool) return null
+
+                        return (
+                          <button
+                            key={`mini-${tool.key}`}
+                            type="button"
+                            className={`scheme-minibar-btn ${activeTool === tool.key ? 'active' : ''}`}
+                            title={tool.label}
+                            aria-label={tool.label}
+                            onClick={() => activateTool(tool.key)}
+                          >
+                            <span className="material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <canvas
