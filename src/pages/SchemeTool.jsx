@@ -1626,6 +1626,58 @@ function SchemeTool() {
     addObject(activeTool, point)
   }
 
+  const paintHurdlesToPoint = (point) => {
+    const state = hurdleDrawRef.current
+    if (!state) return
+
+    const originX = Number(state.originX || 0)
+    const originY = Number(state.originY || 0)
+
+    let directionX = state.directionX
+    let directionY = state.directionY
+
+    if (!Number.isFinite(directionX) || !Number.isFinite(directionY) || Math.hypot(directionX, directionY) < 0.0001) {
+      const initialDx = point.x - originX
+      const initialDy = point.y - originY
+      const initialDistance = Math.hypot(initialDx, initialDy)
+      if (initialDistance < 10) return
+
+      directionX = initialDx / initialDistance
+      directionY = initialDy / initialDistance
+    }
+
+    const projection = ((point.x - originX) * directionX) + ((point.y - originY) * directionY)
+    const targetCount = Math.max(0, Math.floor(projection / HURDLE_DRAG_SPACING))
+    const placedCount = Number.isFinite(Number(state.placedCount)) ? Number(state.placedCount) : 0
+    const toCreate = targetCount - placedCount
+    const rotation = (getRotationFromVector(directionX, directionY) + 90) % 360
+
+    const newHurdles = []
+    for (let i = 1; i <= toCreate; i += 1) {
+      const step = placedCount + i
+      const nextX = originX + directionX * step * HURDLE_DRAG_SPACING
+      const nextY = originY + directionY * step * HURDLE_DRAG_SPACING
+      newHurdles.push(createHurdleItem(createId(), nextX, nextY, rotation))
+    }
+
+    setSceneObjects((prev) => {
+      let next = prev.map((item) => (String(item.id || '') === String(state.firstId)
+        ? { ...item, rotation }
+        : item))
+      if (newHurdles.length > 0) {
+        next = [...next, ...newHurdles]
+      }
+      return next
+    })
+
+    hurdleDrawRef.current = {
+      ...state,
+      directionX,
+      directionY,
+      placedCount: placedCount + Math.max(0, toCreate)
+    }
+  }
+
   const handlePointerMove = (event) => {
     if (areaDraft?.toolType) {
       const canvas = canvasRef.current
@@ -1663,54 +1715,7 @@ function SchemeTool() {
       const canvas = canvasRef.current
       if (!canvas) return
       const point = getCanvasPoint(canvas, event)
-
-      const state = hurdleDrawRef.current
-      const originX = Number(state.originX || 0)
-      const originY = Number(state.originY || 0)
-
-      let directionX = state.directionX
-      let directionY = state.directionY
-
-      if (!Number.isFinite(directionX) || !Number.isFinite(directionY) || Math.hypot(directionX, directionY) < 0.0001) {
-        const initialDx = point.x - originX
-        const initialDy = point.y - originY
-        const initialDistance = Math.hypot(initialDx, initialDy)
-        if (initialDistance < 10) return
-
-        directionX = initialDx / initialDistance
-        directionY = initialDy / initialDistance
-      }
-
-      const projection = ((point.x - originX) * directionX) + ((point.y - originY) * directionY)
-      const targetCount = Math.max(0, Math.floor(projection / HURDLE_DRAG_SPACING))
-      const placedCount = Number.isFinite(Number(state.placedCount)) ? Number(state.placedCount) : 0
-      const toCreate = targetCount - placedCount
-      const rotation = (getRotationFromVector(directionX, directionY) + 90) % 360
-
-      const newHurdles = []
-      for (let i = 1; i <= toCreate; i += 1) {
-        const step = placedCount + i
-        const nextX = originX + directionX * step * HURDLE_DRAG_SPACING
-        const nextY = originY + directionY * step * HURDLE_DRAG_SPACING
-        newHurdles.push(createHurdleItem(createId(), nextX, nextY, rotation))
-      }
-
-      setSceneObjects((prev) => {
-        let next = prev.map((item) => (String(item.id || '') === String(state.firstId)
-          ? { ...item, rotation }
-          : item))
-        if (newHurdles.length > 0) {
-          next = [...next, ...newHurdles]
-        }
-        return next
-      })
-
-      hurdleDrawRef.current = {
-        ...state,
-        directionX,
-        directionY,
-        placedCount: placedCount + Math.max(0, toCreate)
-      }
+      paintHurdlesToPoint(point)
       return
     }
 
@@ -1793,6 +1798,12 @@ function SchemeTool() {
 
   const handlePointerUp = (event) => {
     const canvas = canvasRef.current
+
+    if (canvas && activeTool === 'hurdle' && hurdleDrawRef.current) {
+      const point = getCanvasPoint(canvas, event)
+      paintHurdlesToPoint(point)
+    }
+
     if (canvas && typeof canvas.releasePointerCapture === 'function') {
       try {
         canvas.releasePointerCapture(event.pointerId)
