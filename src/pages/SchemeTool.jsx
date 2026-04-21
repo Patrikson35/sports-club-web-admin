@@ -44,13 +44,6 @@ const TOOL_OPTIONS = [
   { key: 'text', label: 'Text' }
 ]
 
-const TOOL_GROUPS = [
-  { title: 'Zaklad', keys: ['select', 'player', 'ball', 'cone'] },
-  { title: 'Pomocky', keys: ['ladder', 'miniGoal', 'hurdle'] },
-  { title: 'Pohyby', keys: ['arrowPlayerStraight', 'arrowPlayerBall', 'arrowBallDashed', 'arrowShotDouble'] },
-  { title: 'Zony', keys: ['areaRect', 'areaSquare', 'areaCircle', 'areaDiamond', 'text'] }
-]
-
 const TOOL_SHORT = {
   select: 'SEL',
   player: 'HR',
@@ -2021,43 +2014,30 @@ function SchemeTool() {
           />
 
           <div className="scheme-under-canvas">
-            <div className="scheme-tools">
-              <div className="scheme-tools-shell">
-                {TOOL_GROUPS.map((group) => (
-                  <div key={group.title} className="scheme-tool-group">
-                    <p className="scheme-tool-group-title">{group.title}</p>
-                    <div className="scheme-tool-grid">
-                      {group.keys.map((toolKey) => {
-                        const tool = TOOL_OPTIONS.find((candidate) => candidate.key === toolKey)
-                        if (!tool) return null
-
-                        return (
-                          <button
-                            key={tool.key}
-                            type="button"
-                            className={`btn-secondary scheme-tool-btn ${activeTool === tool.key ? 'active' : ''}`}
-                            title={tool.label}
-                            onClick={() => {
-                              setActiveTool(tool.key)
-                              if (!isArrowTool(tool.key)) {
-                                setArrowStart(null)
-                              } else if (arrowStart?.type && arrowStart.type !== tool.key) {
-                                setArrowStart(null)
-                              }
-                              if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
-                                setAreaDraft(null)
-                              }
-                            }}
-                          >
-                            <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
-                            <span className="scheme-tool-label">{tool.label}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="scheme-tool-row" role="toolbar" aria-label="Nástroje schémy">
+              {TOOL_OPTIONS.map((tool) => (
+                <button
+                  key={tool.key}
+                  type="button"
+                  className={`btn-secondary scheme-tool-btn scheme-tool-btn--compact ${activeTool === tool.key ? 'active' : ''}`}
+                  title={tool.label}
+                  aria-label={tool.label}
+                  onClick={() => {
+                    setActiveTool(tool.key)
+                    if (!isArrowTool(tool.key)) {
+                      setArrowStart(null)
+                    } else if (arrowStart?.type && arrowStart.type !== tool.key) {
+                      setArrowStart(null)
+                    }
+                    if (!(tool.key === 'areaRect' || tool.key === 'areaSquare' || tool.key === 'areaCircle' || tool.key === 'areaDiamond')) {
+                      setAreaDraft(null)
+                    }
+                  }}
+                >
+                  <span className="scheme-tool-icon material-symbols-outlined" aria-hidden="true">{TOOL_ICON[tool.key] || TOOL_SHORT[tool.key] || 'apps'}</span>
+                  <span className="scheme-tool-label">{tool.label}</span>
+                </button>
+              ))}
             </div>
 
             {activeTool === 'player' ? (
