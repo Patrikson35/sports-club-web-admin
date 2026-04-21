@@ -132,6 +132,93 @@
   padding: 0.9rem;
 }
 
+.scheme-surface-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  padding: 0.45rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.scheme-surface-btn {
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.42);
+  color: rgba(226, 232, 240, 0.9);
+  min-height: 66px;
+  padding: 0.35rem 0.35rem 0.42rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.scheme-surface-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(186, 230, 253, 0.7);
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.scheme-surface-btn.active {
+  border-color: #7dd3fc;
+  background: rgba(14, 116, 144, 0.34);
+  color: #f0f9ff;
+}
+
+.scheme-surface-icon {
+  width: 42px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(226, 232, 240, 0.62);
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.7), rgba(241, 245, 249, 0.7)) center / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+  position: relative;
+  overflow: hidden;
+}
+
+.scheme-surface-icon::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(241, 245, 249, 0.68);
+  border-radius: 2px;
+}
+
+.scheme-surface-icon.half {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 73% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.third {
+  background:
+    linear-gradient(to right, rgba(241, 245, 249, 0.78), rgba(241, 245, 249, 0.78)) 66% 50% / 1px 100% no-repeat,
+    rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.blank {
+  background: rgba(34, 197, 94, 0.34);
+}
+
+.scheme-surface-icon.blank::after {
+  border-color: rgba(226, 232, 240, 0.22);
+}
+
+.scheme-surface-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
 .scheme-canvas {
   width: 100%;
   max-width: 100%;
@@ -168,5 +255,9 @@
 
   .scheme-tool-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .scheme-surface-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

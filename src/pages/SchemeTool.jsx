@@ -1935,15 +1935,6 @@ function SchemeTool() {
 
       <div className="scheme-layout">
         <aside className="card settings-placeholder-card scheme-controls">
-          <div className="form-group">
-            <label htmlFor="scheme-surface">Plocha</label>
-            <select id="scheme-surface" value={surfaceKey} onChange={(event) => setSurfaceKey(String(event.target.value || 'full'))}>
-              {SURFACE_OPTIONS.map((surface) => (
-                <option key={surface.key} value={surface.key}>{surface.label}</option>
-              ))}
-            </select>
-          </div>
-
           <div className="scheme-tools">
             <div className="scheme-tools-shell">
               {TOOL_GROUPS.map((group) => (
@@ -2057,6 +2048,22 @@ function SchemeTool() {
         </aside>
 
         <section className="card settings-placeholder-card scheme-canvas-wrap">
+          <div className="scheme-surface-strip" role="tablist" aria-label="Výber plochy ihriska">
+            {SURFACE_OPTIONS.map((surface) => (
+              <button
+                key={surface.key}
+                type="button"
+                role="tab"
+                aria-selected={surfaceKey === surface.key}
+                className={`scheme-surface-btn ${surfaceKey === surface.key ? 'active' : ''}`}
+                onClick={() => setSurfaceKey(surface.key)}
+              >
+                <span className={`scheme-surface-icon ${surface.key}`} aria-hidden="true" />
+                <span className="scheme-surface-label">{surface.label}</span>
+              </button>
+            ))}
+          </div>
+
           <canvas
             ref={canvasRef}
             className="scheme-canvas"
