@@ -1269,7 +1269,7 @@ const drawSlalomPole = (ctx, item, isSelected) => {
   const width = Number(item.width || 8)
   const height = Number(item.height || 74)
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
-  const color = item.color || '#e2e8f0'
+  const color = item.color || '#fbbf24'
 
   ctx.save()
   ctx.translate(item.x, item.y)
@@ -1296,68 +1296,56 @@ const drawSlalomPole = (ctx, item, isSelected) => {
 
 const drawGate = (ctx, item, isSelected) => {
   const width = Number(item.width || 86)
-  const height = Number(item.height || 54)
+  const height = Number(item.height || 36)
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
   const color = item.color || '#f8fafc'
-  const depth = Math.max(8, Math.min(16, width * 0.16))
+  const frameInset = 4
+  const left = -width / 2
+  const right = width / 2
+  const frontY = height / 2
+  const backY = -height / 2
 
   ctx.save()
   ctx.translate(item.x, item.y)
   ctx.rotate(rotation)
 
-  // Front frame
+  // Top view: open mouth (front) + side bars + back bar
   ctx.strokeStyle = color
-  ctx.lineWidth = 2.8
+  ctx.lineWidth = 2.4
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(-width / 2, height / 2)
-  ctx.lineTo(-width / 2, -height / 2)
-  ctx.moveTo(width / 2, height / 2)
-  ctx.lineTo(width / 2, -height / 2)
-  ctx.moveTo(-width / 2, -height / 2)
-  ctx.lineTo(width / 2, -height / 2)
+  ctx.moveTo(left, frontY)
+  ctx.lineTo(left, backY)
+  ctx.lineTo(right, backY)
+  ctx.lineTo(right, frontY)
   ctx.stroke()
 
-  // Back frame shifted to create depth
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.72)'
-  ctx.lineWidth = 1.8
+  // Inner frame thickness
+  ctx.strokeStyle = 'rgba(226, 232, 240, 0.78)'
+  ctx.lineWidth = 1.5
   ctx.beginPath()
-  ctx.moveTo(-width / 2 + depth, height / 2 - depth)
-  ctx.lineTo(-width / 2 + depth, -height / 2 - depth)
-  ctx.moveTo(width / 2 - depth, height / 2 - depth)
-  ctx.lineTo(width / 2 - depth, -height / 2 - depth)
-  ctx.moveTo(-width / 2 + depth, -height / 2 - depth)
-  ctx.lineTo(width / 2 - depth, -height / 2 - depth)
+  ctx.moveTo(left + frameInset, frontY - frameInset)
+  ctx.lineTo(left + frameInset, backY + frameInset)
+  ctx.lineTo(right - frameInset, backY + frameInset)
+  ctx.lineTo(right - frameInset, frontY - frameInset)
   ctx.stroke()
 
-  // Side connectors
-  ctx.beginPath()
-  ctx.moveTo(-width / 2, -height / 2)
-  ctx.lineTo(-width / 2 + depth, -height / 2 - depth)
-  ctx.moveTo(width / 2, -height / 2)
-  ctx.lineTo(width / 2 - depth, -height / 2 - depth)
-  ctx.moveTo(-width / 2, height / 2)
-  ctx.lineTo(-width / 2 + depth, height / 2 - depth)
-  ctx.moveTo(width / 2, height / 2)
-  ctx.lineTo(width / 2 - depth, height / 2 - depth)
-  ctx.stroke()
-
-  // Simple net pattern
-  ctx.strokeStyle = 'rgba(203, 213, 225, 0.55)'
-  ctx.lineWidth = 1
+  // Net pattern
+  ctx.strokeStyle = 'rgba(203, 213, 225, 0.52)'
+  ctx.lineWidth = 0.9
   for (let i = 1; i <= 4; i += 1) {
-    const x = -width / 2 + (width * i) / 5
+    const x = left + (width * i) / 5
     ctx.beginPath()
-    ctx.moveTo(x, -height / 2)
-    ctx.lineTo(x - depth * 0.75, -height / 2 - depth)
+    ctx.moveTo(x, backY)
+    ctx.lineTo(x, frontY)
     ctx.stroke()
   }
-  for (let i = 1; i <= 3; i += 1) {
-    const y = -height / 2 + (height * i) / 4
+  for (let i = 1; i <= 2; i += 1) {
+    const y = backY + (height * i) / 3
     ctx.beginPath()
-    ctx.moveTo(-width / 2, y)
-    ctx.lineTo(width / 2, y)
+    ctx.moveTo(left, y)
+    ctx.lineTo(right, y)
     ctx.stroke()
   }
 
@@ -1954,12 +1942,12 @@ function SchemeTool() {
       base.width = 8
       base.height = 74
       base.rotation = 0
-      base.color = '#e2e8f0'
+      base.color = '#fbbf24'
     }
 
     if (tool === 'gate') {
       base.width = 86
-      base.height = 54
+      base.height = 36
       base.rotation = 0
     }
 
