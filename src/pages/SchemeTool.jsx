@@ -140,6 +140,7 @@ const MINI_BAR_SECTIONS = [
 const MINI_CUSTOM_GLYPH_TOOLS = new Set([
   'disc',
   'flag',
+  'arrowPlayerStraight',
   'arrowBallDashed',
   'arrowPlayerBall',
   'arrowShotDouble',
