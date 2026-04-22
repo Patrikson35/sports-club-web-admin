@@ -1266,29 +1266,22 @@ const drawMannequin = (ctx, item, isSelected) => {
 }
 
 const drawSlalomPole = (ctx, item, isSelected) => {
-  const width = Number(item.width || 14)
+  const width = Number(item.width || 8)
   const height = Number(item.height || 74)
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
-  const color = item.color || '#fbbf24'
+  const color = item.color || '#e2e8f0'
 
   ctx.save()
   ctx.translate(item.x, item.y)
   ctx.rotate(rotation)
 
-  ctx.fillStyle = color
-  ctx.fillRect(-width / 2, -height / 2, width, height)
-  ctx.strokeStyle = '#7c2d12'
-  ctx.lineWidth = 1.6
-  ctx.strokeRect(-width / 2, -height / 2, width, height)
-
-  ctx.strokeStyle = '#fff7ed'
-  ctx.lineWidth = 1.5
-  for (let offset = -height / 2 + 8; offset < height / 2; offset += 12) {
-    ctx.beginPath()
-    ctx.moveTo(-width / 2, offset)
-    ctx.lineTo(width / 2, offset)
-    ctx.stroke()
-  }
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2.2
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(0, height / 2)
+  ctx.lineTo(0, -height / 2)
+  ctx.stroke()
 
   if (isSelected) {
     ctx.setLineDash([6, 4])
@@ -1958,10 +1951,10 @@ function SchemeTool() {
     }
 
     if (tool === 'slalomPole') {
-      base.width = 14
+      base.width = 8
       base.height = 74
       base.rotation = 0
-      base.color = '#fbbf24'
+      base.color = '#e2e8f0'
     }
 
     if (tool === 'gate') {

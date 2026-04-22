@@ -316,7 +316,7 @@
 }
 
 .scheme-mini-tool-glyph.slalomPole {
-  background: center / 100% 100% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18'%3E%3Crect x='9' y='1.2' width='4' height='15.6' fill='%23fbbf24' stroke='%237c2d12' stroke-width='1'/%3E%3Cline x1='9' y1='5' x2='13' y2='5' stroke='%23fff7ed' stroke-width='1'/%3E%3Cline x1='9' y1='9' x2='13' y2='9' stroke='%23fff7ed' stroke-width='1'/%3E%3Cline x1='9' y1='13' x2='13' y2='13' stroke='%23fff7ed' stroke-width='1'/%3E%3C/svg%3E");
+  background: center / 100% 100% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18'%3E%3Cline x1='11' y1='1.6' x2='11' y2='16.4' stroke='%23e2e8f0' stroke-width='2.1' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .scheme-mini-tool-glyph.gate {
