@@ -665,43 +665,43 @@ const drawTrainingCone = (ctx, item, isSelected) => {
   const coneColor = item.color || '#e78323'
   ctx.save()
 
-  const shadow = ctx.createRadialGradient(x, y + 12, 2, x, y + 12, 18)
+  const shadow = ctx.createRadialGradient(x, y + 10, 2, x, y + 10, 14)
   shadow.addColorStop(0, 'rgba(17,24,39,0.26)')
   shadow.addColorStop(1, 'rgba(17,24,39,0)')
   ctx.fillStyle = shadow
   ctx.beginPath()
-  ctx.ellipse(x, y + 12, 15, 6, 0, 0, Math.PI * 2)
+  ctx.ellipse(x, y + 10, 12, 4.8, 0, 0, Math.PI * 2)
   ctx.fill()
 
   ctx.fillStyle = coneColor
   ctx.beginPath()
-  ctx.moveTo(x, y - 15)
-  ctx.lineTo(x - 10, y + 11)
-  ctx.lineTo(x + 10, y + 11)
+  ctx.moveTo(x, y - 12)
+  ctx.lineTo(x - 8, y + 9)
+  ctx.lineTo(x + 8, y + 9)
   ctx.closePath()
   ctx.fill()
 
   ctx.fillStyle = '#fff6de'
   ctx.beginPath()
-  ctx.moveTo(x - 6, y - 1)
-  ctx.lineTo(x + 6, y - 1)
-  ctx.lineTo(x + 4.5, y + 3.7)
-  ctx.lineTo(x - 4.5, y + 3.7)
+  ctx.moveTo(x - 5, y)
+  ctx.lineTo(x + 5, y)
+  ctx.lineTo(x + 3.8, y + 3.1)
+  ctx.lineTo(x - 3.8, y + 3.1)
   ctx.closePath()
   ctx.fill()
 
   ctx.strokeStyle = '#b96516'
   ctx.lineWidth = 1.4
   ctx.beginPath()
-  ctx.moveTo(x, y - 15)
-  ctx.lineTo(x - 10, y + 11)
-  ctx.lineTo(x + 10, y + 11)
+  ctx.moveTo(x, y - 12)
+  ctx.lineTo(x - 8, y + 9)
+  ctx.lineTo(x + 8, y + 9)
   ctx.closePath()
   ctx.stroke()
 
   if (isSelected) {
     ctx.beginPath()
-    ctx.arc(x, y, 16, 0, Math.PI * 2)
+    ctx.arc(x, y, 13, 0, Math.PI * 2)
     ctx.strokeStyle = '#101828'
     ctx.lineWidth = 2
     ctx.stroke()
@@ -1114,8 +1114,8 @@ const drawMiniGoal = (ctx, item, isSelected) => {
 }
 
 const drawHurdle = (ctx, item, isSelected) => {
-  const width = Number(item.width || 62)
-  const height = Number(item.height || 30)
+  const width = Number(item.width || 48)
+  const height = Number(item.height || 22)
   const left = -width / 2
   const top = -height / 2
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
@@ -1145,7 +1145,7 @@ const drawHurdle = (ctx, item, isSelected) => {
 const drawDisc = (ctx, item, isSelected) => {
   ctx.save()
   ctx.beginPath()
-  ctx.ellipse(item.x, item.y + 1, 13, 6.5, 0, 0, Math.PI * 2)
+  ctx.ellipse(item.x, item.y + 1, 10, 5, 0, 0, Math.PI * 2)
   ctx.fillStyle = item.color || '#ffad42'
   ctx.fill()
   ctx.lineWidth = 1.6
@@ -1154,7 +1154,7 @@ const drawDisc = (ctx, item, isSelected) => {
 
   if (isSelected) {
     ctx.beginPath()
-    ctx.arc(item.x, item.y, 18, 0, Math.PI * 2)
+    ctx.arc(item.x, item.y, 14, 0, Math.PI * 2)
     ctx.strokeStyle = '#101828'
     ctx.lineWidth = 2
     ctx.stroke()
@@ -1376,14 +1376,14 @@ const drawPlayerCircle = (ctx, item, isSelected) => {
 
   ctx.beginPath()
   if (shape === 'triangle') {
-    ctx.moveTo(item.x, item.y - 17)
-    ctx.lineTo(item.x - 15, item.y + 13)
-    ctx.lineTo(item.x + 15, item.y + 13)
+    ctx.moveTo(item.x, item.y - 14)
+    ctx.lineTo(item.x - 12, item.y + 10)
+    ctx.lineTo(item.x + 12, item.y + 10)
     ctx.closePath()
   } else if (shape === 'square') {
-    ctx.rect(item.x - 15, item.y - 15, 30, 30)
+    ctx.rect(item.x - 12, item.y - 12, 24, 24)
   } else if (shape === 'hexagon') {
-    const radius = 16
+    const radius = 13
     for (let i = 0; i < 6; i += 1) {
       const angle = (Math.PI / 3) * i - Math.PI / 2
       const px = item.x + radius * Math.cos(angle)
@@ -1396,7 +1396,7 @@ const drawPlayerCircle = (ctx, item, isSelected) => {
     }
     ctx.closePath()
   } else {
-    ctx.arc(item.x, item.y, 16, 0, Math.PI * 2)
+    ctx.arc(item.x, item.y, 13, 0, Math.PI * 2)
   }
 
   ctx.fillStyle = color
@@ -1417,7 +1417,7 @@ const drawPlayerCircle = (ctx, item, isSelected) => {
 
   if (isSelected) {
     ctx.beginPath()
-    ctx.arc(item.x, item.y, 21, 0, Math.PI * 2)
+    ctx.arc(item.x, item.y, 17, 0, Math.PI * 2)
     ctx.strokeStyle = '#101828'
     ctx.lineWidth = 2
     ctx.stroke()
@@ -1429,22 +1429,22 @@ const drawPlayerStickman = (ctx, item, isSelected) => {
 
   ctx.save()
   ctx.strokeStyle = color
-  ctx.lineWidth = 4
+  ctx.lineWidth = 3.4
   ctx.lineCap = 'round'
 
   ctx.beginPath()
-  ctx.arc(item.x, item.y - 13, 7, 0, Math.PI * 2)
+  ctx.arc(item.x, item.y - 11, 5.8, 0, Math.PI * 2)
   ctx.stroke()
 
   ctx.beginPath()
-  ctx.moveTo(item.x, item.y - 6)
-  ctx.lineTo(item.x, item.y + 12)
-  ctx.moveTo(item.x - 10, item.y + 1)
-  ctx.lineTo(item.x + 10, item.y + 1)
-  ctx.moveTo(item.x, item.y + 12)
-  ctx.lineTo(item.x - 9, item.y + 24)
-  ctx.moveTo(item.x, item.y + 12)
-  ctx.lineTo(item.x + 9, item.y + 24)
+  ctx.moveTo(item.x, item.y - 5)
+  ctx.lineTo(item.x, item.y + 10)
+  ctx.moveTo(item.x - 8, item.y + 1)
+  ctx.lineTo(item.x + 8, item.y + 1)
+  ctx.moveTo(item.x, item.y + 10)
+  ctx.lineTo(item.x - 7, item.y + 20)
+  ctx.moveTo(item.x, item.y + 10)
+  ctx.lineTo(item.x + 7, item.y + 20)
   ctx.stroke()
 
   if (item.number) {
@@ -1452,13 +1452,13 @@ const drawPlayerStickman = (ctx, item, isSelected) => {
     ctx.fillStyle = '#101828'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText(String(item.number), item.x, item.y + 37)
+    ctx.fillText(String(item.number), item.x, item.y + 31)
     ctx.textAlign = 'start'
   }
 
   if (isSelected) {
     ctx.beginPath()
-    ctx.arc(item.x, item.y + 4, 26, 0, Math.PI * 2)
+    ctx.arc(item.x, item.y + 3, 20, 0, Math.PI * 2)
     ctx.strokeStyle = '#101828'
     ctx.lineWidth = 2
     ctx.stroke()
@@ -1644,7 +1644,7 @@ const hitTest = (objects, point) => {
       continue
     }
 
-    const radius = item.type === 'ball' ? 12 : 18
+    const radius = item.type === 'ball' ? 12 : 14
     const dx = point.x - item.x
     const dy = point.y - item.y
     if (Math.sqrt(dx * dx + dy * dy) <= radius) {
@@ -1920,8 +1920,8 @@ function SchemeTool() {
     }
 
     if (tool === 'hurdle') {
-      base.width = 62
-      base.height = 30
+      base.width = 48
+      base.height = 22
       base.rotation = 0
     }
 
