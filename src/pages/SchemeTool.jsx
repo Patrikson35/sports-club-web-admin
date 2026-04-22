@@ -1198,27 +1198,60 @@ const drawFlag = (ctx, item, isSelected) => {
 }
 
 const drawMannequin = (ctx, item, isSelected) => {
-  const width = Number(item.width || 28)
-  const height = Number(item.height || 62)
+  const width = Number(item.width || 32)
+  const height = Number(item.height || 72)
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
-  const color = item.color || '#93c5fd'
+  const color = item.color || '#60a5fa'
 
   ctx.save()
   ctx.translate(item.x, item.y)
   ctx.rotate(rotation)
 
-  ctx.strokeStyle = color
-  ctx.lineWidth = 2.4
-  ctx.fillStyle = 'rgba(147, 197, 253, 0.16)'
+  const halfW = width / 2
+  const topY = -height / 2 + 9
+  const neckY = topY + 8
+  const shoulderY = neckY + 6
+  const waistY = shoulderY + 22
+  const footY = height / 2 - 6
 
   ctx.beginPath()
-  ctx.ellipse(0, -height * 0.34, width * 0.2, width * 0.2, 0, 0, Math.PI * 2)
+  ctx.ellipse(0, topY, 4.2, 4.6, 0, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(96, 165, 250, 0.18)'
   ctx.fill()
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2.1
   ctx.stroke()
 
   ctx.beginPath()
-  ctx.rect(-width / 2, -height * 0.18, width, height * 0.62)
+  ctx.moveTo(-halfW + 4, neckY)
+  ctx.lineTo(halfW - 4, neckY)
+  ctx.lineTo(halfW - 2, shoulderY)
+  ctx.lineTo(halfW - 7, waistY)
+  ctx.lineTo(halfW - 9, footY)
+  ctx.lineTo(-halfW + 9, footY)
+  ctx.lineTo(-halfW + 7, waistY)
+  ctx.lineTo(-halfW + 2, shoulderY)
+  ctx.closePath()
+  ctx.fillStyle = 'rgba(96, 165, 250, 0.2)'
   ctx.fill()
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2.3
+  ctx.stroke()
+
+  ctx.strokeStyle = 'rgba(186, 230, 253, 0.92)'
+  ctx.lineWidth = 1.3
+  for (let y = shoulderY + 4; y <= footY - 6; y += 7) {
+    ctx.beginPath()
+    ctx.moveTo(-halfW + 8, y)
+    ctx.lineTo(halfW - 8, y)
+    ctx.stroke()
+  }
+
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.85)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(-10, footY + 2)
+  ctx.lineTo(10, footY + 2)
   ctx.stroke()
 
   if (isSelected) {
@@ -1872,10 +1905,10 @@ function SchemeTool() {
     }
 
     if (tool === 'mannequin') {
-      base.width = 28
-      base.height = 62
+      base.width = 32
+      base.height = 72
       base.rotation = 0
-      base.color = '#93c5fd'
+      base.color = '#60a5fa'
     }
 
     if (tool === 'slalomPole') {
