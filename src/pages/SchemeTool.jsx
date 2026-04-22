@@ -32,6 +32,9 @@ const TOOL_OPTIONS = [
   { key: 'disc', label: 'Disk' },
   { key: 'flag', label: 'Vlajka' },
   { key: 'cone', label: 'Kužeľ' },
+  { key: 'mannequin', label: 'Figurína' },
+  { key: 'slalomPole', label: 'Slalomová tyč' },
+  { key: 'gate', label: 'Bránka (2 tyče)' },
   { key: 'ladder', label: 'Koordinačný rebrík' },
   { key: 'miniGoal', label: 'Bránka' },
   { key: 'hurdle', label: 'Prekážka' },
@@ -53,6 +56,9 @@ const TOOL_SHORT = {
   disc: 'DS',
   flag: 'FL',
   cone: 'KZ',
+  mannequin: 'FG',
+  slalomPole: 'TY',
+  gate: 'GT',
   ladder: 'RB',
   miniGoal: 'BR',
   hurdle: 'PR',
@@ -74,6 +80,9 @@ const TOOL_ICON = {
   disc: 'radio_button_checked',
   flag: 'flag',
   cone: 'change_history',
+  mannequin: 'accessibility_new',
+  slalomPole: 'vertical_align_center',
+  gate: 'door_front',
   ladder: 'grid_4x4',
   miniGoal: 'crop_16_9',
   hurdle: 'horizontal_rule',
@@ -122,6 +131,9 @@ const MINI_BAR_SECTIONS = [
       { kind: 'tool', key: 'disc' },
       { kind: 'tool', key: 'flag' },
       { kind: 'tool', key: 'cone' },
+      { kind: 'tool', key: 'mannequin' },
+      { kind: 'tool', key: 'slalomPole' },
+      { kind: 'tool', key: 'gate' },
       { kind: 'tool', key: 'ladder' },
       { kind: 'tool', key: 'hurdle' }
     ]
@@ -145,6 +157,9 @@ const MINI_CUSTOM_GLYPH_TOOLS = new Set([
   'arrowPlayerBall',
   'arrowShotDouble',
   'cone',
+  'mannequin',
+  'slalomPole',
+  'gate',
   'hurdle'
 ])
 
@@ -155,7 +170,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey === 'arrowPlayerBall' || toolKey === 'arrowBallDashed' || toolKey === 'arrowShotDouble'
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
-const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle' || type === 'flag'
+const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle' || type === 'flag' || type === 'mannequin' || type === 'slalomPole' || type === 'gate'
 const applyAlphaToColor = (color, alpha = 0.2) => {
   const normalized = String(color || '').trim()
   if (!normalized) return `rgba(255, 243, 196, ${alpha})`
@@ -1182,6 +1197,109 @@ const drawFlag = (ctx, item, isSelected) => {
   ctx.restore()
 }
 
+const drawMannequin = (ctx, item, isSelected) => {
+  const width = Number(item.width || 28)
+  const height = Number(item.height || 62)
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
+  const color = item.color || '#93c5fd'
+
+  ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2.4
+  ctx.fillStyle = 'rgba(147, 197, 253, 0.16)'
+
+  ctx.beginPath()
+  ctx.ellipse(0, -height * 0.34, width * 0.2, width * 0.2, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.rect(-width / 2, -height * 0.18, width, height * 0.62)
+  ctx.fill()
+  ctx.stroke()
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(-width / 2 - 6, -height / 2 - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+
+  ctx.restore()
+}
+
+const drawSlalomPole = (ctx, item, isSelected) => {
+  const width = Number(item.width || 14)
+  const height = Number(item.height || 74)
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
+  const color = item.color || '#fbbf24'
+
+  ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
+
+  ctx.fillStyle = color
+  ctx.fillRect(-width / 2, -height / 2, width, height)
+  ctx.strokeStyle = '#7c2d12'
+  ctx.lineWidth = 1.6
+  ctx.strokeRect(-width / 2, -height / 2, width, height)
+
+  ctx.strokeStyle = '#fff7ed'
+  ctx.lineWidth = 1.5
+  for (let offset = -height / 2 + 8; offset < height / 2; offset += 12) {
+    ctx.beginPath()
+    ctx.moveTo(-width / 2, offset)
+    ctx.lineTo(width / 2, offset)
+    ctx.stroke()
+  }
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(-width / 2 - 6, -height / 2 - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+
+  ctx.restore()
+}
+
+const drawGate = (ctx, item, isSelected) => {
+  const width = Number(item.width || 72)
+  const height = Number(item.height || 44)
+  const rotation = (Number(item.rotation || 0) * Math.PI) / 180
+  const color = item.color || '#f8fafc'
+
+  ctx.save()
+  ctx.translate(item.x, item.y)
+  ctx.rotate(rotation)
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(-width / 2, height / 2)
+  ctx.lineTo(-width / 2, -height / 2)
+  ctx.moveTo(width / 2, height / 2)
+  ctx.lineTo(width / 2, -height / 2)
+  ctx.moveTo(-width / 2, -height / 2)
+  ctx.lineTo(width / 2, -height / 2)
+  ctx.stroke()
+
+  if (isSelected) {
+    ctx.setLineDash([6, 4])
+    ctx.strokeStyle = '#101828'
+    ctx.lineWidth = 2
+    ctx.strokeRect(-width / 2 - 6, -height / 2 - 6, width + 12, height + 12)
+    ctx.setLineDash([])
+  }
+
+  ctx.restore()
+}
+
 const rotateAidItem = (item, stepDeg) => {
   if (!isRotatableAidType(item.type)) return item
   const current = Number(item.rotation || 0)
@@ -1356,6 +1474,21 @@ const drawSceneObjects = (ctx, objects, selectedId, playerStyle) => {
 
     if (item.type === 'cone') {
       drawTrainingCone(ctx, item, isSelected)
+      return
+    }
+
+    if (item.type === 'mannequin') {
+      drawMannequin(ctx, item, isSelected)
+      return
+    }
+
+    if (item.type === 'slalomPole') {
+      drawSlalomPole(ctx, item, isSelected)
+      return
+    }
+
+    if (item.type === 'gate') {
+      drawGate(ctx, item, isSelected)
       return
     }
 
@@ -1735,6 +1868,26 @@ function SchemeTool() {
     if (tool === 'flag') {
       base.width = 26
       base.height = 42
+      base.rotation = 0
+    }
+
+    if (tool === 'mannequin') {
+      base.width = 28
+      base.height = 62
+      base.rotation = 0
+      base.color = '#93c5fd'
+    }
+
+    if (tool === 'slalomPole') {
+      base.width = 14
+      base.height = 74
+      base.rotation = 0
+      base.color = '#fbbf24'
+    }
+
+    if (tool === 'gate') {
+      base.width = 72
+      base.height = 44
       base.rotation = 0
     }
 
