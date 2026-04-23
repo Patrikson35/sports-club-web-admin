@@ -1118,17 +1118,18 @@ const drawHurdle = (ctx, item, isSelected) => {
   const height = Number(item.height || 11)
   const left = -width / 2
   const top = -height / 2
+  const barY = top + Math.max(2, Math.min(4, height * 0.3))
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
 
   ctx.save()
   ctx.translate(item.x, item.y)
   ctx.rotate(rotation)
   ctx.strokeStyle = item.color || '#ef4444'
-  ctx.lineWidth = 4
+  ctx.lineWidth = 3
   ctx.beginPath()
   ctx.moveTo(left, top + height)
-  ctx.lineTo(left, top + 8)
-  ctx.lineTo(left + width, top + 8)
+  ctx.lineTo(left, barY)
+  ctx.lineTo(left + width, barY)
   ctx.lineTo(left + width, top + height)
   ctx.stroke()
 
