@@ -217,8 +217,8 @@ const createHurdleItem = (id, x, y, rotation = 0) => ({
   type: 'hurdle',
   x,
   y,
-  width: 62,
-  height: 30,
+  width: 24,
+  height: 11,
   rotation
 })
 
