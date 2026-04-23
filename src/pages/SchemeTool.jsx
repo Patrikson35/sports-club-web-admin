@@ -2785,16 +2785,6 @@ function SchemeTool() {
                   <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(-15)}>↺ -15°</button>
                   <button type="button" className="btn-secondary" onClick={() => rotateSelectedAid(15)}>↻ +15°</button>
                 </div>
-                <label htmlFor="scheme-rotation" style={{ marginTop: 10 }}>Uhol (°)</label>
-                <input
-                  id="scheme-rotation"
-                  type="range"
-                  min="0"
-                  max="345"
-                  step="15"
-                  value={Number(selectedObject.rotation || 0)}
-                  onChange={(event) => setSelectedAidRotation(Number(event.target.value || 0))}
-                />
 
                 {isGoalType(selectedObject.type) ? (
                   <>
