@@ -7422,7 +7422,14 @@ function MyClub() {
                             type="button"
                             className="btn-secondary"
                             onClick={() => {
-                              window.location.href = '/schemes'
+                              const targetExerciseId = String(editingExerciseDatabaseItemId || '').trim()
+                              if (!targetExerciseId) {
+                                setError('Najprv ulož cvičenie, potom môžeš priradiť schému.')
+                                return
+                              }
+                              localStorage.setItem('schemeExerciseId', targetExerciseId)
+                              localStorage.setItem('selectedExerciseId', targetExerciseId)
+                              window.location.href = `/schemes?exerciseId=${encodeURIComponent(targetExerciseId)}`
                             }}
                           >
                             Vytvoriť obrázok
