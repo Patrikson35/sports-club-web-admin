@@ -1081,8 +1081,8 @@ const drawLadder = (ctx, item, isSelected) => {
 }
 
 const drawMiniGoal = (ctx, item, isSelected) => {
-  const width = Number(item.width || 78)
-  const height = Number(item.height || 40)
+  const width = Number(item.width || 31)
+  const height = Number(item.height || 16)
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
   const color = item.color || '#facc15'
 
@@ -1917,8 +1917,8 @@ function SchemeTool() {
     }
 
     if (tool === 'miniGoal') {
-      base.width = 78
-      base.height = 40
+      base.width = 31
+      base.height = 16
       base.rotation = 0
       base.color = '#facc15'
     }
