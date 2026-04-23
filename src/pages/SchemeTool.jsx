@@ -2545,12 +2545,49 @@ function SchemeTool() {
         throw new Error('Upload obrázka nevrátil cestu k súboru.')
       }
 
-      await api.updateExercise(exerciseId, {
-        imageUrl: uploadedImagePath,
-        imageName: fileName
-      })
+      let savedToExercise = false
 
-      setSaveStatusMessage(`Uložené do cvičenia #${exerciseId}.`)
+      try {
+        await api.updateExercise(exerciseId, {
+          imageUrl: uploadedImagePath,
+          imageName: fileName
+        })
+        savedToExercise = true
+      } catch {
+        // Fallback for MyClub local exercise IDs stored in exerciseDatabaseItems.
+        const clubData = await api.getMyClub()
+        const sourceItems = Array.isArray(clubData?.exerciseDatabaseItems) ? clubData.exerciseDatabaseItems : []
+        let foundMatch = false
+
+        const nextItems = sourceItems.map((item) => {
+          const itemId = String(item?.id || '').trim()
+          const sourceExerciseId = String(item?.sourceExerciseId || '').trim()
+          const isMatch = itemId === exerciseId || sourceExerciseId === exerciseId
+          if (!isMatch) return item
+          foundMatch = true
+          return {
+            ...item,
+            imageUrl: uploadedImagePath,
+            imageName: fileName,
+            updatedAt: new Date().toISOString()
+          }
+        })
+
+        if (!foundMatch) {
+          throw new Error('Cvičenie sa nenašlo na uloženie schémy.')
+        }
+
+        await api.updateMyClub({ exerciseDatabaseItems: nextItems })
+      }
+
+      localStorage.setItem('lastSavedExerciseScheme', JSON.stringify({
+        exerciseId,
+        imageUrl: uploadedImagePath,
+        imageName: fileName,
+        savedAt: Date.now()
+      }))
+
+      setSaveStatusMessage(savedToExercise ? `Uložené do cvičenia #${exerciseId}.` : `Uložené ku klubovému cvičeniu #${exerciseId}.`)
     } catch (error) {
       setSaveStatusMessage(error?.message ? `Ukladanie zlyhalo: ${error.message}` : 'Ukladanie zlyhalo.')
     } finally {

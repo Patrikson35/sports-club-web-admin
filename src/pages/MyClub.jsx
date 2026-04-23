@@ -1094,6 +1094,40 @@ function MyClub() {
   }, [])
 
   useEffect(() => {
+    const handlePageShow = (event) => {
+      if (!event?.persisted) return
+      fetchMyClub()
+    }
+
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
+
+  useEffect(() => {
+    const editingId = String(editingExerciseDatabaseItemId || '').trim()
+    if (!editingId) return
+
+    const matchedExercise = (Array.isArray(exerciseDatabaseItems) ? exerciseDatabaseItems : [])
+      .find((item) => String(item?.id || '').trim() === editingId)
+
+    if (!matchedExercise) return
+
+    const nextImageUrl = String(matchedExercise?.imageUrl || '').trim()
+    const nextImageName = String(matchedExercise?.imageName || '').trim()
+
+    setExerciseFormDraft((prev) => {
+      const prevImageUrl = String(prev?.imageUrl || '').trim()
+      const prevImageName = String(prev?.imageName || '').trim()
+      if (prevImageUrl === nextImageUrl && prevImageName === nextImageName) return prev
+      return {
+        ...prev,
+        imageUrl: nextImageUrl,
+        imageName: nextImageName
+      }
+    })
+  }, [exerciseDatabaseItems, editingExerciseDatabaseItemId])
+
+  useEffect(() => {
     if (!success) return undefined
 
     const timeoutId = setTimeout(() => {
@@ -7412,7 +7446,7 @@ function MyClub() {
                         <small>PNG, JPG alebo GIF do 10MB</small>
                         {exerciseFormDraft.imageUrl ? (
                           <div className="exercise-upload-preview-wrap">
-                            <img src={exerciseFormDraft.imageUrl} alt="Náhľad obrázka cvičenia" className="exercise-upload-preview" />
+                            <img src={resolveMediaUrl(exerciseFormDraft.imageUrl)} alt="Náhľad obrázka cvičenia" className="exercise-upload-preview" />
                             <small>{exerciseFormDraft.imageName || 'Nahratý obrázok'}</small>
                           </div>
                         ) : null}
