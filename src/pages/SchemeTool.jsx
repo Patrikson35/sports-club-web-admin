@@ -171,6 +171,13 @@ const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey ==
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
 const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle' || type === 'flag' || type === 'mannequin' || type === 'slalomPole' || type === 'gate'
+const isGoalType = (type) => type === 'miniGoal' || type === 'gate'
+const getGoalDefaults = (type) => {
+  if (type === 'gate') {
+    return { width: 86, height: 36 }
+  }
+  return { width: 78, height: 40 }
+}
 const applyAlphaToColor = (color, alpha = 0.2) => {
   const normalized = String(color || '').trim()
   if (!normalized) return `rgba(255, 243, 196, ${alpha})`
@@ -2402,6 +2409,30 @@ function SchemeTool() {
     }))
   }
 
+  const scaleSelectedGoal = (factor) => {
+    if (!selectedObjectId) return
+
+    const normalizedFactor = Number(factor || 1)
+    if (!Number.isFinite(normalizedFactor) || normalizedFactor <= 0) return
+
+    setSceneObjects((prev) => prev.map((item) => {
+      if (String(item.id || '') !== String(selectedObjectId)) return item
+      if (!isGoalType(item.type)) return item
+
+      const defaults = getGoalDefaults(item.type)
+      const currentWidth = Number(item.width || defaults.width)
+      const currentHeight = Number(item.height || defaults.height)
+      const nextWidth = clamp(Math.round(currentWidth * normalizedFactor), 26, 220)
+      const nextHeight = clamp(Math.round(currentHeight * normalizedFactor), 12, 140)
+
+      return {
+        ...item,
+        width: nextWidth,
+        height: nextHeight
+      }
+    }))
+  }
+
   const undoLastObject = () => {
     setSceneObjects((prev) => prev.slice(0, -1))
     setSelectedObjectId('')
@@ -2713,6 +2744,16 @@ function SchemeTool() {
                   value={Number(selectedObject.rotation || 0)}
                   onChange={(event) => setSelectedAidRotation(Number(event.target.value || 0))}
                 />
+
+                {isGoalType(selectedObject.type) ? (
+                  <>
+                    <label style={{ marginTop: 10 }}>Veľkosť bránky</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" className="btn-secondary" onClick={() => scaleSelectedGoal(0.9)}>− 10%</button>
+                      <button type="button" className="btn-secondary" onClick={() => scaleSelectedGoal(1.1)}>+ 10%</button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             ) : null}
 
