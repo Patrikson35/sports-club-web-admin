@@ -1114,8 +1114,8 @@ const drawMiniGoal = (ctx, item, isSelected) => {
 }
 
 const drawHurdle = (ctx, item, isSelected) => {
-  const width = Number(item.width || 48)
-  const height = Number(item.height || 22)
+  const width = Number(item.width || 24)
+  const height = Number(item.height || 11)
   const left = -width / 2
   const top = -height / 2
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
@@ -1920,8 +1920,8 @@ function SchemeTool() {
     }
 
     if (tool === 'hurdle') {
-      base.width = 48
-      base.height = 22
+      base.width = 24
+      base.height = 11
       base.rotation = 0
     }
 
