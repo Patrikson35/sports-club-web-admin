@@ -34,7 +34,7 @@ const TOOL_OPTIONS = [
   { key: 'cone', label: 'Kužeľ' },
   { key: 'mannequin', label: 'Figurína' },
   { key: 'slalomPole', label: 'Slalomová tyč' },
-  { key: 'gate', label: 'Bránka (2 tyče)' },
+  { key: 'gate', label: 'Tréningový kruh' },
   { key: 'ladder', label: 'Koordinačný rebrík' },
   { key: 'miniGoal', label: 'Bránka' },
   { key: 'hurdle', label: 'Prekážka' },
@@ -58,7 +58,7 @@ const TOOL_SHORT = {
   cone: 'KZ',
   mannequin: 'FG',
   slalomPole: 'TY',
-  gate: 'GT',
+  gate: 'KR',
   ladder: 'RB',
   miniGoal: 'BR',
   hurdle: 'PR',
@@ -82,7 +82,7 @@ const TOOL_ICON = {
   cone: 'change_history',
   mannequin: 'accessibility_new',
   slalomPole: 'vertical_align_center',
-  gate: 'door_front',
+  gate: 'circle',
   ladder: 'grid_4x4',
   miniGoal: 'crop_16_9',
   hurdle: 'horizontal_rule',
@@ -171,11 +171,8 @@ const isArrowTool = (toolKey) => toolKey === 'arrowPlayerStraight' || toolKey ==
 const isAreaToolType = (type) => type === 'areaRect' || type === 'areaSquare' || type === 'areaCircle' || type === 'areaDiamond'
 const isPlayerStyle = (value) => value === 'circle' || value === 'stickman'
 const isRotatableAidType = (type) => type === 'ladder' || type === 'miniGoal' || type === 'hurdle' || type === 'flag' || type === 'mannequin' || type === 'slalomPole' || type === 'gate'
-const isGoalType = (type) => type === 'miniGoal' || type === 'gate'
+const isGoalType = (type) => type === 'miniGoal'
 const getGoalDefaults = (type) => {
-  if (type === 'gate') {
-    return { width: 86, height: 36 }
-  }
   return { width: 78, height: 40 }
 }
 const applyAlphaToColor = (color, alpha = 0.2) => {
@@ -1303,59 +1300,29 @@ const drawSlalomPole = (ctx, item, isSelected) => {
 }
 
 const drawGate = (ctx, item, isSelected) => {
-  const width = Number(item.width || 86)
-  const height = Number(item.height || 36)
+  const width = Number(item.width || 40)
+  const height = Number(item.height || 18)
   const rotation = (Number(item.rotation || 0) * Math.PI) / 180
-  const color = item.color || '#f8fafc'
-  const frameInset = 4
-  const left = -width / 2
-  const right = width / 2
-  const frontY = height / 2
-  const backY = -height / 2
+  const color = item.color || '#facc15'
 
   ctx.save()
   ctx.translate(item.x, item.y)
   ctx.rotate(rotation)
 
-  // Top view: open mouth (front) + side bars + back bar
+  // Training hoop ring (top view)
   ctx.strokeStyle = color
-  ctx.lineWidth = 2.4
+  ctx.lineWidth = 3
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(left, frontY)
-  ctx.lineTo(left, backY)
-  ctx.lineTo(right, backY)
-  ctx.lineTo(right, frontY)
+  ctx.ellipse(0, 0, width / 2, height / 2, 0, 0, Math.PI * 2)
   ctx.stroke()
 
-  // Inner frame thickness
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.78)'
-  ctx.lineWidth = 1.5
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)'
+  ctx.lineWidth = 1.2
   ctx.beginPath()
-  ctx.moveTo(left + frameInset, frontY - frameInset)
-  ctx.lineTo(left + frameInset, backY + frameInset)
-  ctx.lineTo(right - frameInset, backY + frameInset)
-  ctx.lineTo(right - frameInset, frontY - frameInset)
+  ctx.ellipse(0, 0, Math.max(4, width / 2 - 2.6), Math.max(2.2, height / 2 - 2.2), 0, 0, Math.PI * 2)
   ctx.stroke()
-
-  // Net pattern
-  ctx.strokeStyle = 'rgba(203, 213, 225, 0.52)'
-  ctx.lineWidth = 0.9
-  for (let i = 1; i <= 4; i += 1) {
-    const x = left + (width * i) / 5
-    ctx.beginPath()
-    ctx.moveTo(x, backY)
-    ctx.lineTo(x, frontY)
-    ctx.stroke()
-  }
-  for (let i = 1; i <= 2; i += 1) {
-    const y = backY + (height * i) / 3
-    ctx.beginPath()
-    ctx.moveTo(left, y)
-    ctx.lineTo(right, y)
-    ctx.stroke()
-  }
 
   if (isSelected) {
     ctx.setLineDash([6, 4])
@@ -1954,9 +1921,10 @@ function SchemeTool() {
     }
 
     if (tool === 'gate') {
-      base.width = 86
-      base.height = 36
+      base.width = 40
+      base.height = 18
       base.rotation = 0
+      base.color = '#facc15'
     }
 
     setSceneObjects((prev) => [...prev, base])
