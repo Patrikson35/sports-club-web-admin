@@ -683,6 +683,53 @@
   font-size: 14px;
 }
 
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(2, 6, 16, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-modal-card {
+  width: min(460px, calc(100vw - 2rem));
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.97) 0%, rgba(9, 14, 27, 0.98) 100%);
+  box-shadow: 0 30px 80px -35px rgba(15, 23, 42, 0.95);
+  padding: 1.05rem 1.1rem;
+}
+
+.confirm-modal-card h3 {
+  margin: 0 0 0.5rem;
+  color: #f8fbff;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.confirm-modal-card p {
+  margin: 0;
+  color: #d5e2fb;
+  line-height: 1.5;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.95rem;
+}
+
+.confirm-modal-actions .btn-secondary,
+.confirm-modal-actions .manager-add-btn {
+  min-width: 136px;
+  border-radius: 10px;
+}
+
 .matches-create-card-title {
   margin-top: 0;
   margin-bottom: 12px;
