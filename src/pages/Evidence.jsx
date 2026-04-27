@@ -1023,6 +1023,12 @@ function Evidence() {
   const availableSchoolYears = useMemo(() => {
     const schoolYears = new Set([defaultSchoolYear])
 
+    ;(Array.isArray(attendancePeriods) ? attendancePeriods : []).forEach((period) => {
+      const parsed = parseSchoolYearLabel(period?.name)
+      if (!parsed) return
+      schoolYears.add(`${parsed.startYear}/${parsed.endYear}`)
+    })
+
     Object.keys(evidenceEntriesDraft || {}).forEach((entryKey) => {
       const { dateKey } = parseEvidenceEntryKey(entryKey)
       const matched = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -1054,7 +1060,7 @@ function Evidence() {
       const rightStart = parseSchoolYearLabel(right)?.startYear ?? 0
       return rightStart - leftStart
     })
-  }, [defaultSchoolYear, evidenceEntriesDraft, plannedSessions])
+  }, [defaultSchoolYear, attendancePeriods, evidenceEntriesDraft, plannedSessions])
 
   useEffect(() => {
     if (availableSchoolYears.includes(selectedSchoolYear)) return
