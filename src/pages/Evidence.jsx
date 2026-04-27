@@ -3096,14 +3096,18 @@ function Evidence() {
   ), [])
 
   const periodTimelineButtons = useMemo(() => (
-    (Array.isArray(attendancePeriods) ? attendancePeriods : []).map((period) => ({
+    (Array.isArray(attendancePeriods) ? attendancePeriods : [])
+      .filter((period) => !parseSchoolYearLabel(period?.name))
+      .map((period) => ({
       id: `season-${period.id}`,
       type: 'season',
       label: String(period?.name || 'Obdobie'),
       from: String(period?.from || ''),
       to: String(period?.to || '')
-    }))
+      }))
   ), [attendancePeriods])
+
+  const shouldShowSchoolYearSelect = availableSchoolYears.length > 1
 
   const selectMonthByIndex = (monthIndex) => {
     if (!Number.isInteger(monthIndex)) return
@@ -3420,41 +3424,36 @@ function Evidence() {
             </button>
           </div>
 
-          {periodTimelineButtons.length > 0 ? (
+          {(shouldShowSchoolYearSelect || periodTimelineButtons.length > 0) ? (
             <div className="evidence-periods-fixed">
-              {periodTimelineButtons.length > 3 ? (
-                <div className="evidence-period-select-wrap">
+              {shouldShowSchoolYearSelect ? (
+                <div className="evidence-period-school-year-wrap">
                   <select
-                    className="evidence-period-select"
-                    value={String(selectedTimeline || '').startsWith('season-') ? selectedTimeline : ''}
-                    onChange={(event) => {
-                      const nextValue = String(event.target.value || '')
-                      const nextPeriod = periodTimelineButtons.find((item) => item.id === nextValue)
-                      if (nextPeriod) {
-                        handleTimelineSelect(nextPeriod)
-                      }
-                    }}
+                    className="evidence-period-school-year-select"
+                    value={selectedSchoolYear}
+                    onChange={(event) => setSelectedSchoolYear(String(event.target.value || defaultSchoolYear))}
                   >
-                    <option value="">Vyber obdobie</option>
-                    {periodTimelineButtons.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
+                    {availableSchoolYears.map((schoolYear) => (
+                      <option key={`attendance-school-year-${schoolYear}`} value={schoolYear}>{schoolYear}</option>
                     ))}
                   </select>
                 </div>
-              ) : (
-                periodTimelineButtons.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`card evidence-timeline-btn evidence-month-btn evidence-period-btn ${selectedTimeline === item.id ? 'active' : ''}`}
-                    onClick={() => handleTimelineSelect(item)}
-                  >
-                    <span className="evidence-timeline-btn-label">{item.label}</span>
-                  </button>
-                ))
-              )}
+              ) : null}
+
+              {periodTimelineButtons.length > 0 ? (
+                <div className="evidence-period-toggle-row">
+                  {periodTimelineButtons.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`card evidence-timeline-btn evidence-month-btn evidence-period-btn ${selectedTimeline === item.id ? 'active' : ''}`}
+                      onClick={() => handleTimelineSelect(item)}
+                    >
+                      <span className="evidence-timeline-btn-label">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

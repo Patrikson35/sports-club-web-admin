@@ -274,22 +274,22 @@
   max-width: var(--evidence-periods-width);
   min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: 0.45rem;
   overflow: hidden;
 }
 
-.evidence-period-select-wrap {
+.evidence-period-school-year-wrap {
   width: 100%;
-  max-width: 330px;
-  margin-left: auto;
+  max-width: 100%;
 }
 
-.evidence-period-select {
+.evidence-period-school-year-select {
   width: 100%;
   height: 44px;
-  margin-bottom: 20px;
+  margin: 0;
   border: 1px solid rgba(96, 113, 147, 0.44);
   border-radius: 0.65rem;
   background: var(--bg-secondary);
@@ -299,10 +299,17 @@
   padding: 0 0.6rem;
 }
 
-.evidence-period-select:focus {
+.evidence-period-school-year-select:focus {
   outline: none;
   border-color: rgba(59, 130, 246, 0.8);
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.evidence-period-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
 }
 
 .evidence-timeline-btn {
@@ -336,6 +343,7 @@
 
 .evidence-period-btn {
   min-width: 92px;
+  width: auto;
   padding: 0 0.22rem;
 }
 
