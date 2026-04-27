@@ -274,11 +274,18 @@
   max-width: var(--evidence-periods-width);
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.45rem;
   overflow: hidden;
+}
+
+.evidence-period-filters-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
 }
 
 .evidence-period-school-year-wrap {
@@ -305,11 +312,28 @@
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
 }
 
-.evidence-period-toggle-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.45rem;
+.evidence-period-select-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.evidence-period-select {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  border-radius: 0.65rem;
+  background: var(--bg-secondary);
+  color: #dbe6ff;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0 0.6rem;
+}
+
+.evidence-period-select:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
 }
 
 .evidence-timeline-btn {

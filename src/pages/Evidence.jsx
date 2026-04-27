@@ -866,6 +866,7 @@ function Evidence() {
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => defaultSchoolYear)
   const [rosterSort, setRosterSort] = useState({ key: null, direction: 'desc' })
   const [plannedSessions, setPlannedSessions] = useState([])
+  const [playerSeasonSummaries, setPlayerSeasonSummaries] = useState([])
   const monthsScrollRef = useRef(null)
   const monthsWrapRef = useRef(null)
   const evidenceMetricHeadRef = useRef(null)
@@ -1240,6 +1241,16 @@ function Evidence() {
     }
   }, [attendanceMetrics, metricCodeById])
 
+  const importedSummaryByPlayerId = useMemo(() => {
+    const source = Array.isArray(playerSeasonSummaries) ? playerSeasonSummaries : []
+    return source.reduce((acc, row) => {
+      const userId = String(row?.userId || '').trim()
+      if (!userId) return acc
+      acc.set(userId, row)
+      return acc
+    }, new Map())
+  }, [playerSeasonSummaries])
+
   const evidenceAggregate = useMemo(() => {
     const selectedCategoryId = String(selectedCategory || '')
     const selectedSeasonId = String(selectedTimeline || '').startsWith('season-')
@@ -1252,6 +1263,7 @@ function Evidence() {
     const seasonTo = selectedSeason ? parseDayMonth(selectedSeason.to) : null
     const monthMatch = String(selectedTimeline || '').match(/^month-(\d{1,2})$/)
     const selectedMonthIndex = monthMatch ? Number(monthMatch[1]) : null
+    const isSeasonTimeline = Boolean(selectedSeasonId)
 
     const isDateKeyInTimeline = (dateKey) => {
       const matched = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -1354,41 +1366,98 @@ function Evidence() {
     const configuredPoczCodes = configuredSourceCodesByMetricCode.POCZ || [...MATCH_METRIC_CODES]
     const configuredHzCodes = configuredSourceCodesByMetricCode.HZ || [...HZ_TIME_SUM_CODES]
 
+    const getImportedCountByCode = (summaryRow, metricCode) => {
+      const code = normalizeMetricCode(metricCode)
+      if (!summaryRow || !code) return 0
+      if (code === 'DZ') return Number(summaryRow?.dzCount || 0)
+      if (code === 'TJ') return Number(summaryRow?.tjCount || 0)
+      if (code === 'PZ') return Number(summaryRow?.pzCount || 0)
+      if (code === 'MZ') return Number(summaryRow?.mzCount || 0)
+      return 0
+    }
+
+    const getImportedMinutesByCode = (summaryRow, metricCode) => {
+      const code = normalizeMetricCode(metricCode)
+      if (!summaryRow || !code) return 0
+      if (code === 'DZ') return Number(summaryRow?.dzMinutes || 0)
+      if (code === 'TJ') return Number(summaryRow?.tjMinutes || 0)
+      if (code === 'PZ') return Number(summaryRow?.pzMinutes || 0)
+      if (code === 'MZ') return Number(summaryRow?.mzMinutes || 0)
+      if (code === 'HZ') return Number(summaryRow?.hzMinutes || 0)
+      return 0
+    }
+
     const sumFromMapByCodes = (targetMap, sourceCodes) => {
       const codes = Array.isArray(sourceCodes) ? sourceCodes : []
       return codes.reduce((sum, code) => sum + Number(targetMap.get(normalizeMetricCode(code)) || 0), 0)
     }
 
-    const getGlobalMetricCount = (metricCode) => Number(metricCounts.get(metricCode) || 0)
+    const getGlobalMetricCount = (metricCode) => {
+      const normalizedCode = normalizeMetricCode(metricCode)
+      const evidenceValue = Number(metricCounts.get(normalizedCode) || 0)
+      if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+
+      let total = 0
+      importedSummaryByPlayerId.forEach((row) => {
+        total += getImportedCountByCode(row, normalizedCode)
+      })
+      return total
+    }
     const getGlobalMetricEventCount = (metricCode) => {
       const normalizedCode = normalizeMetricCode(metricCode)
       return Number(metricEventCounts.get(normalizedCode)?.size || 0)
     }
     const getPlayerMetricCount = (playerId, metricCode) => {
+      const normalizedCode = normalizeMetricCode(metricCode)
       const metricMap = playerMetricCounts.get(String(playerId || ''))
-      if (!metricMap) return 0
-      return Number(metricMap.get(metricCode) || 0)
+      const evidenceValue = metricMap ? Number(metricMap.get(normalizedCode) || 0) : 0
+      if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+      return getImportedCountByCode(importedSummaryByPlayerId.get(String(playerId || '')), normalizedCode)
     }
 
     const getGlobalMinutes = (metricCode) => {
+      const normalizedCode = normalizeMetricCode(metricCode)
       let total = 0
       playerMinutesByCode.forEach((playerMap) => {
-        total += Number(playerMap.get(normalizeMetricCode(metricCode)) || 0)
+        total += Number(playerMap.get(normalizedCode) || 0)
+      })
+      if (total > 0 || !isSeasonTimeline) return total
+
+      let importedTotal = 0
+      importedSummaryByPlayerId.forEach((row) => {
+        importedTotal += getImportedMinutesByCode(row, normalizedCode)
+      })
+      return importedTotal
+    }
+
+    const getPlayerMinutes = (playerId, metricCode = 'HZ') => {
+      const normalizedCode = normalizeMetricCode(metricCode)
+      const playerMap = playerMinutesByCode.get(String(playerId || ''))
+      const evidenceValue = playerMap ? Number(playerMap.get(normalizedCode) || 0) : 0
+      if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+      return getImportedMinutesByCode(importedSummaryByPlayerId.get(String(playerId || '')), normalizedCode)
+    }
+
+    const getGlobalPoczCount = () => {
+      const evidenceValue = sumFromMapByCodes(metricCounts, configuredPoczCodes)
+      if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+
+      let total = 0
+      importedSummaryByPlayerId.forEach((row) => {
+        total += (Array.isArray(configuredPoczCodes) ? configuredPoczCodes : [])
+          .reduce((sum, code) => sum + getImportedCountByCode(row, code), 0)
       })
       return total
     }
 
-    const getPlayerMinutes = (playerId, metricCode = 'HZ') => {
-      const playerMap = playerMinutesByCode.get(String(playerId || ''))
-      if (!playerMap) return 0
-      return Number(playerMap.get(normalizeMetricCode(metricCode)) || 0)
-    }
-
-    const getGlobalPoczCount = () => sumFromMapByCodes(metricCounts, configuredPoczCodes)
     const getPlayerPoczCount = (playerId) => {
       const metricMap = playerMetricCounts.get(String(playerId || ''))
-      if (!metricMap) return 0
-      return sumFromMapByCodes(metricMap, configuredPoczCodes)
+      const evidenceValue = metricMap ? sumFromMapByCodes(metricMap, configuredPoczCodes) : 0
+      if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+
+      const summaryRow = importedSummaryByPlayerId.get(String(playerId || ''))
+      return (Array.isArray(configuredPoczCodes) ? configuredPoczCodes : [])
+        .reduce((sum, code) => sum + getImportedCountByCode(summaryRow, code), 0)
     }
 
     const getGlobalHzMinutes = () => {
@@ -1396,13 +1465,24 @@ function Evidence() {
       playerMinutesByCode.forEach((playerMap) => {
         total += sumFromMapByCodes(playerMap, configuredHzCodes)
       })
-      return total
+      if (total > 0 || !isSeasonTimeline) return total
+
+      let importedTotal = 0
+      importedSummaryByPlayerId.forEach((row) => {
+        importedTotal += (Array.isArray(configuredHzCodes) ? configuredHzCodes : [])
+          .reduce((sum, code) => sum + getImportedMinutesByCode(row, code), 0)
+      })
+      return importedTotal
     }
 
     const getPlayerHzMinutes = (playerId) => {
       const playerMap = playerMinutesByCode.get(String(playerId || ''))
-      if (!playerMap) return 0
-      return sumFromMapByCodes(playerMap, configuredHzCodes)
+      const evidenceValue = playerMap ? sumFromMapByCodes(playerMap, configuredHzCodes) : 0
+      if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+
+      const summaryRow = importedSummaryByPlayerId.get(String(playerId || ''))
+      return (Array.isArray(configuredHzCodes) ? configuredHzCodes : [])
+        .reduce((sum, code) => sum + getImportedMinutesByCode(summaryRow, code), 0)
     }
 
     const getGlobalPoczEventCount = () => {
@@ -1431,7 +1511,11 @@ function Evidence() {
       },
       getGlobalMetricCount,
       getGlobalMetricEventCount,
-      getPlayerDzDays: (playerId) => playerDays.get(String(playerId || ''))?.size || 0,
+      getPlayerDzDays: (playerId) => {
+        const evidenceValue = playerDays.get(String(playerId || ''))?.size || 0
+        if (evidenceValue > 0 || !isSeasonTimeline) return evidenceValue
+        return getImportedCountByCode(importedSummaryByPlayerId.get(String(playerId || '')), 'DZ')
+      },
       getPlayerSessionCount: (playerId) => playerSessions.get(String(playerId || ''))?.size || 0,
       getPlayerSessionCountForCategory: (playerId, categoryId) => (
         playerSessionsByCategory.get(String(playerId || ''))?.get(String(categoryId || ''))?.size || 0
@@ -1452,7 +1536,8 @@ function Evidence() {
     attendancePeriods,
     calendarDate,
     metricCodeById,
-    configuredSourceCodesByMetricCode
+    configuredSourceCodesByMetricCode,
+    importedSummaryByPlayerId
   ])
 
   const toggleRosterSort = (nextKey) => {
@@ -1671,6 +1756,33 @@ function Evidence() {
       isMounted = false
     }
   }, [clubId])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadPlayerSeasonSummaries = async () => {
+      if (!clubId) {
+        setPlayerSeasonSummaries([])
+        return
+      }
+
+      try {
+        const response = await api.getPlayerSeasonSummaries(selectedSchoolYear)
+        if (!isMounted) return
+        const summaries = Array.isArray(response?.summaries) ? response.summaries : []
+        setPlayerSeasonSummaries(summaries)
+      } catch {
+        if (!isMounted) return
+        setPlayerSeasonSummaries([])
+      }
+    }
+
+    loadPlayerSeasonSummaries()
+
+    return () => {
+      isMounted = false
+    }
+  }, [clubId, selectedSchoolYear])
 
   useEffect(() => {
     if (!clubId) {
@@ -3107,8 +3219,6 @@ function Evidence() {
       }))
   ), [attendancePeriods])
 
-  const shouldShowSchoolYearSelect = availableSchoolYears.length > 1
-
   const selectMonthByIndex = (monthIndex) => {
     if (!Number.isInteger(monthIndex)) return
     const normalizedMonth = Math.max(0, Math.min(11, monthIndex))
@@ -3424,9 +3534,9 @@ function Evidence() {
             </button>
           </div>
 
-          {(shouldShowSchoolYearSelect || periodTimelineButtons.length > 0) ? (
+          {(availableSchoolYears.length > 0 || periodTimelineButtons.length > 0) ? (
             <div className="evidence-periods-fixed">
-              {shouldShowSchoolYearSelect ? (
+              <div className="evidence-period-filters-row">
                 <div className="evidence-period-school-year-wrap">
                   <select
                     className="evidence-period-school-year-select"
@@ -3438,22 +3548,31 @@ function Evidence() {
                     ))}
                   </select>
                 </div>
-              ) : null}
 
-              {periodTimelineButtons.length > 0 ? (
-                <div className="evidence-period-toggle-row">
-                  {periodTimelineButtons.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`card evidence-timeline-btn evidence-month-btn evidence-period-btn ${selectedTimeline === item.id ? 'active' : ''}`}
-                      onClick={() => handleTimelineSelect(item)}
-                    >
-                      <span className="evidence-timeline-btn-label">{item.label}</span>
-                    </button>
-                  ))}
+                <div className="evidence-period-select-wrap">
+                  <select
+                    className="evidence-period-select"
+                    value={String(selectedTimeline || '').startsWith('season-') ? selectedTimeline : ''}
+                    onChange={(event) => {
+                      const nextValue = String(event.target.value || '')
+                      if (!nextValue) {
+                        setSelectedTimeline(`month-${calendarDate.getMonth()}`)
+                        return
+                      }
+
+                      const nextPeriod = periodTimelineButtons.find((item) => item.id === nextValue)
+                      if (nextPeriod) {
+                        handleTimelineSelect(nextPeriod)
+                      }
+                    }}
+                  >
+                    <option value="">Obdobie</option>
+                    {periodTimelineButtons.map((item) => (
+                      <option key={item.id} value={item.id}>{item.label}</option>
+                    ))}
+                  </select>
                 </div>
-              ) : null}
+              </div>
             </div>
           ) : null}
         </div>

@@ -1940,6 +1940,19 @@ class APIClient {
     });
   }
 
+  async getPlayerSeasonSummaries(season) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, summaries: [] };
+    }
+
+    const normalizedSeason = String(season || '').trim();
+    const query = normalizedSeason
+      ? `?season=${encodeURIComponent(normalizedSeason)}`
+      : '';
+
+    return this.request(`/clubs/my-club/player-season-summaries${query}`);
+  }
+
   async getAttendanceDisplaySettings() {
     if (USE_MOCK_DATA) {
       return { settings: {} };
