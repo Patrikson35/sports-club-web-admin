@@ -3339,20 +3339,6 @@ function Evidence() {
           <p>Prehľad účasti a výkonu hráčov podľa kategórií.</p>
         </div>
         <div className="evidence-header-actions">
-          <div className="evidence-school-year-select-wrap">
-            <label htmlFor="evidence-school-year" className="evidence-school-year-select-label">Ročník</label>
-            <select
-              id="evidence-school-year"
-              className="evidence-school-year-select"
-              value={selectedSchoolYear}
-              onChange={(event) => setSelectedSchoolYear(String(event.target.value || defaultSchoolYear))}
-            >
-              {availableSchoolYears.map((schoolYear) => (
-                <option key={`attendance-school-year-${schoolYear}`} value={schoolYear}>{schoolYear}</option>
-              ))}
-            </select>
-          </div>
-
           <div className="evidence-search">
             <span className="material-icons-round" aria-hidden="true">search</span>
             <input

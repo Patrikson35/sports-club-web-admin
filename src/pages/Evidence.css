@@ -44,27 +44,6 @@
   justify-content: flex-end;
 }
 
-.evidence-school-year-select-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.evidence-school-year-select-label {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  white-space: nowrap;
-}
-
-.evidence-school-year-select {
-  height: 48px;
-  min-height: 48px;
-  border-radius: 10px;
-  min-width: 148px;
-  background: rgba(15, 23, 40, 0.95);
-}
-
 .evidence-export-btn,
 .evidence-export-btn.btn {
   white-space: nowrap;
@@ -1722,15 +1701,6 @@
 
   .evidence-header-actions,
   .evidence-search {
-    width: 100%;
-  }
-
-  .evidence-school-year-select-wrap {
-    width: 100%;
-  }
-
-  .evidence-school-year-select {
-    flex: 1 1 auto;
     width: 100%;
   }
 
