@@ -142,6 +142,33 @@ const toMonthDateKey = (year, monthIndex, day) => {
   return `${year}-${month}-${dayValue}`
 }
 
+const getSchoolYearLabelFromDate = (dateValue) => {
+  const safeDate = dateValue instanceof Date ? dateValue : new Date(dateValue)
+  if (Number.isNaN(safeDate.getTime())) return ''
+
+  const monthIndex = safeDate.getMonth()
+  const calendarYear = safeDate.getFullYear()
+  const startYear = monthIndex >= 6 ? calendarYear : calendarYear - 1
+  return `${startYear}/${startYear + 1}`
+}
+
+const parseSchoolYearLabel = (label) => {
+  const matched = String(label || '').trim().match(/^(\d{4})\s*\/\s*(\d{4})$/)
+  if (!matched) return null
+
+  const startYear = Number(matched[1])
+  const endYear = Number(matched[2])
+  if (!Number.isInteger(startYear) || !Number.isInteger(endYear) || endYear !== (startYear + 1)) return null
+
+  return { startYear, endYear }
+}
+
+const resolveTimelineYearForMonth = (schoolYearLabel, monthIndex, fallbackYear = new Date().getFullYear()) => {
+  const parsed = parseSchoolYearLabel(schoolYearLabel)
+  if (!parsed || !Number.isInteger(monthIndex)) return fallbackYear
+  return monthIndex >= 6 ? parsed.startYear : parsed.endYear
+}
+
 const getSessionDateKey = (session) => {
   const directDate = String(session?.date || '').trim()
   if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) return directDate
@@ -801,6 +828,7 @@ const mockRoster = [
 ]
 
 function Evidence() {
+  const defaultSchoolYear = useMemo(() => getSchoolYearLabelFromDate(new Date()), [])
   const [loading, setLoading] = useState(true)
   const [teams, setTeams] = useState([])
   const [members, setMembers] = useState({ trainers: [], players: [] })
@@ -835,6 +863,7 @@ function Evidence() {
     confirmLabel: 'Potvrdiť'
   })
   const [selectedTimeline, setSelectedTimeline] = useState(() => `month-${new Date().getMonth()}`)
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState(() => defaultSchoolYear)
   const [rosterSort, setRosterSort] = useState({ key: null, direction: 'desc' })
   const [plannedSessions, setPlannedSessions] = useState([])
   const monthsScrollRef = useRef(null)
@@ -990,6 +1019,55 @@ function Evidence() {
       isMounted = false
     }
   }, [calendarDate, selectedCategory, visibleTeams])
+
+  const availableSchoolYears = useMemo(() => {
+    const schoolYears = new Set([defaultSchoolYear])
+
+    Object.keys(evidenceEntriesDraft || {}).forEach((entryKey) => {
+      const { dateKey } = parseEvidenceEntryKey(entryKey)
+      const matched = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!matched) return
+
+      const year = Number(matched[1])
+      const month = Number(matched[2])
+      if (!Number.isInteger(year) || !Number.isInteger(month)) return
+
+      const startYear = month >= 7 ? year : (year - 1)
+      schoolYears.add(`${startYear}/${startYear + 1}`)
+    })
+
+    ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
+      const sessionDateKey = getSessionDateKey(session)
+      const matched = String(sessionDateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!matched) return
+
+      const year = Number(matched[1])
+      const month = Number(matched[2])
+      if (!Number.isInteger(year) || !Number.isInteger(month)) return
+
+      const startYear = month >= 7 ? year : (year - 1)
+      schoolYears.add(`${startYear}/${startYear + 1}`)
+    })
+
+    return [...schoolYears].sort((left, right) => {
+      const leftStart = parseSchoolYearLabel(left)?.startYear ?? 0
+      const rightStart = parseSchoolYearLabel(right)?.startYear ?? 0
+      return rightStart - leftStart
+    })
+  }, [defaultSchoolYear, evidenceEntriesDraft, plannedSessions])
+
+  useEffect(() => {
+    if (availableSchoolYears.includes(selectedSchoolYear)) return
+    setSelectedSchoolYear(defaultSchoolYear)
+  }, [availableSchoolYears, selectedSchoolYear, defaultSchoolYear])
+
+  useEffect(() => {
+    const targetMonth = calendarDate.getMonth()
+    const targetYear = resolveTimelineYearForMonth(selectedSchoolYear, targetMonth, calendarDate.getFullYear())
+    if (targetYear === calendarDate.getFullYear()) return
+
+    setCalendarDate((prev) => new Date(targetYear, prev.getMonth(), 1))
+  }, [selectedSchoolYear, calendarDate])
 
   const rosterSource = useMemo(() => {
     const rows = buildRosterRows(members.players)
@@ -1182,7 +1260,10 @@ function Evidence() {
       }
 
       if (selectedSeason && seasonFrom && seasonTo) {
-        return isMonthDayInRange({ day, month }, seasonFrom, seasonTo)
+        const schoolYearDate = new Date(year, month - 1, Math.max(1, day))
+        const schoolYearLabel = getSchoolYearLabelFromDate(schoolYearDate)
+        return schoolYearLabel === selectedSchoolYear
+          && isMonthDayInRange({ day, month }, seasonFrom, seasonTo)
       }
 
       return year === calendarDate.getFullYear() && month === (calendarDate.getMonth() + 1)
@@ -3021,14 +3102,18 @@ function Evidence() {
   const selectMonthByIndex = (monthIndex) => {
     if (!Number.isInteger(monthIndex)) return
     const normalizedMonth = Math.max(0, Math.min(11, monthIndex))
+    const timelineYear = resolveTimelineYearForMonth(selectedSchoolYear, normalizedMonth, calendarDate.getFullYear())
     setSelectedTimeline(`month-${normalizedMonth}`)
-    setCalendarDate((prev) => new Date(prev.getFullYear(), normalizedMonth, 1))
+    setCalendarDate(() => new Date(timelineYear, normalizedMonth, 1))
   }
 
   const moveCalendarMonth = (delta) => {
     setCalendarDate((prev) => {
-      const nextDate = new Date(prev.getFullYear(), prev.getMonth() + delta, 1)
-      setSelectedTimeline(`month-${nextDate.getMonth()}`)
+      const rawMonth = prev.getMonth() + delta
+      const normalizedMonth = ((rawMonth % 12) + 12) % 12
+      const timelineYear = resolveTimelineYearForMonth(selectedSchoolYear, normalizedMonth, prev.getFullYear())
+      const nextDate = new Date(timelineYear, normalizedMonth, 1)
+      setSelectedTimeline(`month-${normalizedMonth}`)
       return nextDate
     })
   }
@@ -3043,7 +3128,9 @@ function Evidence() {
     if (item.type === 'season') {
       const seasonFrom = parseDayMonth(item.from)
       if (seasonFrom?.month) {
-        setCalendarDate((prev) => new Date(prev.getFullYear(), seasonFrom.month - 1, 1))
+        const targetMonth = seasonFrom.month - 1
+        const timelineYear = resolveTimelineYearForMonth(selectedSchoolYear, targetMonth, calendarDate.getFullYear())
+        setCalendarDate(() => new Date(timelineYear, targetMonth, 1))
       }
     }
   }
@@ -3246,6 +3333,20 @@ function Evidence() {
           <p>Prehľad účasti a výkonu hráčov podľa kategórií.</p>
         </div>
         <div className="evidence-header-actions">
+          <div className="evidence-school-year-select-wrap">
+            <label htmlFor="evidence-school-year" className="evidence-school-year-select-label">Ročník</label>
+            <select
+              id="evidence-school-year"
+              className="evidence-school-year-select"
+              value={selectedSchoolYear}
+              onChange={(event) => setSelectedSchoolYear(String(event.target.value || defaultSchoolYear))}
+            >
+              {availableSchoolYears.map((schoolYear) => (
+                <option key={`attendance-school-year-${schoolYear}`} value={schoolYear}>{schoolYear}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="evidence-search">
             <span className="material-icons-round" aria-hidden="true">search</span>
             <input
