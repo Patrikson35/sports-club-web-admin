@@ -1953,6 +1953,24 @@ class APIClient {
     return this.request(`/clubs/my-club/player-season-summaries${query}`);
   }
 
+  async getPlayerTimelineSummaries(season, timelineType, timelineKey) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, summaries: [] };
+    }
+
+    const params = new URLSearchParams();
+    const normalizedSeason = String(season || '').trim();
+    const normalizedTimelineType = String(timelineType || '').trim();
+    const normalizedTimelineKey = String(timelineKey || '').trim();
+
+    if (normalizedSeason) params.set('season', normalizedSeason);
+    if (normalizedTimelineType) params.set('timelineType', normalizedTimelineType);
+    if (normalizedTimelineKey) params.set('timelineKey', normalizedTimelineKey);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/clubs/my-club/player-timeline-summaries${query}`);
+  }
+
   async getAttendanceDisplaySettings() {
     if (USE_MOCK_DATA) {
       return { settings: {} };

@@ -163,6 +163,14 @@ const parseSchoolYearLabel = (label) => {
   return { startYear, endYear }
 }
 
+const normalizeTimelineToken = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+
 const resolveTimelineYearForMonth = (schoolYearLabel, monthIndex, fallbackYear = new Date().getFullYear()) => {
   const parsed = parseSchoolYearLabel(schoolYearLabel)
   if (!parsed || !Number.isInteger(monthIndex)) return fallbackYear
@@ -867,6 +875,7 @@ function Evidence() {
   const [rosterSort, setRosterSort] = useState({ key: null, direction: 'desc' })
   const [plannedSessions, setPlannedSessions] = useState([])
   const [playerSeasonSummaries, setPlayerSeasonSummaries] = useState([])
+  const [playerTimelineSummaries, setPlayerTimelineSummaries] = useState([])
   const monthsScrollRef = useRef(null)
   const monthsWrapRef = useRef(null)
   const evidenceMetricHeadRef = useRef(null)
@@ -1251,6 +1260,17 @@ function Evidence() {
     }, new Map())
   }, [playerSeasonSummaries])
 
+  const importedTimelineByKeyAndPlayerId = useMemo(() => {
+    const source = Array.isArray(playerTimelineSummaries) ? playerTimelineSummaries : []
+    return source.reduce((acc, row) => {
+      const timelineKey = String(row?.timelineKey || '').trim()
+      const userId = String(row?.userId || '').trim()
+      if (!timelineKey || !userId) return acc
+      acc.set(`${timelineKey}|${userId}`, row)
+      return acc
+    }, new Map())
+  }, [playerTimelineSummaries])
+
   const evidenceAggregate = useMemo(() => {
     const selectedCategoryId = String(selectedCategory || '')
     const selectedSeasonId = String(selectedTimeline || '').startsWith('season-')
@@ -1280,6 +1300,15 @@ function Evidence() {
       || selectedSeasonNameNormalized.includes('sezon')
     )
     const shouldUseImportedSeasonSummaryFallback = isSeasonTimeline && (isFullSchoolYearRange || isSummaryLabel)
+    const selectedTimelineImportKey = Number.isInteger(selectedMonthIndex)
+      ? `month-${selectedMonthIndex}`
+      : (
+          selectedSeason && !shouldUseImportedSeasonSummaryFallback
+            ? `period-${normalizeTimelineToken(selectedSeason?.name || '')}`
+            : ''
+        )
+    const shouldUseImportedTimelineFallback = Boolean(selectedTimelineImportKey)
+    const shouldUseAnyImportedFallback = shouldUseImportedSeasonSummaryFallback || shouldUseImportedTimelineFallback
 
     const isDateKeyInTimeline = (dateKey) => {
       const matched = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -1403,6 +1432,38 @@ function Evidence() {
       return 0
     }
 
+    const iterateImportedFallbackRows = (callback) => {
+      if (typeof callback !== 'function') return
+
+      if (shouldUseImportedSeasonSummaryFallback) {
+        importedSummaryByPlayerId.forEach((row) => callback(row))
+        return
+      }
+
+      if (shouldUseImportedTimelineFallback) {
+        const keyPrefix = `${selectedTimelineImportKey}|`
+        importedTimelineByKeyAndPlayerId.forEach((row, mapKey) => {
+          if (!String(mapKey || '').startsWith(keyPrefix)) return
+          callback(row)
+        })
+      }
+    }
+
+    const getImportedFallbackRowForPlayer = (playerId) => {
+      const safePlayerId = String(playerId || '')
+      if (!safePlayerId) return null
+
+      if (shouldUseImportedSeasonSummaryFallback) {
+        return importedSummaryByPlayerId.get(safePlayerId) || null
+      }
+
+      if (shouldUseImportedTimelineFallback) {
+        return importedTimelineByKeyAndPlayerId.get(`${selectedTimelineImportKey}|${safePlayerId}`) || null
+      }
+
+      return null
+    }
+
     const sumFromMapByCodes = (targetMap, sourceCodes) => {
       const codes = Array.isArray(sourceCodes) ? sourceCodes : []
       return codes.reduce((sum, code) => sum + Number(targetMap.get(normalizeMetricCode(code)) || 0), 0)
@@ -1411,10 +1472,10 @@ function Evidence() {
     const getGlobalMetricCount = (metricCode) => {
       const normalizedCode = normalizeMetricCode(metricCode)
       const evidenceValue = Number(metricCounts.get(normalizedCode) || 0)
-      if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
+      if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
 
       let total = 0
-      importedSummaryByPlayerId.forEach((row) => {
+      iterateImportedFallbackRows((row) => {
         total += getImportedCountByCode(row, normalizedCode)
       })
       return total
@@ -1427,8 +1488,8 @@ function Evidence() {
       const normalizedCode = normalizeMetricCode(metricCode)
       const metricMap = playerMetricCounts.get(String(playerId || ''))
       const evidenceValue = metricMap ? Number(metricMap.get(normalizedCode) || 0) : 0
-      if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
-      return getImportedCountByCode(importedSummaryByPlayerId.get(String(playerId || '')), normalizedCode)
+      if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
+      return getImportedCountByCode(getImportedFallbackRowForPlayer(playerId), normalizedCode)
     }
 
     const getGlobalMinutes = (metricCode) => {
@@ -1437,10 +1498,10 @@ function Evidence() {
       playerMinutesByCode.forEach((playerMap) => {
         total += Number(playerMap.get(normalizedCode) || 0)
       })
-      if (total > 0 || !shouldUseImportedSeasonSummaryFallback) return total
+      if (total > 0 || !shouldUseAnyImportedFallback) return total
 
       let importedTotal = 0
-      importedSummaryByPlayerId.forEach((row) => {
+      iterateImportedFallbackRows((row) => {
         importedTotal += getImportedMinutesByCode(row, normalizedCode)
       })
       return importedTotal
@@ -1450,16 +1511,16 @@ function Evidence() {
       const normalizedCode = normalizeMetricCode(metricCode)
       const playerMap = playerMinutesByCode.get(String(playerId || ''))
       const evidenceValue = playerMap ? Number(playerMap.get(normalizedCode) || 0) : 0
-      if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
-      return getImportedMinutesByCode(importedSummaryByPlayerId.get(String(playerId || '')), normalizedCode)
+      if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
+      return getImportedMinutesByCode(getImportedFallbackRowForPlayer(playerId), normalizedCode)
     }
 
     const getGlobalPoczCount = () => {
       const evidenceValue = sumFromMapByCodes(metricCounts, configuredPoczCodes)
-      if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
+      if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
 
       let total = 0
-      importedSummaryByPlayerId.forEach((row) => {
+      iterateImportedFallbackRows((row) => {
         total += (Array.isArray(configuredPoczCodes) ? configuredPoczCodes : [])
           .reduce((sum, code) => sum + getImportedCountByCode(row, code), 0)
       })
@@ -1469,9 +1530,9 @@ function Evidence() {
     const getPlayerPoczCount = (playerId) => {
       const metricMap = playerMetricCounts.get(String(playerId || ''))
       const evidenceValue = metricMap ? sumFromMapByCodes(metricMap, configuredPoczCodes) : 0
-      if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
+      if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
 
-      const summaryRow = importedSummaryByPlayerId.get(String(playerId || ''))
+      const summaryRow = getImportedFallbackRowForPlayer(playerId)
       return (Array.isArray(configuredPoczCodes) ? configuredPoczCodes : [])
         .reduce((sum, code) => sum + getImportedCountByCode(summaryRow, code), 0)
     }
@@ -1481,10 +1542,10 @@ function Evidence() {
       playerMinutesByCode.forEach((playerMap) => {
         total += sumFromMapByCodes(playerMap, configuredHzCodes)
       })
-      if (total > 0 || !shouldUseImportedSeasonSummaryFallback) return total
+      if (total > 0 || !shouldUseAnyImportedFallback) return total
 
       let importedTotal = 0
-      importedSummaryByPlayerId.forEach((row) => {
+      iterateImportedFallbackRows((row) => {
         importedTotal += (Array.isArray(configuredHzCodes) ? configuredHzCodes : [])
           .reduce((sum, code) => sum + getImportedMinutesByCode(row, code), 0)
       })
@@ -1494,9 +1555,9 @@ function Evidence() {
     const getPlayerHzMinutes = (playerId) => {
       const playerMap = playerMinutesByCode.get(String(playerId || ''))
       const evidenceValue = playerMap ? sumFromMapByCodes(playerMap, configuredHzCodes) : 0
-      if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
+      if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
 
-      const summaryRow = importedSummaryByPlayerId.get(String(playerId || ''))
+      const summaryRow = getImportedFallbackRowForPlayer(playerId)
       return (Array.isArray(configuredHzCodes) ? configuredHzCodes : [])
         .reduce((sum, code) => sum + getImportedMinutesByCode(summaryRow, code), 0)
     }
@@ -1529,8 +1590,8 @@ function Evidence() {
       getGlobalMetricEventCount,
       getPlayerDzDays: (playerId) => {
         const evidenceValue = playerDays.get(String(playerId || ''))?.size || 0
-        if (evidenceValue > 0 || !shouldUseImportedSeasonSummaryFallback) return evidenceValue
-        return getImportedCountByCode(importedSummaryByPlayerId.get(String(playerId || '')), 'DZ')
+        if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
+        return getImportedCountByCode(getImportedFallbackRowForPlayer(playerId), 'DZ')
       },
       getPlayerSessionCount: (playerId) => playerSessions.get(String(playerId || ''))?.size || 0,
       getPlayerSessionCountForCategory: (playerId, categoryId) => (
@@ -1553,7 +1614,8 @@ function Evidence() {
     calendarDate,
     metricCodeById,
     configuredSourceCodesByMetricCode,
-    importedSummaryByPlayerId
+    importedSummaryByPlayerId,
+    importedTimelineByKeyAndPlayerId
   ])
 
   const toggleRosterSort = (nextKey) => {
@@ -1794,6 +1856,33 @@ function Evidence() {
     }
 
     loadPlayerSeasonSummaries()
+
+    return () => {
+      isMounted = false
+    }
+  }, [clubId, selectedSchoolYear])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadPlayerTimelineSummaries = async () => {
+      if (!clubId) {
+        setPlayerTimelineSummaries([])
+        return
+      }
+
+      try {
+        const response = await api.getPlayerTimelineSummaries(selectedSchoolYear)
+        if (!isMounted) return
+        const summaries = Array.isArray(response?.summaries) ? response.summaries : []
+        setPlayerTimelineSummaries(summaries)
+      } catch {
+        if (!isMounted) return
+        setPlayerTimelineSummaries([])
+      }
+    }
+
+    loadPlayerTimelineSummaries()
 
     return () => {
       isMounted = false
