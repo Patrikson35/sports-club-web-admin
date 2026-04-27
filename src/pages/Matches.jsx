@@ -2293,6 +2293,66 @@ function Matches() {
   const openedIndicators = openedMatch ? getIndicatorsForMatch(openedMatch) : DEFAULT_INDICATORS
   const openedRecording = openedMatch ? getRecordingForMatch(openedMatch.id) : { scorers: [], assists: [], cards: [] }
   const showCategoryColumn = selectedCategoryKey === 'all'
+  const openedMatchId = String(openedMatch?.id || '').trim()
+  const openedMatchStats = (openedMatchId && matchPlayerStats?.[openedMatchId] && typeof matchPlayerStats[openedMatchId] === 'object')
+    ? matchPlayerStats[openedMatchId]
+    : {}
+  const openedMatchTeamId = String(openedMatch?.team?.id || openedMatch?.teamId || openedMatch?.team_id || '').trim()
+  const openedTeamPlayers = openedMatchTeamId
+    ? players.filter((player) => String(player?.team?.id || '') === openedMatchTeamId)
+    : []
+
+  const openedUniquePlayersMap = new Map()
+  openedTeamPlayers.forEach((player) => {
+    const dedupeKey = toCreatePlayerKey(player)
+    if (!openedUniquePlayersMap.has(dedupeKey)) {
+      openedUniquePlayersMap.set(dedupeKey, player)
+    }
+  })
+  const openedUniquePlayers = Array.from(openedUniquePlayersMap.values())
+
+  const openedEvidencePrefill = buildPlayerEvidenceDraftFromRecording(openedRecording, openedUniquePlayers)
+  const openedAttendanceSource = (openedMatchStats?.attendanceDraft && typeof openedMatchStats.attendanceDraft === 'object')
+    ? openedMatchStats.attendanceDraft
+    : {}
+  const openedEvidenceSource = (openedMatchStats?.evidenceDraft && typeof openedMatchStats.evidenceDraft === 'object')
+    ? openedMatchStats.evidenceDraft
+    : {}
+  const openedSessionMinutes = String(openedMatchStats?.sessionTime || '').replace(/[^\d]/g, '').slice(0, 3)
+
+  const openedPlayerEvidenceColumns = PLAYER_EVIDENCE_INDICATOR_COLUMNS.filter((item) => openedIndicators?.[item.key])
+  const openedPlayerRowsGridTemplate = openedPlayerEvidenceColumns.length === 0
+    ? 'minmax(0, 1fr) 140px'
+    : `minmax(0, 1fr) 140px repeat(${openedPlayerEvidenceColumns.length}, 62px)`
+
+  const openedPlayersRows = openedUniquePlayers
+    .map((player) => {
+      const playerId = String(player?.userId || '').trim()
+      if (!playerId) return null
+
+      const attendance = openedAttendanceSource[playerId] && typeof openedAttendanceSource[playerId] === 'object'
+        ? openedAttendanceSource[playerId]
+        : null
+      const evidence = openedEvidenceSource[playerId] && typeof openedEvidenceSource[playerId] === 'object'
+        ? openedEvidenceSource[playerId]
+        : (openedEvidencePrefill.draft?.[playerId] && typeof openedEvidencePrefill.draft[playerId] === 'object'
+          ? openedEvidencePrefill.draft[playerId]
+          : {})
+
+      return {
+        id: playerId,
+        name: toPlayerName(player),
+        avatarUrl: toPlayerAvatar(player),
+        jerseyNumber: player?.jerseyNumber,
+        attended: attendance ? attendance.attended !== false : true,
+        minutes: attendance ? String(attendance.time || '').replace(/[^\d]/g, '').slice(0, 3) : openedSessionMinutes,
+        scorers: Math.max(0, Math.min(99, Number(evidence?.scorers) || 0)),
+        assists: Math.max(0, Math.min(99, Number(evidence?.assists) || 0)),
+        yellowCards: Math.max(0, Math.min(99, Number(evidence?.yellowCards) || 0)),
+        redCards: Math.max(0, Math.min(99, Number(evidence?.redCards) || 0))
+      }
+    })
+    .filter((row) => row && row.attended !== false)
 
   return (
     <div>
@@ -2998,6 +3058,68 @@ function Matches() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: '10px' }}>
+              <h4 className="matches-create-card-title">Hráči a minutáž</h4>
+              {openedPlayersRows.length === 0 ? (
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Pre tento zápas zatiaľ nie je dostupná zostava hráčov.</p>
+              ) : (
+                <>
+                  <div
+                    className="matches-player-attendance-head matches-player-attendance-table-head"
+                    style={{ gridTemplateColumns: openedPlayerRowsGridTemplate }}
+                  >
+                    <span>HRÁČ</span>
+                    <span className="matches-player-attendance-head-time">MIN</span>
+                    {openedPlayerEvidenceColumns.map((column) => (
+                      <span
+                        key={`opened-player-evidence-head-${column.key}`}
+                        className="matches-player-evidence-head-cell"
+                        title={column.ariaLabel}
+                      >
+                        {column.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="matches-player-list matches-player-attendance-list">
+                    {openedPlayersRows.map((player) => (
+                      <div
+                        key={`opened-match-player-${player.id}`}
+                        className="matches-player-row matches-player-attendance-row"
+                        style={{ gridTemplateColumns: openedPlayerRowsGridTemplate }}
+                      >
+                        <span className="matches-player-cell">
+                          <span className="matches-player-avatar" aria-hidden="true">
+                            {player.avatarUrl
+                              ? <img src={player.avatarUrl} alt="" />
+                              : <span>{toNameInitials(player.name)}</span>}
+                          </span>
+                          <span>
+                            {player.name}
+                            {player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}
+                          </span>
+                        </span>
+
+                        <span className="matches-player-attendance-controls">
+                          <span className="matches-player-time-input" style={{ opacity: 0.95 }}>
+                            {player.minutes || '-'}
+                          </span>
+                        </span>
+
+                        {openedPlayerEvidenceColumns.map((column) => (
+                          <span key={`opened-player-evidence-cell-${player.id}-${column.key}`} className="matches-player-evidence-cell">
+                            <span className="matches-player-evidence-input" style={{ opacity: 0.95 }}>
+                              {String(player?.[column.key] ?? 0)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {openedIndicators.scorers ? (
