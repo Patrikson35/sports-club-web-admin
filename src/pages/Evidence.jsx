@@ -4315,18 +4315,6 @@ function Evidence() {
                 </span>
               ) : null}
             </div>
-
-            {importedCalendarSummary ? (
-              <div className="evidence-calendar-import-summary" aria-label="Importovaný súhrn pre kalendár">
-                <strong>Import: {importedCalendarSummary.label}</strong>
-                <span>Hráči {importedCalendarSummary.players}</span>
-                <span>DZ {importedCalendarSummary.dz}</span>
-                <span>TJ {importedCalendarSummary.tj}</span>
-                <span>PZ {importedCalendarSummary.pz}</span>
-                <span>MZ {importedCalendarSummary.mz}</span>
-                <span>HZ {importedCalendarSummary.hz} min</span>
-              </div>
-            ) : null}
           </div>
 
           <div className="card evidence-panel">
