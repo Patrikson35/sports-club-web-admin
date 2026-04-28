@@ -8,6 +8,7 @@ const monthNames = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'J
 const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
 const weekDays = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne']
 const restrictedRoles = new Set(['coach', 'assistant', 'private_coach', 'player'])
+const IMPORTED_DAY_MARKER_COLOR = '#38bdf8'
 
 const MATCH_METRIC_CODES = new Set(['PZ', 'MZ', 'CUP'])
 const HZ_TIME_SUM_CODES = new Set(['TJ', 'PZ', 'MZ', 'CUP'])
@@ -2296,6 +2297,37 @@ function Evidence() {
     }
   }, [importedTimelineByKeyAndPlayerId, selectedTimelineImportMeta])
 
+  const importedCalendarDayMarkers = useMemo(() => {
+    if (!importedCalendarSummary) return new Set()
+
+    const players = Number(importedCalendarSummary.players || 0)
+    const dz = Number(importedCalendarSummary.dz || 0)
+    if (!Number.isFinite(players) || !Number.isFinite(dz) || players <= 0 || dz <= 0) return new Set()
+
+    const year = calendarDate.getFullYear()
+    const monthIndex = calendarDate.getMonth()
+    const monthPrefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}-`
+    const selectedCategoryId = String(selectedCategory || '')
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+    const estimatedImportedDays = Math.max(1, Math.min(daysInMonth, Math.round(dz / players)))
+
+    const plannedDays = new Set()
+    ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
+      const dateKey = getSessionDateKey(session)
+      if (!dateKey || !dateKey.startsWith(monthPrefix)) return
+
+      const sessionTeamId = getSessionTeamId(session)
+      if (selectedCategoryId !== 'all' && sessionTeamId !== selectedCategoryId) return
+
+      const dayNumber = Number(String(dateKey).slice(-2))
+      if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > daysInMonth) return
+      plannedDays.add(dayNumber)
+    })
+
+    const sortedPlannedDays = [...plannedDays].sort((left, right) => left - right)
+    return new Set(sortedPlannedDays.slice(0, estimatedImportedDays))
+  }, [importedCalendarSummary, calendarDate, plannedSessions, selectedCategory])
+
   const evidenceDayVisualsInCalendarMonth = useMemo(() => {
     const year = calendarDate.getFullYear()
     const month = calendarDate.getMonth() + 1
@@ -2498,8 +2530,12 @@ function Evidence() {
       )
     })
 
+    importedCalendarDayMarkers.forEach((day) => {
+      appendRow(day, `Importovaný deň dochádzky (${String(importedCalendarSummary?.label || 'Import')})`)
+    })
+
     return rowsByDay
-  }, [calendarDate, selectedCategory, visibleTeams, plannedSessions, evidenceEntriesDraft, evidenceSessionMetaDraft, metricCodeById])
+  }, [calendarDate, selectedCategory, visibleTeams, plannedSessions, evidenceEntriesDraft, evidenceSessionMetaDraft, metricCodeById, importedCalendarDayMarkers, importedCalendarSummary])
 
   const selectedCalendarDate = useMemo(() => {
     const year = calendarDate.getFullYear()
@@ -4119,7 +4155,13 @@ function Evidence() {
             <div className="evidence-calendar-grid">
               {calendarCells.map((cell) => (
                 (() => {
-                  const dayVisual = !cell.muted ? evidenceDayVisualsInCalendarMonth.get(cell.day) : null
+                  const importedDayVisual = importedCalendarDayMarkers.has(cell.day)
+                    ? {
+                        background: `${IMPORTED_DAY_MARKER_COLOR}22`,
+                        border: `${IMPORTED_DAY_MARKER_COLOR}cc`
+                      }
+                    : null
+                  const dayVisual = !cell.muted ? (evidenceDayVisualsInCalendarMonth.get(cell.day) || importedDayVisual) : null
                   const plannedBorder = !cell.muted ? plannedDayBorderByDay.get(cell.day) : null
                   const tooltipRows = !cell.muted ? (calendarDayTooltipByDay.get(cell.day) || []) : []
                   return (
@@ -4165,6 +4207,12 @@ function Evidence() {
                   <span>{item.label}</span>
                 </span>
               ))}
+              {importedCalendarDayMarkers.size > 0 ? (
+                <span className="evidence-calendar-legend-item">
+                  <span className="evidence-calendar-legend-dot" style={{ '--legend-color': IMPORTED_DAY_MARKER_COLOR }} aria-hidden="true" />
+                  <span>IMP</span>
+                </span>
+              ) : null}
             </div>
 
             {importedCalendarSummary ? (
