@@ -2203,6 +2203,87 @@ function Evidence() {
     })
   }, [metricsForEvidenceTable, evidenceMetricColorMap])
 
+  const selectedTimelineImportMeta = useMemo(() => {
+    const monthMatch = String(selectedTimeline || '').match(/^month-(\d{1,2})$/)
+    if (monthMatch) {
+      const monthIndex = Number(monthMatch[1])
+      if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) return { key: '', label: '' }
+      return {
+        key: `month-${monthIndex}`,
+        label: `${monthNames[monthIndex] || 'Mesiac'} ${calendarDate.getFullYear()}`
+      }
+    }
+
+    const selectedSeasonId = String(selectedTimeline || '').startsWith('season-')
+      ? String(selectedTimeline || '').slice(7)
+      : ''
+    if (!selectedSeasonId) return { key: '', label: '' }
+
+    const selectedSeason = (Array.isArray(attendancePeriods) ? attendancePeriods : []).find(
+      (item) => String(item?.id ?? '') === selectedSeasonId
+    )
+    if (!selectedSeason) return { key: '', label: '' }
+
+    const from = parseDayMonth(selectedSeason.from)
+    const to = parseDayMonth(selectedSeason.to)
+    const seasonNameNormalized = String(selectedSeason?.name || '').trim().toLowerCase()
+    const isFullSchoolYearRange = Boolean(
+      from
+      && to
+      && from.day === 1
+      && from.month === 7
+      && to.day === 30
+      && to.month === 6
+    )
+    const isSummaryLabel = (
+      seasonNameNormalized.includes('súhrn')
+      || seasonNameNormalized.includes('souhrn')
+      || seasonNameNormalized.includes('summary')
+      || seasonNameNormalized.includes('sezon')
+    )
+    if (isFullSchoolYearRange || isSummaryLabel) return { key: '', label: '' }
+
+    const periodLabel = String(selectedSeason?.name || '').trim() || 'Obdobie'
+    return {
+      key: `period-${normalizeTimelineToken(periodLabel)}`,
+      label: periodLabel
+    }
+  }, [selectedTimeline, attendancePeriods, calendarDate])
+
+  const importedCalendarSummary = useMemo(() => {
+    const importKey = String(selectedTimelineImportMeta?.key || '').trim()
+    if (!importKey) return null
+
+    const keyPrefix = `${importKey}|`
+    let players = 0
+    let dz = 0
+    let tj = 0
+    let pz = 0
+    let mz = 0
+    let hz = 0
+
+    importedTimelineByKeyAndPlayerId.forEach((row, mapKey) => {
+      if (!String(mapKey || '').startsWith(keyPrefix)) return
+      players += 1
+      dz += Number(row?.dzCount || 0)
+      tj += Number(row?.tjCount || 0)
+      pz += Number(row?.pzCount || 0)
+      mz += Number(row?.mzCount || 0)
+      hz += Number(row?.hzMinutes || 0)
+    })
+
+    if (players === 0) return null
+    return {
+      label: String(selectedTimelineImportMeta?.label || 'Import'),
+      players,
+      dz,
+      tj,
+      pz,
+      mz,
+      hz
+    }
+  }, [importedTimelineByKeyAndPlayerId, selectedTimelineImportMeta])
+
   const evidenceDayVisualsInCalendarMonth = useMemo(() => {
     const year = calendarDate.getFullYear()
     const month = calendarDate.getMonth() + 1
@@ -4073,6 +4154,18 @@ function Evidence() {
                 </span>
               ))}
             </div>
+
+            {importedCalendarSummary ? (
+              <div className="evidence-calendar-import-summary" aria-label="Importovaný súhrn pre kalendár">
+                <strong>Import: {importedCalendarSummary.label}</strong>
+                <span>Hráči {importedCalendarSummary.players}</span>
+                <span>DZ {importedCalendarSummary.dz}</span>
+                <span>TJ {importedCalendarSummary.tj}</span>
+                <span>PZ {importedCalendarSummary.pz}</span>
+                <span>MZ {importedCalendarSummary.mz}</span>
+                <span>HZ {importedCalendarSummary.hz} min</span>
+              </div>
+            ) : null}
           </div>
 
           <div className="card evidence-panel">
