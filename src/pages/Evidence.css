@@ -245,7 +245,7 @@
   max-height: 42px;
   padding: 0;
   margin: 0;
-  margin-bottom: 0;
+  margin-bottom: 20px;
   line-height: 1;
   box-sizing: border-box;
   border-radius: 0.55rem;
@@ -278,7 +278,8 @@
   justify-content: flex-end;
   gap: 0.45rem;
   overflow: hidden;
-  align-self: center;
+  align-self: flex-start;
+  margin-top: -10px;
 }
 
 .evidence-period-filters-row {
