@@ -1971,6 +1971,28 @@ class APIClient {
     return this.request(`/clubs/my-club/player-timeline-summaries${query}`);
   }
 
+  async getPlayerTimelineDailyEntries(season, timelineType, timelineKey, fromDate, toDate) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, entries: [] };
+    }
+
+    const params = new URLSearchParams();
+    const normalizedSeason = String(season || '').trim();
+    const normalizedTimelineType = String(timelineType || '').trim();
+    const normalizedTimelineKey = String(timelineKey || '').trim();
+    const normalizedFromDate = String(fromDate || '').trim();
+    const normalizedToDate = String(toDate || '').trim();
+
+    if (normalizedSeason) params.set('season', normalizedSeason);
+    if (normalizedTimelineType) params.set('timelineType', normalizedTimelineType);
+    if (normalizedTimelineKey) params.set('timelineKey', normalizedTimelineKey);
+    if (normalizedFromDate) params.set('fromDate', normalizedFromDate);
+    if (normalizedToDate) params.set('toDate', normalizedToDate);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/clubs/my-club/player-timeline-daily-entries${query}`);
+  }
+
   async getAttendanceDisplaySettings() {
     if (USE_MOCK_DATA) {
       return { settings: {} };

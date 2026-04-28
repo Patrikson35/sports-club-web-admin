@@ -877,6 +877,7 @@ function Evidence() {
   const [plannedSessions, setPlannedSessions] = useState([])
   const [playerSeasonSummaries, setPlayerSeasonSummaries] = useState([])
   const [playerTimelineSummaries, setPlayerTimelineSummaries] = useState([])
+  const [playerTimelineDailyEntries, setPlayerTimelineDailyEntries] = useState([])
   const monthsScrollRef = useRef(null)
   const monthsWrapRef = useRef(null)
   const evidenceMetricHeadRef = useRef(null)
@@ -1878,6 +1879,33 @@ function Evidence() {
   useEffect(() => {
     let isMounted = true
 
+    const loadPlayerTimelineDailyEntries = async () => {
+      if (!clubId) {
+        setPlayerTimelineDailyEntries([])
+        return
+      }
+
+      try {
+        const response = await api.getPlayerTimelineDailyEntries(selectedSchoolYear)
+        if (!isMounted) return
+        const entries = Array.isArray(response?.entries) ? response.entries : []
+        setPlayerTimelineDailyEntries(entries)
+      } catch {
+        if (!isMounted) return
+        setPlayerTimelineDailyEntries([])
+      }
+    }
+
+    loadPlayerTimelineDailyEntries()
+
+    return () => {
+      isMounted = false
+    }
+  }, [clubId, selectedSchoolYear])
+
+  useEffect(() => {
+    let isMounted = true
+
     const loadPlayerTimelineSummaries = async () => {
       if (!clubId) {
         setPlayerTimelineSummaries([])
@@ -2297,36 +2325,106 @@ function Evidence() {
     }
   }, [importedTimelineByKeyAndPlayerId, selectedTimelineImportMeta])
 
-  const importedCalendarDayMarkers = useMemo(() => {
-    if (!importedCalendarSummary) return new Set()
+  const rosterCategoryIdsByPlayerId = useMemo(() => {
+    return (Array.isArray(rosterSource) ? rosterSource : []).reduce((acc, row) => {
+      const userId = String(row?.id || '').trim()
+      if (!userId) return acc
+      const categories = Array.isArray(row?.categories) ? row.categories : []
+      const ids = categories
+        .map((category) => String(category?.id || '').trim())
+        .filter(Boolean)
+      acc.set(userId, new Set(ids))
+      return acc
+    }, new Map())
+  }, [rosterSource])
 
-    const players = Number(importedCalendarSummary.players || 0)
-    const dz = Number(importedCalendarSummary.dz || 0)
-    if (!Number.isFinite(players) || !Number.isFinite(dz) || players <= 0 || dz <= 0) return new Set()
+  const importedDailyEntriesInCalendarMonth = useMemo(() => {
+    const importKey = String(selectedTimelineImportMeta?.key || '').trim()
+    if (!importKey) return []
 
-    const year = calendarDate.getFullYear()
-    const monthIndex = calendarDate.getMonth()
-    const monthPrefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}-`
     const selectedCategoryId = String(selectedCategory || '')
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
-    const estimatedImportedDays = Math.max(1, Math.min(daysInMonth, Math.round(dz / players)))
+    const year = calendarDate.getFullYear()
+    const month = calendarDate.getMonth() + 1
+    const targetPrefix = `${year}-${String(month).padStart(2, '0')}-`
 
-    const plannedDays = new Set()
-    ;(Array.isArray(plannedSessions) ? plannedSessions : []).forEach((session) => {
-      const dateKey = getSessionDateKey(session)
-      if (!dateKey || !dateKey.startsWith(monthPrefix)) return
+    return (Array.isArray(playerTimelineDailyEntries) ? playerTimelineDailyEntries : []).filter((entry) => {
+      const timelineKey = String(entry?.timelineKey || '').trim()
+      if (timelineKey !== importKey) return false
 
-      const sessionTeamId = getSessionTeamId(session)
-      if (selectedCategoryId !== 'all' && sessionTeamId !== selectedCategoryId) return
+      const dateKey = String(entry?.dateKey || '').trim()
+      if (!dateKey.startsWith(targetPrefix)) return false
 
-      const dayNumber = Number(String(dateKey).slice(-2))
-      if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > daysInMonth) return
-      plannedDays.add(dayNumber)
+      if (selectedCategoryId === 'all') return true
+
+      const userId = String(entry?.userId || '').trim()
+      const categoryIds = rosterCategoryIdsByPlayerId.get(userId)
+      if (!categoryIds || categoryIds.size === 0) return false
+      return categoryIds.has(selectedCategoryId)
+    })
+  }, [selectedTimelineImportMeta, selectedCategory, calendarDate, playerTimelineDailyEntries, rosterCategoryIdsByPlayerId])
+
+  const importedCalendarDayRowsByDay = useMemo(() => {
+    const grouped = new Map()
+
+    importedDailyEntriesInCalendarMonth.forEach((entry) => {
+      const dateKey = String(entry?.dateKey || '')
+      const matched = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!matched) return
+
+      const day = Number(matched[3])
+      if (!Number.isInteger(day) || day < 1 || day > 31) return
+
+      const metricCode = normalizeMetricCode(entry?.metricCode)
+      const minutes = Number(entry?.minutes || 0)
+      const key = `${metricCode || 'TJ'}:${minutes}`
+
+      if (!grouped.has(day)) grouped.set(day, new Map())
+      const bucket = grouped.get(day)
+      bucket.set(key, Number(bucket.get(key) || 0) + 1)
     })
 
-    const sortedPlannedDays = [...plannedDays].sort((left, right) => left - right)
-    return new Set(sortedPlannedDays.slice(0, estimatedImportedDays))
-  }, [importedCalendarSummary, calendarDate, plannedSessions, selectedCategory])
+    const rowsByDay = new Map()
+    grouped.forEach((bucket, day) => {
+      const rows = [...bucket.entries()]
+        .map(([key, count]) => {
+          const [metricCode, minutesToken] = String(key).split(':')
+          const minutes = Number(minutesToken || 0)
+          return `${metricCode} import ${count}x${minutes > 0 ? ` ${minutes} min` : ''}`.trim()
+        })
+        .filter(Boolean)
+      rowsByDay.set(day, rows)
+    })
+
+    return rowsByDay
+  }, [importedDailyEntriesInCalendarMonth])
+
+  const importedCalendarDayVisuals = useMemo(() => {
+    const colorSetsByDay = new Map()
+
+    importedDailyEntriesInCalendarMonth.forEach((entry) => {
+      const dateKey = String(entry?.dateKey || '')
+      const matched = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!matched) return
+
+      const day = Number(matched[3])
+      if (!Number.isInteger(day) || day < 1 || day > 31) return
+
+      const metricCode = normalizeMetricCode(entry?.metricCode)
+      const color = EVIDENCE_PRESET_COLORS_BY_CODE[String(metricCode || 'TJ').toUpperCase()] || IMPORTED_DAY_MARKER_COLOR
+      if (!colorSetsByDay.has(day)) colorSetsByDay.set(day, new Set())
+      colorSetsByDay.get(day).add(color)
+    })
+
+    const visuals = new Map()
+    colorSetsByDay.forEach((colorSet, day) => {
+      visuals.set(day, resolveEvidenceDayBackground(Array.from(colorSet)))
+    })
+    return visuals
+  }, [importedDailyEntriesInCalendarMonth])
+
+  const importedCalendarDayMarkers = useMemo(() => {
+    return new Set(importedCalendarDayVisuals.keys())
+  }, [importedCalendarDayVisuals])
 
   const evidenceDayVisualsInCalendarMonth = useMemo(() => {
     const year = calendarDate.getFullYear()
@@ -2530,12 +2628,20 @@ function Evidence() {
       )
     })
 
-    importedCalendarDayMarkers.forEach((day) => {
-      appendRow(day, `Importovaný deň dochádzky (${String(importedCalendarSummary?.label || 'Import')})`)
+    importedCalendarDayRowsByDay.forEach((rows, day) => {
+      const lines = Array.isArray(rows) ? rows : []
+      if (lines.length === 0) {
+        appendRow(day, `Importovaný deň dochádzky (${String(importedCalendarSummary?.label || 'Import')})`)
+        return
+      }
+
+      lines.forEach((line) => {
+        appendRow(day, line)
+      })
     })
 
     return rowsByDay
-  }, [calendarDate, selectedCategory, visibleTeams, plannedSessions, evidenceEntriesDraft, evidenceSessionMetaDraft, metricCodeById, importedCalendarDayMarkers, importedCalendarSummary])
+  }, [calendarDate, selectedCategory, visibleTeams, plannedSessions, evidenceEntriesDraft, evidenceSessionMetaDraft, metricCodeById, importedCalendarDayRowsByDay, importedCalendarSummary])
 
   const selectedCalendarDate = useMemo(() => {
     const year = calendarDate.getFullYear()
@@ -4155,12 +4261,7 @@ function Evidence() {
             <div className="evidence-calendar-grid">
               {calendarCells.map((cell) => (
                 (() => {
-                  const importedDayVisual = importedCalendarDayMarkers.has(cell.day)
-                    ? {
-                        background: `${IMPORTED_DAY_MARKER_COLOR}22`,
-                        border: `${IMPORTED_DAY_MARKER_COLOR}cc`
-                      }
-                    : null
+                  const importedDayVisual = !cell.muted ? importedCalendarDayVisuals.get(cell.day) : null
                   const dayVisual = !cell.muted ? (evidenceDayVisualsInCalendarMonth.get(cell.day) || importedDayVisual) : null
                   const plannedBorder = !cell.muted ? plannedDayBorderByDay.get(cell.day) : null
                   const tooltipRows = !cell.muted ? (calendarDayTooltipByDay.get(cell.day) || []) : []
