@@ -1432,6 +1432,14 @@ function Evidence() {
       return 0
     }
 
+    const getImportedPercentValue = (summaryRow) => {
+      const raw = Number(summaryRow?.hzPercent)
+      if (!Number.isFinite(raw) || raw <= 0) return 0
+      // Some sources store percent as 0-1, others as 0-100.
+      const normalized = raw <= 1 ? (raw * 100) : raw
+      return Math.max(0, Math.round(normalized))
+    }
+
     const iterateImportedFallbackRows = (callback) => {
       if (typeof callback !== 'function') return
 
@@ -1593,6 +1601,10 @@ function Evidence() {
         if (evidenceValue > 0 || !shouldUseAnyImportedFallback) return evidenceValue
         return getImportedCountByCode(getImportedFallbackRowForPlayer(playerId), 'DZ')
       },
+        getPlayerImportedPercent: (playerId) => {
+          if (!shouldUseAnyImportedFallback) return 0
+          return getImportedPercentValue(getImportedFallbackRowForPlayer(playerId))
+        },
       getPlayerSessionCount: (playerId) => playerSessions.get(String(playerId || ''))?.size || 0,
       getPlayerSessionCountForCategory: (playerId, categoryId) => (
         playerSessionsByCategory.get(String(playerId || ''))?.get(String(categoryId || ''))?.size || 0
@@ -1693,7 +1705,7 @@ function Evidence() {
       const totalSessionCount = rowCategoryId
         ? Number(evidenceAggregate.getTotalSessionCountForCategory(rowCategoryId) || 0)
         : Number(evidenceAggregate.totalSessionCount || 0)
-      if (totalSessionCount <= 0) return 0
+      if (totalSessionCount <= 0) return evidenceAggregate.getPlayerImportedPercent(row.id)
       const playerSessionCount = isAllCategoriesView
         ? evidenceAggregate.getPlayerSessionCount(row.id)
         : (rowCategoryId
@@ -1723,7 +1735,7 @@ function Evidence() {
     const rawValue = getMetricRawValue(row, metric)
 
     if (isCalendarDaysMetric(metric)) return String(rawValue)
-    if (isAttendancePercentMetric(metric)) return `${rawValue}%`
+    if (isAttendancePercentMetric(metric) || metricCode === '%') return `${rawValue}%`
     if (isHzMetric(metric, metricCode)) return `${rawValue} min`
     return String(rawValue)
   }
