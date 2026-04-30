@@ -246,6 +246,14 @@ const normalizeExerciseRating = (value) => {
 
 const normalizeExerciseFavorite = (value) => value === true || String(value || '').trim().toLowerCase() === 'true'
 
+const normalizeExercisePreviewImageSource = (value, hasCreatedImage = false) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'created' || normalized === 'video') {
+    return normalized
+  }
+  return hasCreatedImage ? 'created' : 'video'
+}
+
 const createDefaultFieldDraft = () => ({
   name: '',
   surfaceType: '',
@@ -1014,6 +1022,7 @@ function MyClub() {
     divisionGroups: {},
     imageUrl: '',
     imageName: '',
+    previewImageSource: 'video',
     selectedCategoryIds: [],
     categorySelections: {},
     expandedCategoryIds: []
@@ -1028,6 +1037,7 @@ function MyClub() {
     youtubeUrl: '',
     imageUrl: '',
     imageName: '',
+    previewImageSource: 'video',
     selectedCategoryIds: [],
     categorySelections: {},
     divisionGroups: {},
@@ -1118,15 +1128,25 @@ function MyClub() {
 
     const nextImageUrl = String(matchedExercise?.imageUrl || '').trim()
     const nextImageName = String(matchedExercise?.imageName || '').trim()
+    const nextPreviewImageSource = normalizeExercisePreviewImageSource(
+      matchedExercise?.previewImageSource,
+      Boolean(nextImageUrl)
+    )
 
     setExerciseFormDraft((prev) => {
       const prevImageUrl = String(prev?.imageUrl || '').trim()
       const prevImageName = String(prev?.imageName || '').trim()
-      if (prevImageUrl === nextImageUrl && prevImageName === nextImageName) return prev
+      const prevPreviewImageSource = normalizeExercisePreviewImageSource(prev?.previewImageSource, Boolean(prevImageUrl))
+      if (
+        prevImageUrl === nextImageUrl
+        && prevImageName === nextImageName
+        && prevPreviewImageSource === nextPreviewImageSource
+      ) return prev
       return {
         ...prev,
         imageUrl: nextImageUrl,
-        imageName: nextImageName
+        imageName: nextImageName,
+        previewImageSource: nextPreviewImageSource
       }
     })
   }, [exerciseDatabaseItems, editingExerciseDatabaseItemId])
@@ -1202,6 +1222,7 @@ function MyClub() {
           playersCount: normalizeExercisePlayersCount(item?.playersCount),
           imageUrl: String(item?.imageUrl || '').trim(),
           imageName: String(item?.imageName || '').trim(),
+          previewImageSource: normalizeExercisePreviewImageSource(item?.previewImageSource, Boolean(item?.imageUrl)),
           selectedCategoryIds: Array.isArray(item?.selectedCategoryIds)
             ? item.selectedCategoryIds.map((categoryId) => String(categoryId || '').trim()).filter(Boolean)
             : [],
@@ -1238,6 +1259,7 @@ function MyClub() {
           playersCount: [],
           imageUrl: '',
           imageName: '',
+          previewImageSource: 'video',
           selectedCategoryIds: categoryId ? [categoryId] : [],
           categorySelections: {},
           divisionGroups: {},
@@ -3162,6 +3184,7 @@ function MyClub() {
       youtubeUrl: '',
       imageUrl: '',
       imageName: '',
+      previewImageSource: 'video',
       selectedCategoryIds: [],
       categorySelections: {},
       divisionGroups: getVisibleTrainingDivisionsForExerciseForm().reduce((acc, division) => {
@@ -3184,7 +3207,8 @@ function MyClub() {
     setExerciseFormDraft((prev) => ({
       ...prev,
       imageUrl: '',
-      imageName: ''
+      imageName: '',
+      previewImageSource: 'video'
     }))
     if (exerciseImageInputRef.current) {
       exerciseImageInputRef.current.value = ''
@@ -3205,7 +3229,8 @@ function MyClub() {
       setExerciseFormDraft((prev) => ({
         ...prev,
         imageUrl: dataUrl,
-        imageName: String(file.name || '')
+        imageName: String(file.name || ''),
+        previewImageSource: 'created'
       }))
       setError('')
     } catch {
@@ -3214,11 +3239,16 @@ function MyClub() {
   }
 
   const getExercisePreviewImage = (item) => {
-    const uploadedImage = String(item?.imageUrl || '').trim()
-    if (uploadedImage) return uploadedImage
-
+    const uploadedImage = resolveMediaUrl(String(item?.imageUrl || '').trim())
     const youtubeVideoId = String(item?.youtube?.videoId || '').trim()
-    return getYoutubeThumbnailUrl(youtubeVideoId)
+    const youtubeThumbnail = getYoutubeThumbnailUrl(youtubeVideoId)
+    const preferredSource = normalizeExercisePreviewImageSource(item?.previewImageSource, Boolean(uploadedImage))
+
+    if (preferredSource === 'video') {
+      return youtubeThumbnail || uploadedImage
+    }
+
+    return uploadedImage || youtubeThumbnail
   }
 
   const toggleExercisePlayersCount = (countValue) => {
@@ -3253,6 +3283,7 @@ function MyClub() {
       youtubeUrl: String(item?.youtube?.url || ''),
       imageUrl: String(item?.imageUrl || ''),
       imageName: String(item?.imageName || ''),
+      previewImageSource: normalizeExercisePreviewImageSource(item?.previewImageSource, Boolean(item?.imageUrl)),
       selectedCategoryIds: resolveSelectedExerciseCategoryIds(item?.selectedCategoryIds, item?.categorySelections),
       categorySelections: item?.categorySelections && typeof item.categorySelections === 'object' ? item.categorySelections : {},
       divisionGroups: item?.divisionGroups && typeof item.divisionGroups === 'object' ? item.divisionGroups : {},
@@ -3367,6 +3398,7 @@ function MyClub() {
       divisionGroups: getDefaultDownloadDivisionGroups(),
       imageUrl: String(item?.imageUrl || '').trim(),
       imageName: String(item?.imageName || '').trim(),
+      previewImageSource: normalizeExercisePreviewImageSource(item?.previewImageSource, Boolean(item?.imageUrl)),
       selectedCategoryIds: [],
       categorySelections: {},
       expandedCategoryIds: []
@@ -3384,6 +3416,7 @@ function MyClub() {
       divisionGroups: {},
       imageUrl: '',
       imageName: '',
+      previewImageSource: 'video',
       selectedCategoryIds: [],
       categorySelections: {},
       expandedCategoryIds: []
@@ -3429,7 +3462,8 @@ function MyClub() {
     setPublicExerciseDownloadDialog((prev) => ({
       ...prev,
       imageUrl: '',
-      imageName: ''
+      imageName: '',
+      previewImageSource: 'video'
     }))
     if (publicDownloadImageInputRef.current) {
       publicDownloadImageInputRef.current.value = ''
@@ -3450,7 +3484,8 @@ function MyClub() {
       setPublicExerciseDownloadDialog((prev) => ({
         ...prev,
         imageUrl: dataUrl,
-        imageName: String(file.name || '')
+        imageName: String(file.name || ''),
+        previewImageSource: 'created'
       }))
       setError('')
     } catch {
@@ -3640,6 +3675,10 @@ function MyClub() {
     const resolvedPlayersCount = normalizeExercisePlayersCount(publicExerciseDownloadDialog?.playersCount)
     const resolvedImageUrl = String(publicExerciseDownloadDialog?.imageUrl || '').trim()
     const resolvedImageName = String(publicExerciseDownloadDialog?.imageName || '').trim()
+    const resolvedPreviewImageSource = normalizeExercisePreviewImageSource(
+      publicExerciseDownloadDialog?.previewImageSource,
+      Boolean(resolvedImageUrl)
+    )
     const resolvedDivisionGroups = publicExerciseDownloadDialog?.divisionGroups && typeof publicExerciseDownloadDialog.divisionGroups === 'object'
       ? publicExerciseDownloadDialog.divisionGroups
       : {}
@@ -3676,6 +3715,7 @@ function MyClub() {
         playersCount: resolvedPlayersCount,
         imageUrl: resolvedImageUrl,
         imageName: resolvedImageName,
+        previewImageSource: resolvedPreviewImageSource,
         selectedCategoryIds,
         categorySelections: normalizedCategorySelections,
         divisionGroups: resolvedDivisionGroups,
@@ -3734,6 +3774,10 @@ function MyClub() {
       playersCount: normalizeExercisePlayersCount(exerciseFormDraft.playersCount),
       imageUrl: String(exerciseFormDraft.imageUrl || '').trim(),
       imageName: String(exerciseFormDraft.imageName || '').trim(),
+      previewImageSource: normalizeExercisePreviewImageSource(
+        exerciseFormDraft.previewImageSource,
+        Boolean(exerciseFormDraft.imageUrl)
+      ),
       selectedCategoryIds: normalizedSelectedCategoryIds,
       categorySelections: normalizedCategorySelections,
       divisionGroups: exerciseFormDraft?.divisionGroups && typeof exerciseFormDraft.divisionGroups === 'object'
@@ -7477,6 +7521,21 @@ function MyClub() {
                         />
                       </div>
 
+                      <div className="form-group">
+                        <label htmlFor="exercise-preview-image-source">Zobrazenie obrázka v zozname</label>
+                        <select
+                          id="exercise-preview-image-source"
+                          value={normalizeExercisePreviewImageSource(exerciseFormDraft.previewImageSource, Boolean(exerciseFormDraft.imageUrl))}
+                          onChange={(event) => setExerciseFormDraft((prev) => ({
+                            ...prev,
+                            previewImageSource: normalizeExercisePreviewImageSource(event.target.value, Boolean(prev?.imageUrl))
+                          }))}
+                        >
+                          <option value="created">Vytvorený obrázok</option>
+                          <option value="video">Obrázok z videa</option>
+                        </select>
+                      </div>
+
                       <div className="exercise-upload-placeholder">
                         <input
                           ref={exerciseImageInputRef}
@@ -8107,6 +8166,20 @@ function MyClub() {
                               style={{ display: 'none' }}
                             />
                             <label>Obrázok cvičenia</label>
+                            <div className="form-group" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
+                              <label htmlFor="public-download-preview-image-source">Zobrazenie obrázka v zozname</label>
+                              <select
+                                id="public-download-preview-image-source"
+                                value={normalizeExercisePreviewImageSource(publicExerciseDownloadDialog?.previewImageSource, Boolean(publicExerciseDownloadDialog?.imageUrl))}
+                                onChange={(event) => updatePublicExerciseDownloadDialogField(
+                                  'previewImageSource',
+                                  normalizeExercisePreviewImageSource(event.target.value, Boolean(publicExerciseDownloadDialog?.imageUrl))
+                                )}
+                              >
+                                <option value="created">Vytvorený obrázok</option>
+                                <option value="video">Obrázok z videa</option>
+                              </select>
+                            </div>
                             <div className="exercise-upload-actions" style={{ marginTop: '0.45rem' }}>
                               <button type="button" className="btn-secondary" onClick={openPublicDownloadImagePicker}>Nahrať obrázok</button>
                               <button
