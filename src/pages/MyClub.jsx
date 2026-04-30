@@ -9436,7 +9436,7 @@ function MyClub() {
                           <div className="attendance-import-file-picker" role="group" aria-label="Výber súboru pre import dochádzky">
                             <button
                               type="button"
-                              className="btn-secondary attendance-import-file-trigger"
+                              className="attendance-import-file-trigger"
                               onClick={() => attendanceImportInputRef.current?.click()}
                             >
                               Vybrať súbor
