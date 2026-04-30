@@ -1,0 +1,270 @@
+.training-composer-shell {
+  background: linear-gradient(180deg, rgba(21, 27, 40, 0.94), rgba(14, 20, 33, 0.94));
+  border: 1px solid rgba(71, 85, 105, 0.32);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.training-composer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.training-composer-head h3 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 1.25rem;
+}
+
+.training-composer-head p {
+  margin: 0.3rem 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.training-composer-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.training-composer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.training-composer-field label {
+  color: #93a4c2;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.training-composer-field input {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: rgba(8, 13, 24, 0.88);
+  color: #e2e8f0;
+}
+
+.training-composer-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.training-composer-section {
+  border: 1px solid rgba(71, 85, 105, 0.24);
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: rgba(13, 19, 31, 0.72);
+}
+
+.training-composer-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.7rem;
+  gap: 0.7rem;
+}
+
+.training-composer-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.training-composer-order-chip {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 8px;
+  padding: 0.18rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.training-composer-section h4 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 1rem;
+}
+
+.training-composer-duration {
+  color: #93a4c2;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.training-composer-exercises {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.training-composer-exercise-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  background: rgba(30, 41, 59, 0.35);
+}
+
+.training-composer-exercise-main strong {
+  color: #e5edff;
+  font-size: 0.92rem;
+}
+
+.training-composer-exercise-main p {
+  margin: 0.2rem 0 0;
+  color: #93a4c2;
+  font-size: 0.78rem;
+}
+
+.training-composer-exercise-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.training-composer-exercise-controls input {
+  width: 62px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  background: rgba(8, 13, 24, 0.9);
+  color: #bfdbfe;
+  text-align: center;
+  font-weight: 700;
+}
+
+.training-composer-exercise-controls span {
+  color: #93a4c2;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.training-composer-delete-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.25);
+  color: #fca5a5;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.training-composer-delete-btn:hover {
+  background: rgba(185, 28, 28, 0.3);
+}
+
+.training-composer-add-btn {
+  margin-top: 0.7rem;
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px dashed rgba(96, 165, 250, 0.45);
+  background: rgba(30, 58, 138, 0.12);
+  color: #bfdbfe;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.training-composer-empty {
+  border: 1px dashed rgba(71, 85, 105, 0.42);
+  border-radius: 10px;
+  padding: 0.9rem;
+  color: #93a4c2;
+  font-size: 0.82rem;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.training-composer-footer {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(71, 85, 105, 0.24);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.training-composer-summary {
+  display: flex;
+  gap: 1rem;
+}
+
+.training-composer-summary small {
+  display: block;
+  color: #93a4c2;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+}
+
+.training-composer-summary strong {
+  color: #e2e8f0;
+  font-size: 1.05rem;
+}
+
+.training-composer-actions {
+  display: inline-flex;
+  gap: 0.55rem;
+}
+
+@media (max-width: 1100px) {
+  .training-composer-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .training-composer-head {
+    flex-direction: column;
+  }
+
+  .training-composer-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .training-composer-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .training-composer-exercise-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .training-composer-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
