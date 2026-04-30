@@ -3485,48 +3485,46 @@ button,
   margin-top: 0.3rem;
 }
 
-.attendance-import-file-input {
+.attendance-import-file-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.attendance-import-file-picker {
   width: 100%;
   min-height: 56px;
   border: 1px solid rgba(71, 85, 105, 0.55);
   border-radius: 14px;
   background: rgba(2, 8, 23, 0.7);
-  color: #e2e8f0;
-  padding: 0.45rem 0.85rem;
+  padding: 0.45rem 0.75rem;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
 }
 
-.attendance-import-file-input::file-selector-button {
-  border: 1px solid rgba(96, 113, 147, 0.44);
-  background: rgba(23, 32, 52, 0.9);
-  color: #c5d0e7;
-  border-radius: 10px;
+.attendance-import-file-trigger {
+  margin: 0;
   padding: 0.6rem 1rem;
-  margin-right: 0.8rem;
-  line-height: 1.1;
-  cursor: pointer;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
-.attendance-import-file-input::file-selector-button:hover {
-  color: #f3f6ff;
-  border-color: rgba(125, 151, 204, 0.8);
-}
-
-.attendance-import-file-input::-webkit-file-upload-button {
-  border: 1px solid rgba(96, 113, 147, 0.44);
-  background: rgba(23, 32, 52, 0.9);
-  color: #c5d0e7;
-  border-radius: 10px;
-  padding: 0.6rem 1rem;
-  margin-right: 0.8rem;
-  line-height: 1.1;
-  cursor: pointer;
-}
-
-.attendance-import-file-input::-webkit-file-upload-button:hover {
-  color: #f3f6ff;
-  border-color: rgba(125, 151, 204, 0.8);
+.attendance-import-file-name {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metrics-toolbar {

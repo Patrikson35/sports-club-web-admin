@@ -1073,6 +1073,7 @@ function MyClub() {
   const trainerPhotoInputRef = useRef(null)
   const playerPhotoInputRef = useRef(null)
   const clubLogoInputRef = useRef(null)
+  const attendanceImportInputRef = useRef(null)
   const playerLastNameInputRef = useRef(null)
   const playerLastNameSuggestionsRef = useRef(null)
   const categoryFormRef = useRef(null)
@@ -9422,8 +9423,9 @@ function MyClub() {
                         <div className="form-group">
                           <label htmlFor="attendance-import-file">Súbor</label>
                           <input
+                            ref={attendanceImportInputRef}
                             id="attendance-import-file"
-                            className="attendance-import-file-input"
+                            className="attendance-import-file-native"
                             type="file"
                             accept=".xlsx,.xlsm,.xls"
                             onChange={(event) => {
@@ -9431,6 +9433,18 @@ function MyClub() {
                               setAttendanceImportFile(file)
                             }}
                           />
+                          <div className="attendance-import-file-picker" role="group" aria-label="Výber súboru pre import dochádzky">
+                            <button
+                              type="button"
+                              className="btn-secondary attendance-import-file-trigger"
+                              onClick={() => attendanceImportInputRef.current?.click()}
+                            >
+                              Vybrať súbor
+                            </button>
+                            <span className="attendance-import-file-name">
+                              {attendanceImportFile ? String(attendanceImportFile.name || 'Súbor vybraný') : 'Nie je vybratý žiadny súbor'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
