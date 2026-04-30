@@ -9423,6 +9423,7 @@ function MyClub() {
                           <label htmlFor="attendance-import-file">Súbor</label>
                           <input
                             id="attendance-import-file"
+                            className="attendance-import-file-input"
                             type="file"
                             accept=".xlsx,.xlsm,.xls"
                             onChange={(event) => {
