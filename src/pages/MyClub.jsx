@@ -961,6 +961,10 @@ function MyClub() {
   const [showSeasonForm, setShowSeasonForm] = useState(false)
   const [seasonDraft, setSeasonDraft] = useState({ name: '', from: '', to: '' })
   const [attendanceSeasons, setAttendanceSeasons] = useState([])
+  const [attendanceImportSeason, setAttendanceImportSeason] = useState('')
+  const [attendanceImportFile, setAttendanceImportFile] = useState(null)
+  const [attendanceImporting, setAttendanceImporting] = useState(false)
+  const [attendanceImportReport, setAttendanceImportReport] = useState(null)
   const [clubFields, setClubFields] = useState([])
   const [showFieldForm, setShowFieldForm] = useState(false)
   const [editingFieldId, setEditingFieldId] = useState(null)
@@ -1732,6 +1736,46 @@ function MyClub() {
       setTrainingsSettingsTab('divisions')
     }
   }, [activeSettingsSection, trainingsSettingsTab])
+
+  useEffect(() => {
+    if (attendanceImportSeason) return
+    const now = new Date()
+    const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+    setAttendanceImportSeason(`${startYear}/${startYear + 1}`)
+  }, [attendanceImportSeason])
+
+  const handleAttendanceImport = async () => {
+    const normalizedSeason = String(attendanceImportSeason || '').trim()
+    if (!attendanceImportFile) {
+      setError('Vyberte súbor na import.')
+      return
+    }
+
+    if (!/^\d{4}\s*\/\s*\d{4}$/.test(normalizedSeason)) {
+      setError('Sezóna musí mať formát RRRR/RRRR.')
+      return
+    }
+
+    setAttendanceImporting(true)
+    setError('')
+    setSuccess('')
+    setAttendanceImportReport(null)
+
+    try {
+      const response = await api.importAttendanceWorkbook(attendanceImportFile, normalizedSeason)
+      const report = response?.report && typeof response.report === 'object' ? response.report : null
+      setAttendanceImportReport(report)
+      setSuccess(String(response?.message || 'Import dochádzky bol dokončený.'))
+
+      const refreshedSeasons = await api.getAttendanceSeasons()
+      setAttendanceSeasons(Array.isArray(refreshedSeasons?.seasons) ? refreshedSeasons.seasons : [])
+    } catch (importError) {
+      const message = String(importError?.payload?.error || importError?.message || '').trim()
+      setError(message || 'Import dochádzky zlyhal.')
+    } finally {
+      setAttendanceImporting(false)
+    }
+  }
 
   const matchEvidenceSettingOptions = useMemo(() => {
     const optionsFromCategories = (Array.isArray(categories) ? categories : []).map((category) => {
@@ -8758,6 +8802,16 @@ function MyClub() {
                     >
                       Nastavenie zobrazenia ukazovateľov
                     </button>
+                    <span className="attendance-settings-menu-divider" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className={`attendance-settings-menu-item ${attendanceSettingsTab === 'import' ? 'active' : ''}`}
+                      onClick={() => setAttendanceSettingsTab('import')}
+                      role="tab"
+                      aria-selected={attendanceSettingsTab === 'import'}
+                    >
+                      Import
+                    </button>
                   </div>
                 </div>
 
@@ -9267,6 +9321,64 @@ function MyClub() {
                       </div>
                     ) : null}
 
+                  </div>
+                ) : attendanceSettingsTab === 'import' ? (
+                  <div className="members-categories-stack">
+                    <div className="card settings-placeholder-card metrics-section-card">
+                      <div className="manager-role-heading">
+                        <span className="material-icons-round section-icon">upload_file</span>
+                        <h3 className="manager-section-title">Import dochádzky zo súboru</h3>
+                      </div>
+
+                      <p className="manager-empty-text" style={{ marginBottom: '0.75rem' }}>
+                        Podporovaný je Excel súbor (.xlsx/.xlsm/.xls). Import spracuje súhrn sezóny a všetky mesačné hárky.
+                      </p>
+
+                      <div className="form-row" style={{ marginBottom: '0.9rem' }}>
+                        <div className="form-group">
+                          <label htmlFor="attendance-import-season">Sezóna</label>
+                          <input
+                            id="attendance-import-season"
+                            type="text"
+                            value={attendanceImportSeason}
+                            onChange={(event) => setAttendanceImportSeason(String(event.target.value || ''))}
+                            placeholder="napr. 2025/2026"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="attendance-import-file">Súbor</label>
+                          <input
+                            id="attendance-import-file"
+                            type="file"
+                            accept=".xlsx,.xlsm,.xls"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] || null
+                              setAttendanceImportFile(file)
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-actions" style={{ marginBottom: '0.2rem' }}>
+                        <button
+                          type="button"
+                          className="manager-role-save-btn"
+                          onClick={handleAttendanceImport}
+                          disabled={attendanceImporting || loading}
+                        >
+                          {attendanceImporting ? 'Importujem...' : 'Importovať súbor'}
+                        </button>
+                      </div>
+
+                      {attendanceImportReport ? (
+                        <div className="attendance-import-report" role="status" aria-live="polite">
+                          <p><strong>Spracované hárky:</strong> {Number(attendanceImportReport?.sheetCount || 0)}</p>
+                          <p><strong>Spárovaní hráči:</strong> {Number(attendanceImportReport?.totalMatched || 0)}</p>
+                          <p><strong>Denné záznamy:</strong> {Number(attendanceImportReport?.totalDailyImported || 0)}</p>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ) : (
                   <>

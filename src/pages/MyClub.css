@@ -3467,6 +3467,23 @@ button,
   background: rgba(96, 113, 147, 0.5);
   display: inline-block;
 }
+.attendance-import-report {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(30, 58, 138, 0.12);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+}
+
+.attendance-import-report p {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 0.85rem;
+}
+
+.attendance-import-report p + p {
+  margin-top: 0.3rem;
+}
 
 .metrics-toolbar {
   display: flex;

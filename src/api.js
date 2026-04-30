@@ -1993,6 +1993,21 @@ class APIClient {
     return this.request(`/clubs/my-club/player-timeline-daily-entries${query}`);
   }
 
+  async importAttendanceWorkbook(file, season) {
+    if (USE_MOCK_DATA) {
+      return { message: 'Import dokončený (mock)', report: { importedSheets: [], totalMatched: 0 } };
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('season', String(season || '').trim());
+
+    return this.request('/clubs/my-club/attendance-import', {
+      method: 'POST',
+      body: formData
+    });
+  }
+
   async getAttendanceDisplaySettings() {
     if (USE_MOCK_DATA) {
       return { settings: {} };
