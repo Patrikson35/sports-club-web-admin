@@ -93,14 +93,16 @@ const resolveDateKeyFromSession = (session) => {
     || session?.event_date
 
   if (dateValue) {
-    const parsed = new Date(String(dateValue))
-    if (!Number.isNaN(parsed.getTime())) return toDateKey(parsed)
     const dateMatch = String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})/)
     if (dateMatch) return `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+    const parsed = new Date(String(dateValue))
+    if (!Number.isNaN(parsed.getTime())) return toDateKey(parsed)
   }
 
   const startDateValue = session?.startAt || session?.start_at
   if (!startDateValue) return ''
+  const startDateMatch = String(startDateValue).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (startDateMatch) return `${startDateMatch[1]}-${startDateMatch[2]}-${startDateMatch[3]}`
   const startDate = new Date(String(startDateValue))
   if (Number.isNaN(startDate.getTime())) return ''
   return toDateKey(startDate)
@@ -488,7 +490,13 @@ function Trainings() {
         if (!isMounted) return
         const sessions = Array.isArray(response?.sessions)
           ? response.sessions
-          : (Array.isArray(response) ? response : [])
+          : Array.isArray(response?.trainings)
+            ? response.trainings
+            : Array.isArray(response?.items)
+              ? response.items
+              : Array.isArray(response?.data)
+                ? response.data
+                : (Array.isArray(response) ? response : [])
         setCalendarSessions(sessions)
       })
       .catch(() => {

@@ -331,8 +331,8 @@
 }
 
 .training-date-calendar-modal {
-  width: 350px;
-  height: 350px;
+  width: 300px;
+  height: 300px;
   border: 1px solid rgba(96, 113, 147, 0.28);
   border-radius: 16px;
   background: rgba(15, 19, 28, 0.98);
