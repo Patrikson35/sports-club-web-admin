@@ -161,14 +161,40 @@ const normalizeExerciseMeta = (exercise) => {
     minutes: Number(source.minutes || source.duration || source.defaultDuration || 10) || 10,
     category: asText(source.category || source.categoryName || source.category_name || source.exercise_category || source.mainCategory || source.type || ''),
     subcategory: asText(source.subcategory || source.subcategoryName || source.subcategory_name || source.exercise_subcategory || source.skill || source.topic || ''),
+    categories: Array.isArray(source.categories)
+      ? source.categories.map((item) => asText(item)).filter(Boolean)
+      : [],
+    subcategories: Array.isArray(source.subcategories)
+      ? source.subcategories.map((item) => asText(item)).filter(Boolean)
+      : [],
     playerCount: asText(source.playerCount || source.player_count || source.players_count || source.numberOfPlayers || source.players || ''),
     intensity: asText(source.intensity || source.load || source.difficulty || source.level || ''),
     isSystem: Boolean(source.isSystem)
   }
 }
 
-const mapMyClubExerciseToLibraryItem = (item) => {
+const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
   const source = (item && typeof item === 'object') ? item : {}
+
+  const selectedCategoryIds = Array.isArray(source.selectedCategoryIds)
+    ? source.selectedCategoryIds.map((value) => String(value || '').trim()).filter(Boolean)
+    : []
+
+  const selectedCategoryNames = selectedCategoryIds
+    .map((id) => String(categoryNameById.get(id) || '').trim())
+    .filter(Boolean)
+
+  const categorySelections = (source.categorySelections && typeof source.categorySelections === 'object')
+    ? source.categorySelections
+    : {}
+
+  const derivedSubcategories = Object.values(categorySelections)
+    .flatMap((value) => (Array.isArray(value) ? value : []))
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+
+  const primaryCategory = String(source.categoryName || '').trim() || selectedCategoryNames[0] || ''
+  const primarySubcategory = String(source.subcategory || '').trim() || derivedSubcategories[0] || ''
 
   return normalizeExerciseMeta({
     id: source.id,
@@ -177,9 +203,11 @@ const mapMyClubExerciseToLibraryItem = (item) => {
     duration: source.duration,
     intensity: source.intensity,
     players: Array.isArray(source.playersCount) ? source.playersCount : source.playerCount,
-    categoryName: source.categoryName,
+    categoryName: primaryCategory,
     category: source.category,
-    subcategory: source.subcategory,
+    subcategory: primarySubcategory,
+    categories: selectedCategoryNames,
+    subcategories: derivedSubcategories,
     isSystem: source.isSystem
   })
 }
@@ -273,8 +301,14 @@ function Trainings() {
         const myClubResponse = await api.getMyClub()
         if (!isMounted) return
 
+        const categoryNameById = new Map(
+          (Array.isArray(myClubResponse?.exerciseCategories) ? myClubResponse.exerciseCategories : [])
+            .map((category) => [String(category?.id || '').trim(), String(category?.name || '').trim()])
+            .filter(([id, name]) => id && name)
+        )
+
         const normalizedFromMyClub = (Array.isArray(myClubResponse?.exerciseDatabaseItems) ? myClubResponse.exerciseDatabaseItems : [])
-          .map((item) => mapMyClubExerciseToLibraryItem(item))
+          .map((item) => mapMyClubExerciseToLibraryItem(item, categoryNameById))
           .filter((item) => item.id)
 
         setAvailableExercises(normalizedFromMyClub)
@@ -465,6 +499,22 @@ function Trainings() {
   const getUniqueExerciseOptionValues = useCallback((key) => {
     const values = new Set()
     availableExercises.forEach((exercise) => {
+      if (key === 'category' && Array.isArray(exercise?.categories) && exercise.categories.length > 0) {
+        exercise.categories.forEach((value) => {
+          const normalized = String(value || '').trim()
+          if (normalized) values.add(normalized)
+        })
+        return
+      }
+
+      if (key === 'subcategory' && Array.isArray(exercise?.subcategories) && exercise.subcategories.length > 0) {
+        exercise.subcategories.forEach((value) => {
+          const normalized = String(value || '').trim()
+          if (normalized) values.add(normalized)
+        })
+        return
+      }
+
       const value = String(exercise?.[key] || '').trim()
       if (value) values.add(value)
     })
@@ -476,8 +526,20 @@ function Trainings() {
     if (!filters.category) return []
 
     return availableExercises.filter((exercise) => {
-      if (filters.category && String(exercise.category || '') !== filters.category) return false
-      if (filters.subcategory && String(exercise.subcategory || '') !== filters.subcategory) return false
+      if (filters.category) {
+        const matchesCategory = Array.isArray(exercise.categories) && exercise.categories.length > 0
+          ? exercise.categories.includes(filters.category)
+          : String(exercise.category || '') === filters.category
+        if (!matchesCategory) return false
+      }
+
+      if (filters.subcategory) {
+        const matchesSubcategory = Array.isArray(exercise.subcategories) && exercise.subcategories.length > 0
+          ? exercise.subcategories.includes(filters.subcategory)
+          : String(exercise.subcategory || '') === filters.subcategory
+        if (!matchesSubcategory) return false
+      }
+
       if (filters.playerCount && String(exercise.playerCount || '') !== filters.playerCount) return false
       if (filters.intensity && String(exercise.intensity || '') !== filters.intensity) return false
       return true
