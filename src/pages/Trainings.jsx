@@ -739,9 +739,11 @@ function Trainings() {
                                 value={exercise.minutes}
                                 onChange={(event) => updateExerciseMinutes(section.id, exercise.id, event.target.value)}
                               />
-                              <span>min</span>
+                              <span className="training-composer-exercise-unit">min</span>
                               <button type="button" className="training-composer-delete-btn" onClick={() => removeExercise(section.id, exercise.id)}>
-                                <span className="material-icons-round" aria-hidden="true">delete</span>
+                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                  <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v9h-2V9Zm4 0h2v9h-2V9ZM7 9h2v9H7V9Z" fill="currentColor" />
+                                </svg>
                               </button>
                             </div>
                           </article>

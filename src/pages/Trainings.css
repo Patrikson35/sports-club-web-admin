@@ -206,17 +206,21 @@
 }
 
 .training-composer-exercise-controls input {
-  width: 62px;
+  width: 74px;
+  min-width: 74px;
   height: 36px;
+  padding: 0 8px;
   border-radius: 8px;
   border: 1px solid rgb(38 41 50 / var(--tw-border-opacity, 1));
   background-color: rgb(15 17 21 / var(--tw-bg-opacity, 1));
   color: var(--text-primary);
   text-align: center;
   font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.training-composer-exercise-controls span {
+.training-composer-exercise-unit {
   color: var(--text-secondary);
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -227,6 +231,7 @@
 .training-composer-delete-btn {
   width: 34px;
   height: 34px;
+  min-width: 34px;
   border-radius: 8px;
   border: 1px solid rgba(248, 113, 113, 0.4);
   background: rgba(220, 38, 38, 0.16);
@@ -235,6 +240,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.training-composer-delete-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .training-composer-delete-btn:hover {
