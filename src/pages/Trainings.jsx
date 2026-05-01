@@ -3,6 +3,109 @@ import { api } from '../api'
 import TimeClockPickerModal from '../components/TimeClockPickerModal'
 import './Trainings.css'
 
+const MONTH_NAMES = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December']
+const WEEK_DAYS = ['PO', 'UT', 'ST', 'ŠT', 'PI', 'SO', 'NE']
+const METRIC_COLORS = {
+  TJ: '#facc15',
+  PZ: '#fb923c',
+  MZ: '#ef4444',
+  CUP: '#ec4899'
+}
+const METRIC_PRIORITY = ['TJ', 'PZ', 'MZ', 'CUP']
+
+const pad2 = (value) => String(value).padStart(2, '0')
+
+const toDateKey = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+
+const toDisplayDate = (dateKey) => {
+  const value = String(dateKey || '')
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return ''
+  return `${match[3]}. ${match[2]}. ${match[1]}`
+}
+
+const getMondayBasedDayIndex = (date) => (date.getDay() + 6) % 7
+
+const buildCalendarCells = (monthDate) => {
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth()
+  const firstDayOfMonth = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const daysInPrevMonth = new Date(year, month, 0).getDate()
+  const startOffset = getMondayBasedDayIndex(firstDayOfMonth)
+  const cells = []
+
+  for (let index = 0; index < 42; index += 1) {
+    let dayDate
+    let muted = false
+
+    if (index < startOffset) {
+      const day = daysInPrevMonth - startOffset + index + 1
+      dayDate = new Date(year, month - 1, day)
+      muted = true
+    } else if (index < startOffset + daysInMonth) {
+      const day = index - startOffset + 1
+      dayDate = new Date(year, month, day)
+    } else {
+      const day = index - (startOffset + daysInMonth) + 1
+      dayDate = new Date(year, month + 1, day)
+      muted = true
+    }
+
+    cells.push({
+      key: `training-calendar-cell-${year}-${month}-${index}`,
+      day: dayDate.getDate(),
+      dateKey: toDateKey(dayDate),
+      muted
+    })
+  }
+
+  return cells
+}
+
+const parsePlannerRecurrenceRule = (value) => {
+  try {
+    const parsed = JSON.parse(String(value || ''))
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const resolveMetricCodeFromSession = (session) => {
+  const recurrenceMeta = parsePlannerRecurrenceRule(session?.recurrenceRule || session?.recurrence_rule)
+  const metaCode = String(recurrenceMeta?.indicatorCode || '').trim().toUpperCase()
+  if (metaCode && METRIC_COLORS[metaCode]) return metaCode
+
+  const sessionType = String(session?.sessionType || session?.session_type || session?.type || '').trim().toLowerCase()
+  if (sessionType === 'training') return 'TJ'
+  if (sessionType === 'match') return 'PZ'
+  if (sessionType === 'friendly_match' || sessionType === 'cancelled') return 'MZ'
+  if (sessionType === 'tournament') return 'CUP'
+  return 'TJ'
+}
+
+const resolveDateKeyFromSession = (session) => {
+  const dateValue = session?.date
+    || session?.training_date
+    || session?.scheduled_date
+    || session?.session_date
+    || session?.event_date
+
+  if (dateValue) {
+    const parsed = new Date(String(dateValue))
+    if (!Number.isNaN(parsed.getTime())) return toDateKey(parsed)
+    const dateMatch = String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (dateMatch) return `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+  }
+
+  const startDateValue = session?.startAt || session?.start_at
+  if (!startDateValue) return ''
+  const startDate = new Date(String(startDateValue))
+  if (Number.isNaN(startDate.getTime())) return ''
+  return toDateKey(startDate)
+}
+
 const DEFAULT_COMPOSER_SECTIONS = [
   {
     id: 'warmup',
@@ -44,6 +147,13 @@ function Trainings() {
   const [selectedFieldParts, setSelectedFieldParts] = useState([])
   const [isSavingComposer, setIsSavingComposer] = useState(false)
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false)
+  const [isDateCalendarOpen, setIsDateCalendarOpen] = useState(false)
+  const [calendarMonthDate, setCalendarMonthDate] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [calendarSessions, setCalendarSessions] = useState([])
+  const [calendarLoading, setCalendarLoading] = useState(false)
   const [composerError, setComposerError] = useState('')
   const [composerSuccess, setComposerSuccess] = useState('')
   const [sessionMeta, setSessionMeta] = useState({
@@ -201,20 +311,21 @@ function Trainings() {
   const closeComposer = () => {
     setIsComposerOpen(false)
     setIsTimeClockOpen(false)
+    setIsDateCalendarOpen(false)
     setComposerError('')
     setComposerSuccess('')
   }
 
-  const openNativePicker = useCallback((event) => {
-    const input = event?.currentTarget
-    if (!input || typeof input.showPicker !== 'function') return
+  const openDateCalendar = () => {
+    const selected = new Date(String(sessionMeta.date || ''))
+    const base = Number.isNaN(selected.getTime()) ? new Date() : selected
+    setCalendarMonthDate(new Date(base.getFullYear(), base.getMonth(), 1))
+    setIsDateCalendarOpen(true)
+  }
 
-    try {
-      input.showPicker()
-    } catch {
-      // Some browsers block showPicker without trusted user gesture.
-    }
-  }, [])
+  const closeDateCalendar = () => {
+    setIsDateCalendarOpen(false)
+  }
 
   const selectedFieldMeta = useMemo(
     () => fieldOptions.find((field) => field.id === selectedFieldId) || null,
@@ -225,6 +336,23 @@ function Trainings() {
     const total = selectedFieldMeta?.partsTotal || 1
     return Array.from({ length: total + 1 }, (_, index) => String(index))
   }, [selectedFieldMeta])
+
+  const calendarSessionsByDate = useMemo(() => {
+    const map = new Map()
+
+    ;(Array.isArray(calendarSessions) ? calendarSessions : []).forEach((session) => {
+      const dateKey = resolveDateKeyFromSession(session)
+      if (!dateKey) return
+
+      const metricCode = resolveMetricCodeFromSession(session)
+      if (!map.has(dateKey)) map.set(dateKey, new Set())
+      map.get(dateKey).add(metricCode)
+    })
+
+    return map
+  }, [calendarSessions])
+
+  const calendarCells = useMemo(() => buildCalendarCells(calendarMonthDate), [calendarMonthDate])
 
   const handleFieldChange = (nextFieldId) => {
     const safeFieldId = String(nextFieldId || '')
@@ -343,6 +471,39 @@ function Trainings() {
     loadFieldsForComposer()
   }, [isComposerOpen])
 
+  useEffect(() => {
+    if (!isComposerOpen) return
+
+    const safeTeamId = String(selectedTeamId || '').trim()
+    if (!safeTeamId) {
+      setCalendarSessions([])
+      return
+    }
+
+    let isMounted = true
+    setCalendarLoading(true)
+
+    api.getTeamTrainingSessions(safeTeamId)
+      .then((response) => {
+        if (!isMounted) return
+        const sessions = Array.isArray(response?.sessions)
+          ? response.sessions
+          : (Array.isArray(response) ? response : [])
+        setCalendarSessions(sessions)
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setCalendarSessions([])
+      })
+      .finally(() => {
+        if (isMounted) setCalendarLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [isComposerOpen, selectedTeamId])
+
   if (loading) {
     return <div className="loading">Načítání...</div>
   }
@@ -392,11 +553,11 @@ function Trainings() {
               <div className="training-composer-field">
                 <label>Dátum</label>
                 <input
-                  type="date"
-                  value={sessionMeta.date}
-                  onClick={openNativePicker}
-                  onFocus={openNativePicker}
-                  onChange={(event) => updateSessionMeta('date', event.target.value)}
+                  type="text"
+                  value={toDisplayDate(sessionMeta.date)}
+                  readOnly
+                  placeholder="Vyber dátum"
+                  onClick={openDateCalendar}
                 />
               </div>
               <div className="training-composer-field">
@@ -507,6 +668,87 @@ function Trainings() {
         onApply={(nextValue) => updateSessionMeta('timeFrom', nextValue)}
         ariaLabel="Výber času začiatku"
       />
+
+      {isDateCalendarOpen ? (
+        <div className="training-date-calendar-overlay" role="presentation" onClick={closeDateCalendar}>
+          <div
+            className="training-date-calendar-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Kalendár tréningov"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="training-date-calendar-head">
+              <h3>Kalendár dochádzky</h3>
+              <span>{MONTH_NAMES[calendarMonthDate.getMonth()]} {calendarMonthDate.getFullYear()}</span>
+            </div>
+
+            <div className="training-date-calendar-controls">
+              <button
+                type="button"
+                className="training-date-calendar-icon-btn"
+                onClick={() => setCalendarMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                aria-label="Predchádzajúci mesiac"
+              >
+                <span className="material-icons-round" aria-hidden="true">chevron_left</span>
+              </button>
+              <button
+                type="button"
+                className="training-date-calendar-icon-btn"
+                onClick={() => setCalendarMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                aria-label="Nasledujúci mesiac"
+              >
+                <span className="material-icons-round" aria-hidden="true">chevron_right</span>
+              </button>
+            </div>
+
+            <div className="training-date-calendar-weekdays">
+              {WEEK_DAYS.map((weekDay) => (
+                <span key={`training-weekday-${weekDay}`}>{weekDay}</span>
+              ))}
+            </div>
+
+            <div className="training-date-calendar-grid">
+              {calendarCells.map((cell) => {
+                const metricSet = calendarSessionsByDate.get(cell.dateKey) || null
+                const metricCodes = metricSet ? Array.from(metricSet) : []
+                const prioritizedCode = METRIC_PRIORITY.find((code) => metricCodes.includes(code)) || metricCodes[0] || ''
+                const plannedColor = prioritizedCode ? METRIC_COLORS[prioritizedCode] : ''
+
+                return (
+                  <button
+                    key={cell.key}
+                    type="button"
+                    className={`training-date-calendar-day ${cell.muted ? 'muted' : ''} ${!cell.muted && metricCodes.length > 0 ? 'has-planned' : ''} ${sessionMeta.date === cell.dateKey ? 'active' : ''}`}
+                    style={plannedColor ? { '--training-planned-border': plannedColor } : undefined}
+                    onClick={() => {
+                      if (cell.muted) return
+                      updateSessionMeta('date', cell.dateKey)
+                      closeDateCalendar()
+                    }}
+                  >
+                    <span className="training-date-calendar-day-number">{cell.day}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="training-date-calendar-legend" aria-label="Legenda kalendára">
+              {Object.entries(METRIC_COLORS).map(([code, color]) => (
+                <span key={`training-calendar-legend-${code}`} className="training-date-calendar-legend-item">
+                  <span className="training-date-calendar-legend-dot" style={{ '--legend-color': color }} aria-hidden="true" />
+                  <span>{code}</span>
+                </span>
+              ))}
+            </div>
+
+            <div className="training-date-calendar-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeDateCalendar}>Zrušiť</button>
+              {calendarLoading ? <span className="unified-muted">Načítavam tréningy...</span> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="card">
         <table>

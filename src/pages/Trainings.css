@@ -319,6 +319,155 @@
   border-radius: 12px;
 }
 
+.training-date-calendar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.72);
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.training-date-calendar-modal {
+  width: min(760px, calc(100vw - 28px));
+  border: 1px solid rgba(96, 113, 147, 0.28);
+  border-radius: 24px;
+  background: rgba(15, 19, 28, 0.98);
+  box-shadow: 0 22px 48px -20px rgba(2, 6, 23, 0.9);
+  padding: 18px;
+}
+
+.training-date-calendar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.training-date-calendar-head h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.training-date-calendar-head span {
+  color: #8ca0c4;
+  font-size: 2rem;
+}
+
+.training-date-calendar-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.training-date-calendar-icon-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 113, 147, 0.34);
+  background: rgba(18, 21, 28, 0.92);
+  color: #dbeafe;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.training-date-calendar-icon-btn .material-icons-round {
+  font-size: 34px;
+}
+
+.training-date-calendar-weekdays,
+.training-date-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.training-date-calendar-weekdays {
+  margin-bottom: 6px;
+}
+
+.training-date-calendar-weekdays span {
+  text-align: center;
+  color: #8ca0c4;
+  font-size: 1.1rem;
+}
+
+.training-date-calendar-day {
+  position: relative;
+  border: 1px solid rgba(96, 113, 147, 0.28);
+  background: rgba(14, 18, 28, 0.96);
+  color: #f8fafc;
+  border-radius: 18px;
+  min-height: 62px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.training-date-calendar-day.muted {
+  color: #6f7f9e;
+}
+
+.training-date-calendar-day.active {
+  border-color: rgba(96, 165, 250, 0.95);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.4);
+}
+
+.training-date-calendar-day.has-planned::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--training-planned-border, #facc15);
+}
+
+.training-date-calendar-day-number {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.training-date-calendar-legend {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.training-date-calendar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #9fb1d2;
+  font-size: 1.95rem;
+}
+
+.training-date-calendar-legend-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--legend-color);
+}
+
+.training-date-calendar-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 1100px) {
   .training-composer-meta-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -347,6 +496,29 @@
   .training-composer-footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .training-date-calendar-head h3,
+  .training-date-calendar-head span {
+    font-size: 1.45rem;
+  }
+
+  .training-date-calendar-icon-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .training-date-calendar-day {
+    min-height: 52px;
+    border-radius: 14px;
+  }
+
+  .training-date-calendar-day-number {
+    font-size: 1.7rem;
+  }
+
+  .training-date-calendar-legend-item {
+    font-size: 1.25rem;
   }
 }
 
