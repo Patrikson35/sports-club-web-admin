@@ -159,12 +159,29 @@ const normalizeExerciseMeta = (exercise) => {
     name: asText(source.name || source.title || source.exerciseName || 'Cvičenie'),
     focus: asText(source.focus || source.description || source.goal || source.objective || ''),
     minutes: Number(source.minutes || source.duration || source.defaultDuration || 10) || 10,
-    category: asText(source.category || source.exercise_category || source.mainCategory || source.type || ''),
-    subcategory: asText(source.subcategory || source.exercise_subcategory || source.skill || source.topic || ''),
+    category: asText(source.category || source.categoryName || source.category_name || source.exercise_category || source.mainCategory || source.type || ''),
+    subcategory: asText(source.subcategory || source.subcategoryName || source.subcategory_name || source.exercise_subcategory || source.skill || source.topic || ''),
     playerCount: asText(source.playerCount || source.player_count || source.players_count || source.numberOfPlayers || source.players || ''),
     intensity: asText(source.intensity || source.load || source.difficulty || source.level || ''),
     isSystem: Boolean(source.isSystem)
   }
+}
+
+const mapMyClubExerciseToLibraryItem = (item) => {
+  const source = (item && typeof item === 'object') ? item : {}
+
+  return normalizeExerciseMeta({
+    id: source.id,
+    name: source.name || source.title,
+    description: source.description,
+    duration: source.duration,
+    intensity: source.intensity,
+    players: Array.isArray(source.playersCount) ? source.playersCount : source.playerCount,
+    categoryName: source.categoryName,
+    category: source.category,
+    subcategory: source.subcategory,
+    isSystem: source.isSystem
+  })
 }
 
 const DEFAULT_COMPOSER_SECTIONS = [
@@ -235,17 +252,38 @@ function Trainings() {
   useEffect(() => {
     let isMounted = true
 
-    api.getExercises()
-      .then((response) => {
+    const loadExerciseLibrary = async () => {
+      try {
+        const response = await api.getExercises()
         if (!isMounted) return
-        const normalized = (Array.isArray(response?.exercises) ? response.exercises : [])
+
+        const normalizedFromExercisesApi = (Array.isArray(response?.exercises) ? response.exercises : [])
           .map((item) => normalizeExerciseMeta(item))
           .filter((item) => item.id)
-        setAvailableExercises(normalized)
-      })
-      .catch(() => {
+
+        if (normalizedFromExercisesApi.length > 0) {
+          setAvailableExercises(normalizedFromExercisesApi)
+          return
+        }
+      } catch {
+        // Fallback below handles club-specific exercise storage.
+      }
+
+      try {
+        const myClubResponse = await api.getMyClub()
+        if (!isMounted) return
+
+        const normalizedFromMyClub = (Array.isArray(myClubResponse?.exerciseDatabaseItems) ? myClubResponse.exerciseDatabaseItems : [])
+          .map((item) => mapMyClubExerciseToLibraryItem(item))
+          .filter((item) => item.id)
+
+        setAvailableExercises(normalizedFromMyClub)
+      } catch {
         if (isMounted) setAvailableExercises([])
-      })
+      }
+    }
+
+    loadExerciseLibrary()
 
     return () => {
       isMounted = false
