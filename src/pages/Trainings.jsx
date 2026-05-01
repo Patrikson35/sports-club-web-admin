@@ -416,6 +416,8 @@ function Trainings() {
 
   const getFilteredExercisesForSection = useCallback((sectionId) => {
     const filters = getSectionExerciseFilters(sectionId)
+    if (!filters.category) return []
+
     return availableExercises.filter((exercise) => {
       if (filters.category && String(exercise.category || '') !== filters.category) return false
       if (filters.subcategory && String(exercise.subcategory || '') !== filters.subcategory) return false
@@ -424,6 +426,17 @@ function Trainings() {
       return true
     })
   }, [availableExercises, getSectionExerciseFilters])
+
+  const selectExerciseCandidate = (sectionId, exerciseId) => {
+    const safeSectionId = String(sectionId || '').trim()
+    const safeExerciseId = String(exerciseId || '').trim()
+    if (!safeSectionId) return
+
+    setSelectedExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [safeSectionId]: safeExerciseId
+    }))
+  }
 
   const addSelectedExerciseFromLibrary = (sectionId) => {
     const selectedExerciseId = String(selectedExerciseIdBySection?.[sectionId] || '').trim()
@@ -873,12 +886,15 @@ function Trainings() {
                     )}
 
                     <div className="training-exercise-picker-panel">
-                      <div className="training-exercise-picker-filters">
+                      <div className="training-exercise-picker-toolbar">
                         <div className="training-exercise-picker-field">
                           <label>Kategória</label>
                           <select
                             value={getSectionExerciseFilters(section.id).category}
-                            onChange={(event) => updateSectionExerciseFilter(section.id, 'category', event.target.value)}
+                            onChange={(event) => {
+                              updateSectionExerciseFilter(section.id, 'category', event.target.value)
+                              selectExerciseCandidate(section.id, '')
+                            }}
                           >
                             <option value="">Všetky</option>
                             {getUniqueExerciseOptionValues('category').map((value) => (
@@ -891,7 +907,10 @@ function Trainings() {
                           <label>Podkategória</label>
                           <select
                             value={getSectionExerciseFilters(section.id).subcategory}
-                            onChange={(event) => updateSectionExerciseFilter(section.id, 'subcategory', event.target.value)}
+                            onChange={(event) => {
+                              updateSectionExerciseFilter(section.id, 'subcategory', event.target.value)
+                              selectExerciseCandidate(section.id, '')
+                            }}
                           >
                             <option value="">Všetky</option>
                             {getUniqueExerciseOptionValues('subcategory').map((value) => (
@@ -904,7 +923,10 @@ function Trainings() {
                           <label>Počet hráčov</label>
                           <select
                             value={getSectionExerciseFilters(section.id).playerCount}
-                            onChange={(event) => updateSectionExerciseFilter(section.id, 'playerCount', event.target.value)}
+                            onChange={(event) => {
+                              updateSectionExerciseFilter(section.id, 'playerCount', event.target.value)
+                              selectExerciseCandidate(section.id, '')
+                            }}
                           >
                             <option value="">Všetky</option>
                             {getUniqueExerciseOptionValues('playerCount').map((value) => (
@@ -917,7 +939,10 @@ function Trainings() {
                           <label>Intenzita</label>
                           <select
                             value={getSectionExerciseFilters(section.id).intensity}
-                            onChange={(event) => updateSectionExerciseFilter(section.id, 'intensity', event.target.value)}
+                            onChange={(event) => {
+                              updateSectionExerciseFilter(section.id, 'intensity', event.target.value)
+                              selectExerciseCandidate(section.id, '')
+                            }}
                           >
                             <option value="">Všetky</option>
                             {getUniqueExerciseOptionValues('intensity').map((value) => (
@@ -925,28 +950,6 @@ function Trainings() {
                             ))}
                           </select>
                         </div>
-
-                      </div>
-
-                      <div className="training-exercise-picker-actions">
-                        <select
-                          className="training-exercise-picker-select"
-                          value={String(selectedExerciseIdBySection?.[section.id] || '')}
-                          onChange={(event) => {
-                            const nextId = String(event.target.value || '')
-                            setSelectedExerciseIdBySection((prev) => ({
-                              ...(prev || {}),
-                              [section.id]: nextId
-                            }))
-                          }}
-                        >
-                          <option value="">Vyber cvičenie</option>
-                          {getFilteredExercisesForSection(section.id).map((exercise) => (
-                            <option key={`exercise-option-${section.id}-${exercise.id}`} value={exercise.id}>
-                              {exercise.name}
-                            </option>
-                          ))}
-                        </select>
 
                         <button
                           type="button"
@@ -964,6 +967,41 @@ function Trainings() {
                         >
                           Pridať manuálne
                         </button>
+                      </div>
+
+                      <div className="training-exercise-picker-library">
+                        {!getSectionExerciseFilters(section.id).category ? (
+                          <div className="training-exercise-picker-empty">
+                            Vyber kategóriu a zobrazí sa zoznam cvičení.
+                          </div>
+                        ) : null}
+
+                        {getSectionExerciseFilters(section.id).category && getFilteredExercisesForSection(section.id).length === 0 ? (
+                          <div className="training-exercise-picker-empty">
+                            V tejto kategórii nie sú dostupné cvičenia pre zvolený filter.
+                          </div>
+                        ) : null}
+
+                        {getFilteredExercisesForSection(section.id).length > 0 ? (
+                          <div className="training-exercise-picker-list" role="listbox" aria-label="Zoznam cvičení">
+                            {getFilteredExercisesForSection(section.id).map((exercise) => {
+                              const isActive = String(selectedExerciseIdBySection?.[section.id] || '') === String(exercise.id)
+                              return (
+                                <button
+                                  key={`exercise-list-item-${section.id}-${exercise.id}`}
+                                  type="button"
+                                  className={`training-exercise-picker-list-item ${isActive ? 'active' : ''}`}
+                                  onClick={() => selectExerciseCandidate(section.id, exercise.id)}
+                                  role="option"
+                                  aria-selected={isActive}
+                                >
+                                  <strong>{exercise.name}</strong>
+                                  <small>{exercise.focus || 'Bez doplňujúceho popisu'}</small>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </section>

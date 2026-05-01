@@ -15,7 +15,8 @@
   border-radius: 12px;
   background: rgb(24 26 32 / var(--tw-bg-opacity, 1));
   padding: 16px;
-  width: min(1180px, calc(100vw - 320px));
+  width: 100%;
+  max-width: none;
   max-height: calc(100vh - 48px);
   overflow: auto;
 }
@@ -263,9 +264,9 @@
   gap: 10px;
 }
 
-.training-exercise-picker-filters {
+.training-exercise-picker-toolbar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
   gap: 10px;
   align-items: end;
 }
@@ -284,8 +285,7 @@
   font-weight: 700;
 }
 
-.training-exercise-picker-field select,
-.training-exercise-picker-select {
+.training-exercise-picker-field select {
   width: 100%;
   height: 44px;
   padding: 0 12px;
@@ -305,17 +305,11 @@
 }
 
 .training-exercise-picker-field select:focus,
-.training-exercise-picker-select:focus {
+.training-exercise-picker-add-btn:focus,
+.training-exercise-picker-manual-btn:focus {
   border-color: #3b82f6;
   outline: none;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
-}
-
-.training-exercise-picker-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  align-items: center;
 }
 
 .training-exercise-picker-add-btn,
@@ -324,6 +318,56 @@
   border-radius: 10px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.training-exercise-picker-library {
+  display: grid;
+  gap: 8px;
+}
+
+.training-exercise-picker-empty {
+  border: 1px dashed rgba(93, 112, 146, 0.35);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.training-exercise-picker-list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.training-exercise-picker-list-item {
+  width: 100%;
+  border: 1px solid rgba(93, 112, 146, 0.22);
+  border-radius: 10px;
+  background: rgba(15, 17, 21, 0.72);
+  color: var(--text-primary);
+  text-align: left;
+  padding: 10px;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+
+.training-exercise-picker-list-item strong {
+  font-size: 0.92rem;
+}
+
+.training-exercise-picker-list-item small {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.training-exercise-picker-list-item.active {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.35);
+  background: rgba(20, 31, 51, 0.82);
 }
 
 .training-composer-empty {
@@ -537,12 +581,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .training-exercise-picker-filters {
+  .training-exercise-picker-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .training-exercise-picker-actions {
-    grid-template-columns: 1fr;
   }
 }
 
