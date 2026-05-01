@@ -146,13 +146,20 @@ const toCleanText = (value) => {
   return String(value || '').trim()
 }
 
+const toLookupKey = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ')
+
 const addCategoryDefinitionsToMap = (categories, targetMap) => {
   const source = Array.isArray(categories) ? categories : []
   const map = targetMap instanceof Map ? targetMap : new Map()
 
   source.forEach((category) => {
     const categoryName = toCleanText(category?.name || category?.title || category?.label || category)
-    const normalizedCategoryKey = categoryName.toLowerCase()
+    const normalizedCategoryKey = toLookupKey(categoryName)
     if (!categoryName) return
 
     if (!map.has(normalizedCategoryKey)) map.set(normalizedCategoryKey, new Set())
@@ -203,6 +210,9 @@ const normalizeExerciseMeta = (exercise) => {
     subcategories: Array.isArray(source.subcategories)
       ? source.subcategories.map((item) => asText(item)).filter(Boolean)
       : [],
+    subcategoriesByCategory: (source.subcategoriesByCategory && typeof source.subcategoriesByCategory === 'object')
+      ? source.subcategoriesByCategory
+      : {},
     playerCount: asText(source.playerCount || source.player_count || source.players_count || source.numberOfPlayers || source.players || ''),
     intensity: asText(source.intensity || source.load || source.difficulty || source.level || ''),
     isSystem: Boolean(source.isSystem)
@@ -223,6 +233,26 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
   const categorySelections = (source.categorySelections && typeof source.categorySelections === 'object')
     ? source.categorySelections
     : {}
+
+  const subcategoriesByCategory = {}
+
+  Object.entries(categorySelections).forEach(([rawKey, rawValues]) => {
+    const categoryLabel = String(categoryNameById.get(String(rawKey || '').trim()) || rawKey || '').trim()
+    const normalizedCategoryKey = toLookupKey(categoryLabel)
+    if (!normalizedCategoryKey) return
+
+    const parsedValues = (Array.isArray(rawValues) ? rawValues : [])
+      .map((value) => toCleanText(value?.name || value?.title || value?.label || value))
+      .filter(Boolean)
+
+    if (parsedValues.length === 0) return
+
+    const existing = Array.isArray(subcategoriesByCategory[normalizedCategoryKey])
+      ? subcategoriesByCategory[normalizedCategoryKey]
+      : []
+
+    subcategoriesByCategory[normalizedCategoryKey] = [...new Set([...existing, ...parsedValues])]
+  })
 
   const categoryNamesFromSelectionKeys = Object.keys(categorySelections)
     .map((rawKey) => {
@@ -267,6 +297,7 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
     subcategory: primarySubcategory,
     categories: mergedCategories,
     subcategories: derivedSubcategories,
+    subcategoriesByCategory,
     isSystem: source.isSystem
   })
 }
@@ -667,10 +698,11 @@ function Trainings() {
     const filters = getSectionExerciseFilters(sectionId)
     const selectedCategory = String(filters.category || '').trim()
     if (!selectedCategory) return []
+    const selectedCategoryKey = toLookupKey(selectedCategory)
 
     const values = new Set()
-    const fromDefinitions = Array.isArray(categorySubcategoriesByName[selectedCategory.toLowerCase()])
-      ? categorySubcategoriesByName[selectedCategory.toLowerCase()]
+    const fromDefinitions = Array.isArray(categorySubcategoriesByName[selectedCategoryKey])
+      ? categorySubcategoriesByName[selectedCategoryKey]
       : []
 
     fromDefinitions.forEach((value) => {
@@ -680,10 +712,19 @@ function Trainings() {
 
     availableExercises.forEach((exercise) => {
       const matchesCategory = Array.isArray(exercise.categories) && exercise.categories.length > 0
-        ? exercise.categories.includes(selectedCategory)
-        : String(exercise.category || '') === selectedCategory
+        ? exercise.categories.some((value) => toLookupKey(value) === selectedCategoryKey)
+        : toLookupKey(exercise.category) === selectedCategoryKey
 
       if (!matchesCategory) return
+
+      const categorySpecificSubcategories = Array.isArray(exercise?.subcategoriesByCategory?.[selectedCategoryKey])
+        ? exercise.subcategoriesByCategory[selectedCategoryKey]
+        : []
+
+      categorySpecificSubcategories.forEach((value) => {
+        const normalized = String(value || '').trim()
+        if (normalized) values.add(normalized)
+      })
 
       if (Array.isArray(exercise.subcategories) && exercise.subcategories.length > 0) {
         exercise.subcategories.forEach((value) => {
@@ -706,18 +747,31 @@ function Trainings() {
       return availableExercises
     }
 
+    const selectedCategoryKey = toLookupKey(filters.category)
+    const selectedSubcategoryKey = toLookupKey(filters.subcategory)
+
     return availableExercises.filter((exercise) => {
       if (filters.category) {
         const matchesCategory = Array.isArray(exercise.categories) && exercise.categories.length > 0
-          ? exercise.categories.includes(filters.category)
-          : String(exercise.category || '') === filters.category
+          ? exercise.categories.some((value) => toLookupKey(value) === selectedCategoryKey)
+          : toLookupKey(exercise.category) === selectedCategoryKey
         if (!matchesCategory) return false
       }
 
       if (filters.subcategory) {
+        const categorySpecificSubcategories = Array.isArray(exercise?.subcategoriesByCategory?.[selectedCategoryKey])
+          ? exercise.subcategoriesByCategory[selectedCategoryKey]
+          : []
+
+        if (categorySpecificSubcategories.length > 0) {
+          const matchesInCategorySpecificSubcategories = categorySpecificSubcategories
+            .some((value) => toLookupKey(value) === selectedSubcategoryKey)
+          if (!matchesInCategorySpecificSubcategories) return false
+        }
+
         const matchesSubcategory = Array.isArray(exercise.subcategories) && exercise.subcategories.length > 0
-          ? exercise.subcategories.includes(filters.subcategory)
-          : String(exercise.subcategory || '') === filters.subcategory
+          ? exercise.subcategories.some((value) => toLookupKey(value) === selectedSubcategoryKey)
+          : toLookupKey(exercise.subcategory) === selectedSubcategoryKey
         if (!matchesSubcategory) return false
       }
 
