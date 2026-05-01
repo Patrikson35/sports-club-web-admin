@@ -108,6 +108,29 @@ const resolveDateKeyFromSession = (session) => {
   return toDateKey(startDate)
 }
 
+const toHourMinuteFromDateCandidate = (value) => {
+  if (!value) return ''
+  const parsed = new Date(String(value))
+  if (Number.isNaN(parsed.getTime())) return ''
+  return `${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}`
+}
+
+const resolveStartTimeFromSession = (session) => {
+  const direct = String(session?.startTime || session?.start_time || session?.time_from || session?.from_time || '').trim()
+  const match = direct.match(/^(\d{1,2}:\d{2})/)
+  if (match) return match[1]
+  return toHourMinuteFromDateCandidate(session?.startAt || session?.start_at)
+}
+
+const toMinutesFromHHmm = (value) => {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return Number.POSITIVE_INFINITY
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return Number.POSITIVE_INFINITY
+  return (Math.max(0, Math.min(23, hour)) * 60) + Math.max(0, Math.min(59, minute))
+}
+
 const DEFAULT_COMPOSER_SECTIONS = [
   {
     id: 'warmup',
@@ -156,6 +179,7 @@ function Trainings() {
   })
   const [calendarSessions, setCalendarSessions] = useState([])
   const [calendarLoading, setCalendarLoading] = useState(false)
+  const [linkedSessionId, setLinkedSessionId] = useState('')
   const [composerError, setComposerError] = useState('')
   const [composerSuccess, setComposerSuccess] = useState('')
   const [sessionMeta, setSessionMeta] = useState({
@@ -314,6 +338,7 @@ function Trainings() {
     setIsComposerOpen(false)
     setIsTimeClockOpen(false)
     setIsDateCalendarOpen(false)
+    setLinkedSessionId('')
     setComposerError('')
     setComposerSuccess('')
   }
@@ -338,6 +363,29 @@ function Trainings() {
     const total = selectedFieldMeta?.partsTotal || 1
     return Array.from({ length: total + 1 }, (_, index) => String(index))
   }, [selectedFieldMeta])
+
+  const calendarSessionsDetailsByDate = useMemo(() => {
+    const map = new Map()
+
+    ;(Array.isArray(calendarSessions) ? calendarSessions : []).forEach((session) => {
+      const dateKey = resolveDateKeyFromSession(session)
+      if (!dateKey) return
+      if (!map.has(dateKey)) map.set(dateKey, [])
+      map.get(dateKey).push(session)
+    })
+
+    map.forEach((list, dateKey) => {
+      const sorted = [...list].sort((left, right) => {
+        const leftTime = toMinutesFromHHmm(resolveStartTimeFromSession(left))
+        const rightTime = toMinutesFromHHmm(resolveStartTimeFromSession(right))
+        if (leftTime !== rightTime) return leftTime - rightTime
+        return String(left?.id || '').localeCompare(String(right?.id || ''))
+      })
+      map.set(dateKey, sorted)
+    })
+
+    return map
+  }, [calendarSessions])
 
   const calendarSessionsByDate = useMemo(() => {
     const map = new Map()
@@ -380,6 +428,52 @@ function Trainings() {
     setSelectedFieldPartsCount(String(safeCount))
     setSelectedFieldParts(Array.from({ length: safeCount }, (_, index) => index + 1))
   }
+
+  const applySessionPrefill = useCallback((session) => {
+    if (!session || typeof session !== 'object') {
+      setLinkedSessionId('')
+      return
+    }
+
+    const recurrenceMeta = parsePlannerRecurrenceRule(session?.recurrenceRule || session?.recurrence_rule)
+    const startTime = resolveStartTimeFromSession(session)
+    const safeStartTime = startTime || String(sessionMeta.timeFrom || '16:00')
+    const fieldIdFromMeta = String(recurrenceMeta?.fieldId || '').trim()
+    const fieldNameFromMeta = String(recurrenceMeta?.fieldName || session?.location || '').trim()
+
+    const resolvedField = fieldOptions.find((field) => String(field.id) === fieldIdFromMeta)
+      || fieldOptions.find((field) => String(field.name || '').trim().toLowerCase() === fieldNameFromMeta.toLowerCase())
+      || null
+
+    const rawSelectedParts = Array.isArray(recurrenceMeta?.selectedFieldParts)
+      ? recurrenceMeta.selectedFieldParts
+      : []
+    const normalizedSelectedParts = [...new Set(rawSelectedParts
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value >= 1)
+    )].sort((a, b) => a - b)
+
+    const safeFieldId = resolvedField?.id || ''
+    const maxParts = Number(resolvedField?.partsTotal || 1)
+    const selectedPartsWithinRange = normalizedSelectedParts.filter((value) => value <= maxParts)
+    const numericMetaParts = Number(recurrenceMeta?.fieldParts)
+    const fallbackCount = Number.isFinite(numericMetaParts) && numericMetaParts >= 0
+      ? Math.min(Math.floor(numericMetaParts), maxParts)
+      : 0
+
+    const resolvedParts = selectedPartsWithinRange.length > 0
+      ? selectedPartsWithinRange
+      : Array.from({ length: fallbackCount }, (_, index) => index + 1)
+
+    setSessionMeta((prev) => ({
+      ...prev,
+      timeFrom: safeStartTime
+    }))
+    setSelectedFieldId(safeFieldId)
+    setSelectedFieldParts(resolvedParts)
+    setSelectedFieldPartsCount(String(resolvedParts.length))
+    setLinkedSessionId(String(session?.id || '').trim())
+  }, [fieldOptions, sessionMeta.timeFrom])
 
   const resolveEndTime = (startTime, durationMinutes) => {
     const match = String(startTime || '').match(/^(\d{1,2}):(\d{2})$/)
@@ -455,9 +549,27 @@ function Trainings() {
     setComposerSuccess('')
 
     try {
-      await api.createTeamTrainingSession(resolvedTeamId, payload)
+      if (linkedSessionId) {
+        await api.updateTeamTrainingSession(linkedSessionId, resolvedTeamId, payload)
+      } else {
+        await api.createTeamTrainingSession(resolvedTeamId, payload)
+      }
+
       await loadTrainings()
-      setComposerSuccess('Tréning bol uložený a priradený do plánovača aj dochádzky.')
+      const refreshed = await api.getTeamTrainingSessions(resolvedTeamId)
+      const refreshedSessions = Array.isArray(refreshed?.sessions)
+        ? refreshed.sessions
+        : Array.isArray(refreshed?.trainings)
+          ? refreshed.trainings
+          : Array.isArray(refreshed?.items)
+            ? refreshed.items
+            : Array.isArray(refreshed?.data)
+              ? refreshed.data
+              : (Array.isArray(refreshed) ? refreshed : [])
+      setCalendarSessions(refreshedSessions)
+      setComposerSuccess(linkedSessionId
+        ? 'Tréning bol upravený a zmeny sa premietli do plánovača.'
+        : 'Tréning bol uložený a priradený do plánovača aj dochádzky.')
       setIsComposerOpen(false)
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
@@ -719,6 +831,7 @@ function Trainings() {
             <div className="training-date-calendar-grid">
               {calendarCells.map((cell) => {
                 const metricSet = calendarSessionsByDate.get(cell.dateKey) || null
+                const daySessions = calendarSessionsDetailsByDate.get(cell.dateKey) || []
                 const metricCodes = metricSet ? Array.from(metricSet) : []
                 const prioritizedCode = METRIC_PRIORITY.find((code) => metricCodes.includes(code)) || metricCodes[0] || ''
                 const plannedColor = prioritizedCode ? METRIC_COLORS[prioritizedCode] : ''
@@ -732,6 +845,11 @@ function Trainings() {
                     onClick={() => {
                       if (cell.muted) return
                       updateSessionMeta('date', cell.dateKey)
+                      if (daySessions.length > 0) {
+                        applySessionPrefill(daySessions[0])
+                      } else {
+                        setLinkedSessionId('')
+                      }
                       closeDateCalendar()
                     }}
                   >
@@ -756,6 +874,12 @@ function Trainings() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {linkedSessionId ? (
+        <p className="unified-muted" style={{ marginTop: 8 }}>
+          Predvyplnené podľa existujúceho tréningu. Po uložení sa aktualizuje rovnaká udalosť v plánovači.
+        </p>
       ) : null}
 
       <div className="card">
