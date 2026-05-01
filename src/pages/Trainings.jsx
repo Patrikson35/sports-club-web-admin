@@ -35,6 +35,11 @@ function Trainings() {
   const [trainings, setTrainings] = useState([])
   const [loading, setLoading] = useState(true)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
+  const [teamOptions, setTeamOptions] = useState([])
+  const [selectedTeamId, setSelectedTeamId] = useState('')
+  const [isSavingComposer, setIsSavingComposer] = useState(false)
+  const [composerError, setComposerError] = useState('')
+  const [composerSuccess, setComposerSuccess] = useState('')
   const [sessionMeta, setSessionMeta] = useState({
     date: new Date().toISOString().slice(0, 10),
     timeFrom: '16:00',
@@ -50,11 +55,37 @@ function Trainings() {
   const loadTrainings = async () => {
     try {
       const data = await api.getTrainings()
-      setTrainings(data.trainings)
+      setTrainings(Array.isArray(data?.trainings) ? data.trainings : [])
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadTeamsForComposer = async () => {
+    try {
+      const response = await api.getTeams()
+      const teams = Array.isArray(response?.teams)
+        ? response.teams
+            .map((team) => ({
+              id: String(team?.id || '').trim(),
+              name: String(team?.name || '').trim()
+            }))
+            .filter((team) => team.id && team.name)
+        : []
+
+      setTeamOptions(teams)
+
+      if (teams.length === 1) {
+        setSelectedTeamId(teams[0].id)
+      } else if (!teams.some((team) => team.id === selectedTeamId)) {
+        setSelectedTeamId('')
+      }
+    } catch (error) {
+      setTeamOptions([])
+      setSelectedTeamId('')
+      setComposerError('Nepodarilo sa načítať kategórie pre plánovanie tréningu.')
     }
   }
 
@@ -121,11 +152,72 @@ function Trainings() {
 
   const closeComposer = () => {
     setIsComposerOpen(false)
+    setComposerError('')
+    setComposerSuccess('')
   }
 
-  const saveComposer = () => {
-    window.alert('Formulár je pripravený. Ďalší krok: napojenie na uloženie do API.')
+  const saveComposer = async () => {
+    const resolvedTeamId = String(selectedTeamId || '').trim()
+    if (!resolvedTeamId) {
+      setComposerError('Vyberte kategóriu tréningu.')
+      setComposerSuccess('')
+      return
+    }
+
+    const totalMinutes = sections.reduce((sum, section) => {
+      const sectionMinutes = Array.isArray(section?.exercises)
+        ? section.exercises.reduce((acc, exercise) => acc + (Number(exercise?.minutes) || 0), 0)
+        : 0
+      return sum + sectionMinutes
+    }, 0)
+
+    const title = totalMinutes > 0
+      ? `Tréningová jednotka (${totalMinutes} min)`
+      : 'Tréningová jednotka'
+
+    const payload = {
+      title,
+      date: String(sessionMeta.date || '').trim(),
+      start_time: String(sessionMeta.timeFrom || '').trim(),
+      end_time: String(sessionMeta.timeTo || '').trim(),
+      location: String(sessionMeta.location || '').trim(),
+      session_type: 'training',
+      indicatorCode: 'TJ',
+      recurrence_rule: JSON.stringify({
+        indicatorCode: 'TJ',
+        source: 'trainings-composer',
+        totalMinutes
+      }),
+      exercises: []
+    }
+
+    if (!payload.date || !payload.start_time || !payload.end_time) {
+      setComposerError('Doplňte dátum a čas tréningu.')
+      setComposerSuccess('')
+      return
+    }
+
+    setIsSavingComposer(true)
+    setComposerError('')
+    setComposerSuccess('')
+
+    try {
+      await api.createTeamTrainingSession(resolvedTeamId, payload)
+      await loadTrainings()
+      setComposerSuccess('Tréning bol uložený a priradený do plánovača aj dochádzky.')
+      setIsComposerOpen(false)
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setComposerError(message || 'Tréning sa nepodarilo uložiť.')
+    } finally {
+      setIsSavingComposer(false)
+    }
   }
+
+  useEffect(() => {
+    if (!isComposerOpen) return
+    loadTeamsForComposer()
+  }, [isComposerOpen])
 
   if (loading) {
     return <div className="loading">Načítání...</div>
@@ -154,6 +246,25 @@ function Trainings() {
             </div>
 
             <div className="training-composer-meta-grid">
+              {teamOptions.length > 1 ? (
+                <div className="training-composer-field">
+                  <label>Kategória</label>
+                  <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(String(event.target.value || ''))}>
+                    <option value="">Vyber kategóriu</option>
+                    {teamOptions.map((team) => (
+                      <option key={`composer-team-${team.id}`} value={team.id}>{team.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              {teamOptions.length === 1 ? (
+                <div className="training-composer-field">
+                  <label>Kategória</label>
+                  <input type="text" value={teamOptions[0].name} readOnly />
+                </div>
+              ) : null}
+
               <div className="training-composer-field">
                 <label>Dátum</label>
                 <input type="date" value={sessionMeta.date} onChange={(event) => updateSessionMeta('date', event.target.value)} />
@@ -222,6 +333,8 @@ function Trainings() {
             </div>
 
             <div className="training-composer-footer">
+              {composerError ? <p className="unified-muted" style={{ color: '#fca5a5', margin: 0 }}>{composerError}</p> : null}
+              {composerSuccess ? <p className="unified-muted" style={{ color: '#9ae6b4', margin: 0 }}>{composerSuccess}</p> : null}
               <div className="training-composer-summary">
                 <div>
                   <small>Celkové trvanie</small>
@@ -234,8 +347,8 @@ function Trainings() {
               </div>
 
               <div className="training-composer-actions">
-                <button type="button" className="btn btn-secondary training-composer-cancel-btn" onClick={closeComposer}>Zrušiť</button>
-                <button type="button" className="btn training-composer-save-btn" onClick={saveComposer}>Uložiť tréning</button>
+                <button type="button" className="btn btn-secondary training-composer-cancel-btn" onClick={closeComposer} disabled={isSavingComposer}>Zrušiť</button>
+                <button type="button" className="btn training-composer-save-btn" onClick={saveComposer} disabled={isSavingComposer}>{isSavingComposer ? 'Ukladám...' : 'Uložiť tréning'}</button>
               </div>
             </div>
           </div>
