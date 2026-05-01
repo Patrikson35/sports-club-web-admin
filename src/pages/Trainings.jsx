@@ -149,7 +149,7 @@ function Trainings() {
               <h3>Poskladať tréningovú jednotku</h3>
               <p>Vytvorte presný časový a obsahový plán tréningu.</p>
             </div>
-            <button type="button" className="btn btn-secondary" onClick={closeComposer}>Zavrieť</button>
+            <button type="button" className="btn btn-secondary training-composer-close-btn" onClick={closeComposer}>Zavrieť</button>
           </div>
 
           <div className="training-composer-meta-grid">
@@ -233,8 +233,8 @@ function Trainings() {
             </div>
 
             <div className="training-composer-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeComposer}>Zrušiť</button>
-              <button type="button" className="btn" onClick={saveComposer}>Uložiť tréning</button>
+              <button type="button" className="btn btn-secondary training-composer-cancel-btn" onClick={closeComposer}>Zrušiť</button>
+              <button type="button" className="btn training-composer-save-btn" onClick={saveComposer}>Uložiť tréning</button>
             </div>
           </div>
         </div>

@@ -1,8 +1,8 @@
 .training-composer-shell {
-  border: 1px solid var(--border);
+  border: 1px solid rgba(93, 112, 146, 0.22);
   border-radius: 12px;
-  background: rgba(22, 24, 28, 0.72);
-  padding: 14px;
+  background: rgb(24 26 32 / var(--tw-bg-opacity, 1));
+  padding: 16px;
 }
 
 .training-composer-head {
@@ -16,7 +16,7 @@
 .training-composer-head h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.15rem;
+  font-size: 1.2rem;
 }
 
 .training-composer-head p {
@@ -28,8 +28,8 @@
 .training-composer-meta-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .training-composer-field {
@@ -48,11 +48,11 @@
 
 .training-composer-field input {
   width: 100%;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgb(38 41 50 / var(--tw-border-opacity, 1));
+  background-color: rgb(15 17 21 / var(--tw-bg-opacity, 1));
   color: var(--text-primary);
   font-size: 14px;
 }
@@ -63,10 +63,10 @@
 }
 
 .training-composer-section {
-  border: 1px solid rgba(93, 112, 146, 0.24);
+  border: 1px solid rgba(93, 112, 146, 0.18);
   border-radius: 12px;
-  background: rgba(15, 17, 21, 0.64);
-  padding: 10px;
+  background: rgba(15, 17, 21, 0.52);
+  padding: 12px;
 }
 
 .training-composer-section-head {
@@ -84,11 +84,11 @@
 }
 
 .training-composer-order-chip {
-  border: 1px solid rgba(96, 165, 250, 0.36);
-  background: rgba(59, 130, 246, 0.18);
-  color: #bfdbfe;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(59, 130, 246, 0.1);
+  color: #c7dbff;
   border-radius: 8px;
-  padding: 2px 8px;
+  padding: 2px 7px;
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -118,8 +118,8 @@
   gap: 12px;
   border-radius: 10px;
   padding: 10px;
-  background: var(--bg-secondary);
-  border: 1px solid rgba(93, 112, 146, 0.18);
+  background: rgba(15, 17, 21, 0.72);
+  border: 1px solid rgba(93, 112, 146, 0.16);
 }
 
 .training-composer-exercise-main strong {
@@ -141,10 +141,10 @@
 
 .training-composer-exercise-controls input {
   width: 62px;
-  height: 34px;
+  height: 36px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: rgb(15 17 21 / var(--tw-bg-opacity, 1));
+  border: 1px solid rgb(38 41 50 / var(--tw-border-opacity, 1));
+  background-color: rgb(15 17 21 / var(--tw-bg-opacity, 1));
   color: var(--text-primary);
   text-align: center;
   font-weight: 700;
@@ -162,8 +162,8 @@
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  background: rgba(244, 63, 94, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(220, 38, 38, 0.16);
   color: #fecdd3;
   cursor: pointer;
   display: inline-flex;
@@ -171,14 +171,19 @@
   justify-content: center;
 }
 
+.training-composer-delete-btn:hover {
+  color: #fee2e2;
+  border-color: rgba(252, 165, 165, 0.8);
+}
+
 .training-composer-add-btn {
   margin-top: 8px;
   width: 100%;
   min-height: 38px;
   border-radius: 10px;
-  border: 1px dashed rgba(96, 165, 250, 0.45);
-  background: rgba(59, 130, 246, 0.1);
-  color: #dbeafe;
+  border: 1px solid rgba(96, 113, 147, 0.44);
+  background: rgba(23, 32, 52, 0.75);
+  color: #c5d0e7;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -190,6 +195,12 @@
   cursor: pointer;
 }
 
+.training-composer-add-btn:hover {
+  color: #f3f6ff;
+  border-color: rgba(125, 151, 204, 0.8);
+  background: rgba(30, 41, 59, 0.72);
+}
+
 .training-composer-empty {
   border: 1px dashed rgba(93, 112, 146, 0.35);
   border-radius: 10px;
@@ -197,7 +208,7 @@
   color: var(--text-secondary);
   font-size: 13px;
   text-align: center;
-  background: rgba(15, 17, 21, 0.55);
+  background: rgba(15, 17, 21, 0.62);
 }
 
 .training-composer-footer {
@@ -232,6 +243,14 @@
 .training-composer-actions {
   display: inline-flex;
   gap: 8px;
+}
+
+.training-composer-close-btn,
+.training-composer-cancel-btn,
+.training-composer-save-btn {
+  min-height: 42px;
+  padding: 0 1.35rem;
+  border-radius: 12px;
 }
 
 @media (max-width: 1100px) {
