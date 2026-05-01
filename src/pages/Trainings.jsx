@@ -188,12 +188,35 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
     ? source.categorySelections
     : {}
 
-  const derivedSubcategories = Object.values(categorySelections)
-    .flatMap((value) => (Array.isArray(value) ? value : []))
-    .map((value) => String(value || '').trim())
+  const categoryNamesFromSelectionKeys = Object.keys(categorySelections)
+    .map((rawKey) => {
+      const safeKey = String(rawKey || '').trim()
+      if (!safeKey) return ''
+      return String(categoryNameById.get(safeKey) || safeKey).trim()
+    })
     .filter(Boolean)
 
-  const primaryCategory = String(source.categoryName || '').trim() || selectedCategoryNames[0] || ''
+  const derivedSubcategories = Object.values(categorySelections)
+    .flatMap((value) => (Array.isArray(value) ? value : []))
+    .map((value) => {
+      if (value && typeof value === 'object') {
+        return String(value?.name || value?.title || value?.label || value?.value || '').trim()
+      }
+      return String(value || '').trim()
+    })
+    .filter(Boolean)
+
+  const rawCategoryCandidates = [
+    String(source.categoryName || '').trim(),
+    String(source.mainCategory || '').trim(),
+    String(source.category || '').trim(),
+    ...selectedCategoryNames,
+    ...categoryNamesFromSelectionKeys
+  ].filter(Boolean)
+
+  const mergedCategories = [...new Set(rawCategoryCandidates)]
+
+  const primaryCategory = mergedCategories[0] || ''
   const primarySubcategory = String(source.subcategory || '').trim() || derivedSubcategories[0] || ''
 
   return normalizeExerciseMeta({
@@ -206,7 +229,7 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
     categoryName: primaryCategory,
     category: source.category,
     subcategory: primarySubcategory,
-    categories: selectedCategoryNames,
+    categories: mergedCategories,
     subcategories: derivedSubcategories,
     isSystem: source.isSystem
   })
@@ -307,7 +330,11 @@ function Trainings() {
             .filter(([id, name]) => id && name)
         )
 
-        const normalizedFromMyClub = (Array.isArray(myClubResponse?.exerciseDatabaseItems) ? myClubResponse.exerciseDatabaseItems : [])
+        const myClubItems = Array.isArray(myClubResponse?.exerciseDatabaseItems)
+          ? myClubResponse.exerciseDatabaseItems
+          : (Array.isArray(myClubResponse?.exerciseItems) ? myClubResponse.exerciseItems : [])
+
+        const normalizedFromMyClub = myClubItems
           .map((item) => mapMyClubExerciseToLibraryItem(item, categoryNameById))
           .filter((item) => item.id)
 
@@ -523,7 +550,9 @@ function Trainings() {
 
   const getFilteredExercisesForSection = useCallback((sectionId) => {
     const filters = getSectionExerciseFilters(sectionId)
-    if (!filters.category) return []
+    if (!filters.category) {
+      return availableExercises
+    }
 
     return availableExercises.filter((exercise) => {
       if (filters.category) {
@@ -1089,9 +1118,9 @@ function Trainings() {
                       </div>
 
                       <div className="training-exercise-picker-library">
-                        {!getSectionExerciseFilters(section.id).category ? (
+                        {!getSectionExerciseFilters(section.id).category && getFilteredExercisesForSection(section.id).length === 0 ? (
                           <div className="training-exercise-picker-empty">
-                            Vyber kategóriu a zobrazí sa zoznam cvičení.
+                            Nie sú dostupné žiadne cvičenia v knižnici klubu.
                           </div>
                         ) : null}
 
