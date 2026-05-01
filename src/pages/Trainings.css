@@ -253,31 +253,6 @@
   border-color: rgba(252, 165, 165, 0.8);
 }
 
-.training-composer-add-btn {
-  margin-top: 8px;
-  width: 100%;
-  min-height: 38px;
-  border-radius: 10px;
-  border: 1px solid rgba(96, 113, 147, 0.44);
-  background: rgba(23, 32, 52, 0.75);
-  color: #c5d0e7;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-
-.training-composer-add-btn:hover {
-  color: #f3f6ff;
-  border-color: rgba(125, 151, 204, 0.8);
-  background: rgba(30, 41, 59, 0.72);
-}
-
 .training-exercise-picker-panel {
   margin-top: 10px;
   padding: 10px;
