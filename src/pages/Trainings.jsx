@@ -405,22 +405,6 @@ function Trainings() {
     })
   }
 
-  const resetSectionExerciseFilters = (sectionId) => {
-    setExerciseFiltersBySection((prev) => ({
-      ...(prev || {}),
-      [sectionId]: {
-        category: '',
-        subcategory: '',
-        playerCount: '',
-        intensity: ''
-      }
-    }))
-    setSelectedExerciseIdBySection((prev) => ({
-      ...(prev || {}),
-      [sectionId]: ''
-    }))
-  }
-
   const getUniqueExerciseOptionValues = useCallback((key) => {
     const values = new Set()
     availableExercises.forEach((exercise) => {
@@ -942,13 +926,6 @@ function Trainings() {
                           </select>
                         </div>
 
-                        <button
-                          type="button"
-                          className="btn btn-secondary training-exercise-picker-reset-btn"
-                          onClick={() => resetSectionExerciseFilters(section.id)}
-                        >
-                          Reset filtra
-                        </button>
                       </div>
 
                       <div className="training-exercise-picker-actions">

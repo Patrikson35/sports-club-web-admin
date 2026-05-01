@@ -265,7 +265,7 @@
 
 .training-exercise-picker-filters {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -309,12 +309,6 @@
   border-color: #3b82f6;
   outline: none;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
-}
-
-.training-exercise-picker-reset-btn {
-  min-height: 44px;
-  border-radius: 10px;
-  font-weight: 700;
 }
 
 .training-exercise-picker-actions {
