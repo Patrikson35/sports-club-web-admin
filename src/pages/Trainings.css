@@ -1,8 +1,35 @@
+.training-open-btn {
+  background-color: #3b82f6 !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -4px rgba(59, 130, 246, 0.2);
+}
+
+.training-open-btn:hover:not(:disabled) {
+  transform: scale(1.01) !important;
+  filter: none !important;
+}
+
 .training-composer-shell {
   border: 1px solid rgba(93, 112, 146, 0.22);
   border-radius: 12px;
   background: rgb(24 26 32 / var(--tw-bg-opacity, 1));
   padding: 16px;
+  width: min(1180px, calc(100vw - 320px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.training-composer-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  left: 260px;
+  background: rgba(3, 7, 18, 0.68);
+  z-index: 1200;
+  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .training-composer-head {
@@ -281,5 +308,17 @@
   .training-composer-footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 1024px) {
+  .training-composer-modal-backdrop {
+    left: 0;
+    padding: 14px;
+  }
+
+  .training-composer-shell {
+    width: 100%;
+    max-height: calc(100vh - 28px);
   }
 }

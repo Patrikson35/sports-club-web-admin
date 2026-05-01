@@ -139,102 +139,104 @@ function Trainings() {
       </div>
 
       <div className="unified-toolbar">
-        <button className="btn" type="button" onClick={() => setIsComposerOpen(true)}>+ Naplánovať tréning</button>
+        <button className="btn training-open-btn" type="button" onClick={() => setIsComposerOpen(true)}>+ Naplánovať tréning</button>
       </div>
 
       {isComposerOpen ? (
-        <div className="training-composer-shell">
-          <div className="training-composer-head">
-            <div>
-              <h3>Poskladať tréningovú jednotku</h3>
-              <p>Vytvorte presný časový a obsahový plán tréningu.</p>
-            </div>
-            <button type="button" className="btn btn-secondary training-composer-close-btn" onClick={closeComposer}>Zavrieť</button>
-          </div>
-
-          <div className="training-composer-meta-grid">
-            <div className="training-composer-field">
-              <label>Dátum</label>
-              <input type="date" value={sessionMeta.date} onChange={(event) => updateSessionMeta('date', event.target.value)} />
-            </div>
-            <div className="training-composer-field">
-              <label>Čas začiatku</label>
-              <input type="time" value={sessionMeta.timeFrom} onChange={(event) => updateSessionMeta('timeFrom', event.target.value)} />
-            </div>
-            <div className="training-composer-field">
-              <label>Čas konca</label>
-              <input type="time" value={sessionMeta.timeTo} onChange={(event) => updateSessionMeta('timeTo', event.target.value)} />
-            </div>
-            <div className="training-composer-field">
-              <label>Lokalita</label>
-              <input type="text" value={sessionMeta.location} onChange={(event) => updateSessionMeta('location', event.target.value)} />
-            </div>
-          </div>
-
-          <div className="training-composer-sections">
-            {sections.map((section) => {
-              const sectionTotal = section.exercises.reduce((sum, exercise) => sum + (Number(exercise.minutes) || 0), 0)
-              return (
-                <section key={section.id} className="training-composer-section">
-                  <div className="training-composer-section-head">
-                    <div className="training-composer-section-title-wrap">
-                      <span className="training-composer-order-chip">{section.order}</span>
-                      <h4>{section.title}</h4>
-                    </div>
-                    <span className="training-composer-duration">Odhadovaný čas: {sectionTotal || section.estimatedMinutes} min</span>
-                  </div>
-
-                  {section.exercises.length === 0 ? (
-                    <div className="training-composer-empty">V tejto sekcii zatiaľ nemáte žiadne cvičenia.</div>
-                  ) : (
-                    <div className="training-composer-exercises">
-                      {section.exercises.map((exercise) => (
-                        <article key={exercise.id} className="training-composer-exercise-row">
-                          <div className="training-composer-exercise-main">
-                            <strong>{exercise.name}</strong>
-                            <p>{exercise.focus}</p>
-                          </div>
-                          <div className="training-composer-exercise-controls">
-                            <input
-                              type="number"
-                              min="1"
-                              value={exercise.minutes}
-                              onChange={(event) => updateExerciseMinutes(section.id, exercise.id, event.target.value)}
-                            />
-                            <span>min</span>
-                            <button type="button" className="training-composer-delete-btn" onClick={() => removeExercise(section.id, exercise.id)}>
-                              <span className="material-icons-round" aria-hidden="true">delete</span>
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-
-                  <button type="button" className="training-composer-add-btn" onClick={() => addExerciseToSection(section.id)}>
-                    <span className="material-icons-round" aria-hidden="true">database</span>
-                    <span>Pridať cvičenie z databázy</span>
-                  </button>
-                </section>
-              )
-            })}
-          </div>
-
-          <div className="training-composer-footer">
-            <div className="training-composer-summary">
+        <div className="training-composer-modal-backdrop" onClick={closeComposer}>
+          <div className="training-composer-shell" onClick={(event) => event.stopPropagation()}>
+            <div className="training-composer-head">
               <div>
-                <small>Celkové trvanie</small>
-                <strong>{totalComposerMinutes} min</strong>
+                <h3>Poskladať tréningovú jednotku</h3>
+                <p>Vytvorte presný časový a obsahový plán tréningu.</p>
               </div>
-              <div>
-                <small>Počet cvičení</small>
-                <strong>{totalComposerExercises}</strong>
+              <button type="button" className="btn btn-secondary training-composer-close-btn" onClick={closeComposer}>Zavrieť</button>
+            </div>
+
+            <div className="training-composer-meta-grid">
+              <div className="training-composer-field">
+                <label>Dátum</label>
+                <input type="date" value={sessionMeta.date} onChange={(event) => updateSessionMeta('date', event.target.value)} />
+              </div>
+              <div className="training-composer-field">
+                <label>Čas začiatku</label>
+                <input type="time" value={sessionMeta.timeFrom} onChange={(event) => updateSessionMeta('timeFrom', event.target.value)} />
+              </div>
+              <div className="training-composer-field">
+                <label>Čas konca</label>
+                <input type="time" value={sessionMeta.timeTo} onChange={(event) => updateSessionMeta('timeTo', event.target.value)} />
+              </div>
+              <div className="training-composer-field">
+                <label>Lokalita</label>
+                <input type="text" value={sessionMeta.location} onChange={(event) => updateSessionMeta('location', event.target.value)} />
               </div>
             </div>
 
-            <div className="training-composer-actions">
-              <button type="button" className="btn btn-secondary training-composer-cancel-btn" onClick={closeComposer}>Zrušiť</button>
-              <button type="button" className="btn training-composer-save-btn" onClick={saveComposer}>Uložiť tréning</button>
+            <div className="training-composer-sections">
+              {sections.map((section) => {
+                const sectionTotal = section.exercises.reduce((sum, exercise) => sum + (Number(exercise.minutes) || 0), 0)
+                return (
+                  <section key={section.id} className="training-composer-section">
+                    <div className="training-composer-section-head">
+                      <div className="training-composer-section-title-wrap">
+                        <span className="training-composer-order-chip">{section.order}</span>
+                        <h4>{section.title}</h4>
+                      </div>
+                      <span className="training-composer-duration">Odhadovaný čas: {sectionTotal || section.estimatedMinutes} min</span>
+                    </div>
+
+                    {section.exercises.length === 0 ? (
+                      <div className="training-composer-empty">V tejto sekcii zatiaľ nemáte žiadne cvičenia.</div>
+                    ) : (
+                      <div className="training-composer-exercises">
+                        {section.exercises.map((exercise) => (
+                          <article key={exercise.id} className="training-composer-exercise-row">
+                            <div className="training-composer-exercise-main">
+                              <strong>{exercise.name}</strong>
+                              <p>{exercise.focus}</p>
+                            </div>
+                            <div className="training-composer-exercise-controls">
+                              <input
+                                type="number"
+                                min="1"
+                                value={exercise.minutes}
+                                onChange={(event) => updateExerciseMinutes(section.id, exercise.id, event.target.value)}
+                              />
+                              <span>min</span>
+                              <button type="button" className="training-composer-delete-btn" onClick={() => removeExercise(section.id, exercise.id)}>
+                                <span className="material-icons-round" aria-hidden="true">delete</span>
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+
+                    <button type="button" className="training-composer-add-btn" onClick={() => addExerciseToSection(section.id)}>
+                      <span className="material-icons-round" aria-hidden="true">database</span>
+                      <span>Pridať cvičenie z databázy</span>
+                    </button>
+                  </section>
+                )
+              })}
+            </div>
+
+            <div className="training-composer-footer">
+              <div className="training-composer-summary">
+                <div>
+                  <small>Celkové trvanie</small>
+                  <strong>{totalComposerMinutes} min</strong>
+                </div>
+                <div>
+                  <small>Počet cvičení</small>
+                  <strong>{totalComposerExercises}</strong>
+                </div>
+              </div>
+
+              <div className="training-composer-actions">
+                <button type="button" className="btn btn-secondary training-composer-cancel-btn" onClick={closeComposer}>Zrušiť</button>
+                <button type="button" className="btn training-composer-save-btn" onClick={saveComposer}>Uložiť tréning</button>
+              </div>
             </div>
           </div>
         </div>
