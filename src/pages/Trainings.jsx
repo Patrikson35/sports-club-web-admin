@@ -131,6 +131,23 @@ const toMinutesFromHHmm = (value) => {
   return (Math.max(0, Math.min(23, hour)) * 60) + Math.max(0, Math.min(59, minute))
 }
 
+const normalizeExerciseMeta = (exercise) => {
+  const source = (exercise && typeof exercise === 'object') ? exercise : {}
+  const asText = (value) => String(value || '').trim()
+
+  return {
+    id: asText(source.id),
+    name: asText(source.name || source.title || source.exerciseName || 'Cvičenie'),
+    focus: asText(source.focus || source.description || source.goal || source.objective || ''),
+    minutes: Number(source.minutes || source.duration || source.defaultDuration || 10) || 10,
+    category: asText(source.category || source.exercise_category || source.mainCategory || source.type || ''),
+    subcategory: asText(source.subcategory || source.exercise_subcategory || source.skill || source.topic || ''),
+    playerCount: asText(source.playerCount || source.player_count || source.players_count || source.numberOfPlayers || source.players || ''),
+    intensity: asText(source.intensity || source.load || source.difficulty || source.level || ''),
+    isSystem: Boolean(source.isSystem)
+  }
+}
+
 const DEFAULT_COMPOSER_SECTIONS = [
   {
     id: 'warmup',
@@ -173,6 +190,10 @@ function Trainings() {
   const [isSavingComposer, setIsSavingComposer] = useState(false)
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false)
   const [isDateCalendarOpen, setIsDateCalendarOpen] = useState(false)
+  const [availableExercises, setAvailableExercises] = useState([])
+  const [openExercisePickerSectionId, setOpenExercisePickerSectionId] = useState('')
+  const [exerciseFiltersBySection, setExerciseFiltersBySection] = useState({})
+  const [selectedExerciseIdBySection, setSelectedExerciseIdBySection] = useState({})
   const [calendarMonthDate, setCalendarMonthDate] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -191,6 +212,26 @@ function Trainings() {
 
   useEffect(() => {
     loadTrainings()
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    api.getExercises()
+      .then((response) => {
+        if (!isMounted) return
+        const normalized = (Array.isArray(response?.exercises) ? response.exercises : [])
+          .map((item) => normalizeExerciseMeta(item))
+          .filter((item) => item.id)
+        setAvailableExercises(normalized)
+      })
+      .catch(() => {
+        if (isMounted) setAvailableExercises([])
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const loadTrainings = async () => {
@@ -328,6 +369,103 @@ function Trainings() {
             name: `Nové cvičenie ${nextIndex}`,
             focus: 'Doplňte zameranie cvičenia',
             minutes: 10
+          }
+        ]
+      }
+    }))
+  }
+
+  const getSectionExerciseFilters = useCallback((sectionId) => {
+    const source = exerciseFiltersBySection?.[sectionId]
+    if (source && typeof source === 'object') return source
+    return {
+      category: '',
+      subcategory: '',
+      playerCount: '',
+      intensity: ''
+    }
+  }, [exerciseFiltersBySection])
+
+  const updateSectionExerciseFilter = (sectionId, key, value) => {
+    const safeKey = String(key || '').trim()
+    if (!safeKey) return
+
+    setExerciseFiltersBySection((prev) => {
+      const current = (prev && typeof prev === 'object') ? prev : {}
+      const sectionFilters = current[sectionId] && typeof current[sectionId] === 'object'
+        ? current[sectionId]
+        : { category: '', subcategory: '', playerCount: '', intensity: '' }
+
+      return {
+        ...current,
+        [sectionId]: {
+          ...sectionFilters,
+          [safeKey]: String(value || '')
+        }
+      }
+    })
+  }
+
+  const resetSectionExerciseFilters = (sectionId) => {
+    setExerciseFiltersBySection((prev) => ({
+      ...(prev || {}),
+      [sectionId]: {
+        category: '',
+        subcategory: '',
+        playerCount: '',
+        intensity: ''
+      }
+    }))
+    setSelectedExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [sectionId]: ''
+    }))
+  }
+
+  const getUniqueExerciseOptionValues = useCallback((key) => {
+    const values = new Set()
+    availableExercises.forEach((exercise) => {
+      const value = String(exercise?.[key] || '').trim()
+      if (value) values.add(value)
+    })
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'sk'))
+  }, [availableExercises])
+
+  const getFilteredExercisesForSection = useCallback((sectionId) => {
+    const filters = getSectionExerciseFilters(sectionId)
+    return availableExercises.filter((exercise) => {
+      if (filters.category && String(exercise.category || '') !== filters.category) return false
+      if (filters.subcategory && String(exercise.subcategory || '') !== filters.subcategory) return false
+      if (filters.playerCount && String(exercise.playerCount || '') !== filters.playerCount) return false
+      if (filters.intensity && String(exercise.intensity || '') !== filters.intensity) return false
+      return true
+    })
+  }, [availableExercises, getSectionExerciseFilters])
+
+  const addSelectedExerciseFromLibrary = (sectionId) => {
+    const selectedExerciseId = String(selectedExerciseIdBySection?.[sectionId] || '').trim()
+    if (!selectedExerciseId) return
+
+    const selectedExercise = availableExercises.find((item) => String(item.id) === selectedExerciseId)
+    if (!selectedExercise) return
+
+    setSections((prev) => prev.map((section) => {
+      if (section.id !== sectionId) return section
+
+      const nextIndex = section.exercises.length + 1
+      const exerciseName = String(selectedExercise.name || '').trim() || `Cvičenie ${nextIndex}`
+      const exerciseFocus = String(selectedExercise.focus || '').trim() || 'Bez doplňujúceho popisu'
+      const exerciseMinutes = Number(selectedExercise.minutes) > 0 ? Number(selectedExercise.minutes) : 10
+
+      return {
+        ...section,
+        exercises: [
+          ...section.exercises,
+          {
+            id: `${sectionId}-library-${selectedExercise.id}-${Date.now()}`,
+            name: exerciseName,
+            focus: exerciseFocus,
+            minutes: exerciseMinutes
           }
         ]
       }
@@ -751,9 +889,117 @@ function Trainings() {
                       </div>
                     )}
 
-                    <button type="button" className="training-composer-add-btn" onClick={() => addExerciseToSection(section.id)}>
+                    {openExercisePickerSectionId === section.id ? (
+                      <div className="training-exercise-picker-panel">
+                        <div className="training-exercise-picker-filters">
+                          <div className="training-exercise-picker-field">
+                            <label>Kategória</label>
+                            <select
+                              value={getSectionExerciseFilters(section.id).category}
+                              onChange={(event) => updateSectionExerciseFilter(section.id, 'category', event.target.value)}
+                            >
+                              <option value="">Všetky</option>
+                              {getUniqueExerciseOptionValues('category').map((value) => (
+                                <option key={`exercise-category-${section.id}-${value}`} value={value}>{value}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="training-exercise-picker-field">
+                            <label>Podkategória</label>
+                            <select
+                              value={getSectionExerciseFilters(section.id).subcategory}
+                              onChange={(event) => updateSectionExerciseFilter(section.id, 'subcategory', event.target.value)}
+                            >
+                              <option value="">Všetky</option>
+                              {getUniqueExerciseOptionValues('subcategory').map((value) => (
+                                <option key={`exercise-subcategory-${section.id}-${value}`} value={value}>{value}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="training-exercise-picker-field">
+                            <label>Počet hráčov</label>
+                            <select
+                              value={getSectionExerciseFilters(section.id).playerCount}
+                              onChange={(event) => updateSectionExerciseFilter(section.id, 'playerCount', event.target.value)}
+                            >
+                              <option value="">Všetky</option>
+                              {getUniqueExerciseOptionValues('playerCount').map((value) => (
+                                <option key={`exercise-player-count-${section.id}-${value}`} value={value}>{value}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="training-exercise-picker-field">
+                            <label>Intenzita</label>
+                            <select
+                              value={getSectionExerciseFilters(section.id).intensity}
+                              onChange={(event) => updateSectionExerciseFilter(section.id, 'intensity', event.target.value)}
+                            >
+                              <option value="">Všetky</option>
+                              {getUniqueExerciseOptionValues('intensity').map((value) => (
+                                <option key={`exercise-intensity-${section.id}-${value}`} value={value}>{value}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn btn-secondary training-exercise-picker-reset-btn"
+                            onClick={() => resetSectionExerciseFilters(section.id)}
+                          >
+                            Reset filtra
+                          </button>
+                        </div>
+
+                        <div className="training-exercise-picker-actions">
+                          <select
+                            className="training-exercise-picker-select"
+                            value={String(selectedExerciseIdBySection?.[section.id] || '')}
+                            onChange={(event) => {
+                              const nextId = String(event.target.value || '')
+                              setSelectedExerciseIdBySection((prev) => ({
+                                ...(prev || {}),
+                                [section.id]: nextId
+                              }))
+                            }}
+                          >
+                            <option value="">Vyber cvičenie</option>
+                            {getFilteredExercisesForSection(section.id).map((exercise) => (
+                              <option key={`exercise-option-${section.id}-${exercise.id}`} value={exercise.id}>
+                                {exercise.name}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            type="button"
+                            className="btn training-exercise-picker-add-btn"
+                            onClick={() => addSelectedExerciseFromLibrary(section.id)}
+                            disabled={!String(selectedExerciseIdBySection?.[section.id] || '').trim()}
+                          >
+                            Pridať cvičenie
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn btn-secondary training-exercise-picker-manual-btn"
+                            onClick={() => addExerciseToSection(section.id)}
+                          >
+                            Pridať manuálne
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      className="training-composer-add-btn"
+                      onClick={() => setOpenExercisePickerSectionId((prev) => (prev === section.id ? '' : section.id))}
+                    >
                       <span className="material-icons-round" aria-hidden="true">database</span>
-                      <span>Pridať cvičenie z databázy</span>
+                      <span>{openExercisePickerSectionId === section.id ? 'Zavrieť výber cvičenia' : 'Pridať cvičenie z databázy'}</span>
                     </button>
                   </section>
                 )
