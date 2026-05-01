@@ -1339,20 +1339,32 @@ function Trainings() {
                         ) : null}
 
                         {getFilteredExercisesForSection(section.id).length > 0 ? (
-                          <div className="training-exercise-picker-list" role="listbox" aria-label="Zoznam cvičení">
+                          <div className="training-exercise-picker-cards" role="listbox" aria-label="Zoznam cvičení">
                             {getFilteredExercisesForSection(section.id).map((exercise) => {
                               const isActive = String(selectedExerciseIdBySection?.[section.id] || '') === String(exercise.id)
+                              const categorySummary = Array.isArray(exercise.categories) && exercise.categories.length > 0
+                                ? exercise.categories.join(', ')
+                                : String(exercise.category || '').trim()
+                              const subcategorySummary = Array.isArray(exercise.subcategories) && exercise.subcategories.length > 0
+                                ? exercise.subcategories.join(', ')
+                                : String(exercise.subcategory || '').trim()
                               return (
                                 <button
                                   key={`exercise-list-item-${section.id}-${exercise.id}`}
                                   type="button"
-                                  className={`training-exercise-picker-list-item ${isActive ? 'active' : ''}`}
+                                  className={`training-exercise-picker-card ${isActive ? 'active' : ''}`}
                                   onClick={() => selectExerciseCandidate(section.id, exercise.id)}
                                   role="option"
                                   aria-selected={isActive}
                                 >
-                                  <strong>{exercise.name}</strong>
-                                  <small>{exercise.focus || 'Bez doplňujúceho popisu'}</small>
+                                  <div className="training-exercise-picker-card-title">{exercise.name}</div>
+                                  {(categorySummary || subcategorySummary) ? (
+                                    <div className="training-exercise-picker-card-meta">
+                                      {categorySummary || 'Bez kategórie'}
+                                      {subcategorySummary ? ` | ${subcategorySummary}` : ''}
+                                    </div>
+                                  ) : null}
+                                  <p className="training-exercise-picker-card-description">{exercise.focus || 'Bez doplňujúceho popisu'}</p>
                                 </button>
                               )
                             })}

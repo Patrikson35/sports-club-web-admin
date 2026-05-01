@@ -334,40 +334,65 @@
   text-align: center;
 }
 
-.training-exercise-picker-list {
+.training-exercise-picker-cards {
   display: grid;
   gap: 8px;
-  max-height: 220px;
+  max-height: 420px;
   overflow-y: auto;
   padding-right: 2px;
 }
 
-.training-exercise-picker-list-item {
+.training-exercise-picker-card {
   width: 100%;
-  border: 1px solid rgba(93, 112, 146, 0.22);
-  border-radius: 10px;
-  background: rgba(15, 17, 21, 0.72);
-  color: var(--text-primary);
+  border: 1px solid rgba(52, 66, 96, 0.55);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(8, 15, 31, 0.96) 0%, rgba(7, 12, 25, 0.96) 100%);
+  color: #e6edf8;
   text-align: left;
-  padding: 10px;
+  padding: 14px 16px;
   cursor: pointer;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  transition: border-color 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
 }
 
-.training-exercise-picker-list-item strong {
-  font-size: 0.92rem;
+.training-exercise-picker-card:hover {
+  border-color: rgba(84, 116, 175, 0.85);
+  background: linear-gradient(180deg, rgba(10, 21, 44, 0.98) 0%, rgba(8, 16, 34, 0.98) 100%);
+  transform: translateY(-1px);
 }
 
-.training-exercise-picker-list-item small {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
+.training-exercise-picker-card-title {
+  color: #f2f6ff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
-.training-exercise-picker-list-item.active {
-  border-color: rgba(96, 165, 250, 0.9);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.35);
-  background: rgba(20, 31, 51, 0.82);
+.training-exercise-picker-card-meta {
+  color: #8ea0c2;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  font-style: italic;
+}
+
+.training-exercise-picker-card-description {
+  margin: 0;
+  color: #9aa7bd;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.training-exercise-picker-card.active {
+  border-color: rgba(96, 165, 250, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.32), 0 0 0 1px rgba(96, 165, 250, 0.16);
+  background: linear-gradient(180deg, rgba(18, 34, 65, 0.98) 0%, rgba(12, 24, 47, 0.98) 100%);
 }
 
 .training-composer-empty {
