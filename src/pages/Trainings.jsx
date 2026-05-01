@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '../api'
+import TimeClockPickerModal from '../components/TimeClockPickerModal'
 import './Trainings.css'
 
 const DEFAULT_COMPOSER_SECTIONS = [
@@ -36,15 +37,19 @@ function Trainings() {
   const [loading, setLoading] = useState(true)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [teamOptions, setTeamOptions] = useState([])
+  const [fieldOptions, setFieldOptions] = useState([])
   const [selectedTeamId, setSelectedTeamId] = useState('')
+  const [selectedFieldId, setSelectedFieldId] = useState('')
+  const [selectedFieldPartsCount, setSelectedFieldPartsCount] = useState('0')
+  const [selectedFieldParts, setSelectedFieldParts] = useState([])
   const [isSavingComposer, setIsSavingComposer] = useState(false)
+  const [isTimeClockOpen, setIsTimeClockOpen] = useState(false)
   const [composerError, setComposerError] = useState('')
   const [composerSuccess, setComposerSuccess] = useState('')
   const [sessionMeta, setSessionMeta] = useState({
     date: new Date().toISOString().slice(0, 10),
     timeFrom: '16:00',
-    timeTo: '17:30',
-    location: 'Hlavné ihrisko A'
+    location: ''
   })
   const [sections, setSections] = useState(DEFAULT_COMPOSER_SECTIONS)
 
@@ -86,6 +91,49 @@ function Trainings() {
       setTeamOptions([])
       setSelectedTeamId('')
       setComposerError('Nepodarilo sa načítať kategórie pre plánovanie tréningu.')
+    }
+  }
+
+  const loadFieldsForComposer = async () => {
+    try {
+      const response = await api.getClubFields()
+      const fields = Array.isArray(response?.fields)
+        ? response.fields
+            .map((field, index) => {
+              const id = String(field?.id ?? '').trim() || `fallback-${index + 1}`
+              const name = String(field?.name || '').trim() || `Ihrisko ${index + 1}`
+              const rawParts = Number(field?.partsTotal ?? field?.parts_total ?? 1)
+              const partsTotal = Number.isFinite(rawParts) && rawParts > 0 ? Math.floor(rawParts) : 1
+              return { id, name, partsTotal }
+            })
+            .filter((field) => field.id && field.name)
+        : []
+
+      setFieldOptions(fields)
+
+      if (fields.length > 0) {
+        const fieldExists = fields.some((field) => field.id === selectedFieldId)
+        const nextFieldId = fieldExists ? selectedFieldId : fields[0].id
+        const nextField = fields.find((field) => field.id === nextFieldId) || fields[0]
+        const currentCount = Number(selectedFieldPartsCount)
+        const safeCount = Number.isFinite(currentCount)
+          ? Math.max(0, Math.min(Math.floor(currentCount), nextField.partsTotal))
+          : 0
+
+        setSelectedFieldId(nextFieldId)
+        setSelectedFieldPartsCount(String(safeCount))
+        setSelectedFieldParts(Array.from({ length: safeCount }, (_, index) => index + 1))
+      } else {
+        setSelectedFieldId('')
+        setSelectedFieldPartsCount('0')
+        setSelectedFieldParts([])
+      }
+    } catch {
+      setFieldOptions([])
+      setSelectedFieldId('')
+      setSelectedFieldPartsCount('0')
+      setSelectedFieldParts([])
+      setComposerError('Nepodarilo sa načítať ihriská zo správy ihrísk.')
     }
   }
 
@@ -152,8 +200,70 @@ function Trainings() {
 
   const closeComposer = () => {
     setIsComposerOpen(false)
+    setIsTimeClockOpen(false)
     setComposerError('')
     setComposerSuccess('')
+  }
+
+  const openNativePicker = useCallback((event) => {
+    const input = event?.currentTarget
+    if (!input || typeof input.showPicker !== 'function') return
+
+    try {
+      input.showPicker()
+    } catch {
+      // Some browsers block showPicker without trusted user gesture.
+    }
+  }, [])
+
+  const selectedFieldMeta = useMemo(
+    () => fieldOptions.find((field) => field.id === selectedFieldId) || null,
+    [fieldOptions, selectedFieldId]
+  )
+
+  const fieldPartsOptions = useMemo(() => {
+    const total = selectedFieldMeta?.partsTotal || 1
+    return Array.from({ length: total + 1 }, (_, index) => String(index))
+  }, [selectedFieldMeta])
+
+  const handleFieldChange = (nextFieldId) => {
+    const safeFieldId = String(nextFieldId || '')
+    const nextField = fieldOptions.find((field) => field.id === safeFieldId)
+    const maxParts = nextField?.partsTotal || 1
+    const currentCount = Number(selectedFieldPartsCount)
+    const safeCount = Number.isFinite(currentCount)
+      ? Math.max(0, Math.min(Math.floor(currentCount), maxParts))
+      : 0
+
+    setSelectedFieldId(safeFieldId)
+    setSelectedFieldPartsCount(String(safeCount))
+    setSelectedFieldParts(Array.from({ length: safeCount }, (_, index) => index + 1))
+  }
+
+  const handleFieldPartsCountChange = (nextCount) => {
+    const maxParts = selectedFieldMeta?.partsTotal || 1
+    const parsed = Number(nextCount)
+    const safeCount = Number.isFinite(parsed)
+      ? Math.max(0, Math.min(Math.floor(parsed), maxParts))
+      : 0
+
+    setSelectedFieldPartsCount(String(safeCount))
+    setSelectedFieldParts(Array.from({ length: safeCount }, (_, index) => index + 1))
+  }
+
+  const resolveEndTime = (startTime, durationMinutes) => {
+    const match = String(startTime || '').match(/^(\d{1,2}):(\d{2})$/)
+    if (!match) return '17:30'
+
+    const startHour = Math.max(0, Math.min(23, Number(match[1]) || 0))
+    const startMinute = Math.max(0, Math.min(59, Number(match[2]) || 0))
+    const startTotal = (startHour * 60) + startMinute
+    const safeDuration = Math.max(30, Number(durationMinutes) || 90)
+    const endTotal = (startTotal + safeDuration) % (24 * 60)
+    const endHour = Math.floor(endTotal / 60)
+    const endMinute = endTotal % 60
+
+    return `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
   }
 
   const saveComposer = async () => {
@@ -175,24 +285,37 @@ function Trainings() {
       ? `Tréningová jednotka (${totalMinutes} min)`
       : 'Tréningová jednotka'
 
+    const resolvedLocation = selectedFieldMeta?.name || ''
+    const resolvedEndTime = resolveEndTime(sessionMeta.timeFrom, totalMinutes)
+
     const payload = {
       title,
       date: String(sessionMeta.date || '').trim(),
       start_time: String(sessionMeta.timeFrom || '').trim(),
-      end_time: String(sessionMeta.timeTo || '').trim(),
-      location: String(sessionMeta.location || '').trim(),
+      end_time: resolvedEndTime,
+      location: resolvedLocation,
       session_type: 'training',
       indicatorCode: 'TJ',
       recurrence_rule: JSON.stringify({
         indicatorCode: 'TJ',
         source: 'trainings-composer',
-        totalMinutes
+        totalMinutes,
+        fieldId: selectedFieldMeta?.id || '',
+        fieldName: resolvedLocation,
+        fieldParts: Number(selectedFieldPartsCount) || 0,
+        selectedFieldParts
       }),
       exercises: []
     }
 
-    if (!payload.date || !payload.start_time || !payload.end_time) {
-      setComposerError('Doplňte dátum a čas tréningu.')
+    if (!payload.date || !payload.start_time) {
+      setComposerError('Doplňte dátum a čas začiatku tréningu.')
+      setComposerSuccess('')
+      return
+    }
+
+    if (!selectedFieldMeta?.id) {
+      setComposerError('Vyberte ihrisko pre tréning.')
       setComposerSuccess('')
       return
     }
@@ -217,6 +340,7 @@ function Trainings() {
   useEffect(() => {
     if (!isComposerOpen) return
     loadTeamsForComposer()
+    loadFieldsForComposer()
   }, [isComposerOpen])
 
   if (loading) {
@@ -267,19 +391,40 @@ function Trainings() {
 
               <div className="training-composer-field">
                 <label>Dátum</label>
-                <input type="date" value={sessionMeta.date} onChange={(event) => updateSessionMeta('date', event.target.value)} />
+                <input
+                  type="date"
+                  value={sessionMeta.date}
+                  onClick={openNativePicker}
+                  onFocus={openNativePicker}
+                  onChange={(event) => updateSessionMeta('date', event.target.value)}
+                />
               </div>
               <div className="training-composer-field">
                 <label>Čas začiatku</label>
-                <input type="time" value={sessionMeta.timeFrom} onChange={(event) => updateSessionMeta('timeFrom', event.target.value)} />
+                <input
+                  type="time"
+                  value={sessionMeta.timeFrom}
+                  readOnly
+                  onClick={() => setIsTimeClockOpen(true)}
+                  onChange={(event) => updateSessionMeta('timeFrom', event.target.value)}
+                />
               </div>
               <div className="training-composer-field">
-                <label>Čas konca</label>
-                <input type="time" value={sessionMeta.timeTo} onChange={(event) => updateSessionMeta('timeTo', event.target.value)} />
+                <label>Ihrisko</label>
+                <select value={selectedFieldId} onChange={(event) => handleFieldChange(event.target.value)} disabled={fieldOptions.length === 0}>
+                  {fieldOptions.length === 0 ? <option value="">Žiadne ihrisko</option> : null}
+                  {fieldOptions.map((field) => (
+                    <option key={`composer-field-${field.id}`} value={field.id}>{field.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="training-composer-field">
-                <label>Lokalita</label>
-                <input type="text" value={sessionMeta.location} onChange={(event) => updateSessionMeta('location', event.target.value)} />
+                <label>Časti ihriska</label>
+                <select value={selectedFieldPartsCount} onChange={(event) => handleFieldPartsCountChange(event.target.value)} disabled={!selectedFieldMeta}>
+                  {fieldPartsOptions.map((part) => (
+                    <option key={`composer-field-part-${part}`} value={part}>{part}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -354,6 +499,14 @@ function Trainings() {
           </div>
         </div>
       ) : null}
+
+      <TimeClockPickerModal
+        isOpen={isTimeClockOpen}
+        value={sessionMeta.timeFrom}
+        onClose={() => setIsTimeClockOpen(false)}
+        onApply={(nextValue) => updateSessionMeta('timeFrom', nextValue)}
+        ariaLabel="Výber času začiatku"
+      />
 
       <div className="card">
         <table>
