@@ -133,7 +133,26 @@ const toMinutesFromHHmm = (value) => {
 
 const normalizeExerciseMeta = (exercise) => {
   const source = (exercise && typeof exercise === 'object') ? exercise : {}
-  const asText = (value) => String(value || '').trim()
+  const asText = (value) => {
+    if (Array.isArray(value)) {
+      const normalizedList = value
+        .map((item) => asText(item))
+        .filter(Boolean)
+      return normalizedList.join(', ')
+    }
+
+    if (value && typeof value === 'object') {
+      const fromObject = value.name
+        || value.title
+        || value.label
+        || value.value
+        || value.key
+        || ''
+      return asText(fromObject)
+    }
+
+    return String(value || '').trim()
+  }
 
   return {
     id: asText(source.id),
