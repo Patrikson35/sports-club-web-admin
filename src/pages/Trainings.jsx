@@ -602,6 +602,34 @@ function Trainings() {
     return Array.from(values).sort((a, b) => a.localeCompare(b, 'sk'))
   }, [availableExercises])
 
+  const getSubcategoryOptionsForSection = useCallback((sectionId) => {
+    const filters = getSectionExerciseFilters(sectionId)
+    const selectedCategory = String(filters.category || '').trim()
+    if (!selectedCategory) return []
+
+    const values = new Set()
+    availableExercises.forEach((exercise) => {
+      const matchesCategory = Array.isArray(exercise.categories) && exercise.categories.length > 0
+        ? exercise.categories.includes(selectedCategory)
+        : String(exercise.category || '') === selectedCategory
+
+      if (!matchesCategory) return
+
+      if (Array.isArray(exercise.subcategories) && exercise.subcategories.length > 0) {
+        exercise.subcategories.forEach((value) => {
+          const normalized = String(value || '').trim()
+          if (normalized) values.add(normalized)
+        })
+        return
+      }
+
+      const fallbackSubcategory = String(exercise.subcategory || '').trim()
+      if (fallbackSubcategory) values.add(fallbackSubcategory)
+    })
+
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'sk'))
+  }, [availableExercises, getSectionExerciseFilters])
+
   const getFilteredExercisesForSection = useCallback((sectionId) => {
     const filters = getSectionExerciseFilters(sectionId)
     if (!filters.category) {
@@ -1095,6 +1123,7 @@ function Trainings() {
                             value={getSectionExerciseFilters(section.id).category}
                             onChange={(event) => {
                               updateSectionExerciseFilter(section.id, 'category', event.target.value)
+                              updateSectionExerciseFilter(section.id, 'subcategory', '')
                               selectExerciseCandidate(section.id, '')
                             }}
                           >
@@ -1109,13 +1138,14 @@ function Trainings() {
                           <label>Podkategória</label>
                           <select
                             value={getSectionExerciseFilters(section.id).subcategory}
+                            disabled={!getSectionExerciseFilters(section.id).category}
                             onChange={(event) => {
                               updateSectionExerciseFilter(section.id, 'subcategory', event.target.value)
                               selectExerciseCandidate(section.id, '')
                             }}
                           >
                             <option value="">Všetky</option>
-                            {getUniqueExerciseOptionValues('subcategory').map((value) => (
+                            {getSubcategoryOptionsForSection(section.id).map((value) => (
                               <option key={`exercise-subcategory-${section.id}-${value}`} value={value}>{value}</option>
                             ))}
                           </select>
