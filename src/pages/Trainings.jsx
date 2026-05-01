@@ -235,6 +235,60 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
   })
 }
 
+const mergeExerciseLibraryItems = (baseList = [], clubList = []) => {
+  const merged = new Map()
+
+  const pushItem = (item, sourcePriority = 0) => {
+    const normalized = (item && typeof item === 'object') ? item : null
+    const id = String(normalized?.id || '').trim()
+    if (!id || !normalized) return
+
+    const existing = merged.get(id)
+    if (!existing) {
+      merged.set(id, { ...normalized, __priority: sourcePriority })
+      return
+    }
+
+    const existingPriority = Number(existing.__priority || 0)
+    const nextPriority = Number(sourcePriority || 0)
+    const preferNew = nextPriority >= existingPriority
+
+    const mergedCategories = [...new Set([
+      ...(Array.isArray(existing.categories) ? existing.categories : []),
+      ...(Array.isArray(normalized.categories) ? normalized.categories : []),
+      String(existing.category || '').trim(),
+      String(normalized.category || '').trim()
+    ].filter(Boolean))]
+
+    const mergedSubcategories = [...new Set([
+      ...(Array.isArray(existing.subcategories) ? existing.subcategories : []),
+      ...(Array.isArray(normalized.subcategories) ? normalized.subcategories : []),
+      String(existing.subcategory || '').trim(),
+      String(normalized.subcategory || '').trim()
+    ].filter(Boolean))]
+
+    const next = {
+      ...existing,
+      ...(preferNew ? normalized : {}),
+      categories: mergedCategories,
+      subcategories: mergedSubcategories,
+      category: mergedCategories[0] || String((preferNew ? normalized.category : existing.category) || '').trim(),
+      subcategory: mergedSubcategories[0] || String((preferNew ? normalized.subcategory : existing.subcategory) || '').trim(),
+      __priority: Math.max(existingPriority, nextPriority)
+    }
+
+    merged.set(id, next)
+  }
+
+  ;(Array.isArray(baseList) ? baseList : []).forEach((item) => pushItem(item, 1))
+  ;(Array.isArray(clubList) ? clubList : []).forEach((item) => pushItem(item, 2))
+
+  return Array.from(merged.values()).map((item) => {
+    const { __priority, ...clean } = item
+    return clean
+  })
+}
+
 const DEFAULT_COMPOSER_SECTIONS = [
   {
     id: 'warmup',
@@ -304,20 +358,17 @@ function Trainings() {
     let isMounted = true
 
     const loadExerciseLibrary = async () => {
+      let normalizedFromExercisesApi = []
+
       try {
         const response = await api.getExercises()
         if (!isMounted) return
 
-        const normalizedFromExercisesApi = (Array.isArray(response?.exercises) ? response.exercises : [])
+        normalizedFromExercisesApi = (Array.isArray(response?.exercises) ? response.exercises : [])
           .map((item) => normalizeExerciseMeta(item))
           .filter((item) => item.id)
-
-        if (normalizedFromExercisesApi.length > 0) {
-          setAvailableExercises(normalizedFromExercisesApi)
-          return
-        }
       } catch {
-        // Fallback below handles club-specific exercise storage.
+        normalizedFromExercisesApi = []
       }
 
       try {
@@ -338,9 +389,12 @@ function Trainings() {
           .map((item) => mapMyClubExerciseToLibraryItem(item, categoryNameById))
           .filter((item) => item.id)
 
-        setAvailableExercises(normalizedFromMyClub)
+        const merged = mergeExerciseLibraryItems(normalizedFromExercisesApi, normalizedFromMyClub)
+        setAvailableExercises(merged)
       } catch {
-        if (isMounted) setAvailableExercises([])
+        if (isMounted) {
+          setAvailableExercises(normalizedFromExercisesApi)
+        }
       }
     }
 
