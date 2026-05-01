@@ -131,6 +131,42 @@ const toMinutesFromHHmm = (value) => {
   return (Math.max(0, Math.min(23, hour)) * 60) + Math.max(0, Math.min(59, minute))
 }
 
+const toCleanText = (value) => {
+  if (Array.isArray(value)) {
+    const normalizedList = value
+      .map((item) => toCleanText(item))
+      .filter(Boolean)
+    return normalizedList.join(', ')
+  }
+
+  if (value && typeof value === 'object') {
+    return toCleanText(value.name || value.title || value.label || value.value || value.key || '')
+  }
+
+  return String(value || '').trim()
+}
+
+const addCategoryDefinitionsToMap = (categories, targetMap) => {
+  const source = Array.isArray(categories) ? categories : []
+  const map = targetMap instanceof Map ? targetMap : new Map()
+
+  source.forEach((category) => {
+    const categoryName = toCleanText(category?.name || category?.title || category?.label || category)
+    const normalizedCategoryKey = categoryName.toLowerCase()
+    if (!categoryName) return
+
+    if (!map.has(normalizedCategoryKey)) map.set(normalizedCategoryKey, new Set())
+    const subcategories = Array.isArray(category?.subcategories) ? category.subcategories : []
+
+    subcategories.forEach((subcategory) => {
+      const subcategoryName = toCleanText(subcategory?.name || subcategory?.title || subcategory?.label || subcategory)
+      if (subcategoryName) map.get(normalizedCategoryKey).add(subcategoryName)
+    })
+  })
+
+  return map
+}
+
 const normalizeExerciseMeta = (exercise) => {
   const source = (exercise && typeof exercise === 'object') ? exercise : {}
   const asText = (value) => {
@@ -332,6 +368,7 @@ function Trainings() {
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false)
   const [isDateCalendarOpen, setIsDateCalendarOpen] = useState(false)
   const [availableExercises, setAvailableExercises] = useState([])
+  const [categorySubcategoriesByName, setCategorySubcategoriesByName] = useState({})
   const [exerciseFiltersBySection, setExerciseFiltersBySection] = useState({})
   const [selectedExerciseIdBySection, setSelectedExerciseIdBySection] = useState({})
   const [calendarMonthDate, setCalendarMonthDate] = useState(() => {
@@ -358,7 +395,17 @@ function Trainings() {
     let isMounted = true
 
     const loadExerciseLibrary = async () => {
+      const categoryDefinitionMap = new Map()
       let normalizedFromExercisesApi = []
+
+      try {
+        const categoryResponse = await api.getExerciseCategories()
+        if (isMounted) {
+          addCategoryDefinitionsToMap(categoryResponse?.categories, categoryDefinitionMap)
+        }
+      } catch {
+        // Club views may not have this endpoint fully populated; fallback below still applies.
+      }
 
       try {
         const response = await api.getExercises()
@@ -374,6 +421,8 @@ function Trainings() {
       try {
         const myClubResponse = await api.getMyClub()
         if (!isMounted) return
+
+        addCategoryDefinitionsToMap(myClubResponse?.exerciseCategories, categoryDefinitionMap)
 
         const categoryNameById = new Map(
           (Array.isArray(myClubResponse?.exerciseCategories) ? myClubResponse.exerciseCategories : [])
@@ -391,9 +440,21 @@ function Trainings() {
 
         const merged = mergeExerciseLibraryItems(normalizedFromExercisesApi, normalizedFromMyClub)
         setAvailableExercises(merged)
+        setCategorySubcategoriesByName(Object.fromEntries(
+          Array.from(categoryDefinitionMap.entries()).map(([key, value]) => [
+            key,
+            Array.from(value).sort((a, b) => a.localeCompare(b, 'sk'))
+          ])
+        ))
       } catch {
         if (isMounted) {
           setAvailableExercises(normalizedFromExercisesApi)
+          setCategorySubcategoriesByName(Object.fromEntries(
+            Array.from(categoryDefinitionMap.entries()).map(([key, value]) => [
+              key,
+              Array.from(value).sort((a, b) => a.localeCompare(b, 'sk'))
+            ])
+          ))
         }
       }
     }
@@ -608,6 +669,15 @@ function Trainings() {
     if (!selectedCategory) return []
 
     const values = new Set()
+    const fromDefinitions = Array.isArray(categorySubcategoriesByName[selectedCategory.toLowerCase()])
+      ? categorySubcategoriesByName[selectedCategory.toLowerCase()]
+      : []
+
+    fromDefinitions.forEach((value) => {
+      const normalized = String(value || '').trim()
+      if (normalized) values.add(normalized)
+    })
+
     availableExercises.forEach((exercise) => {
       const matchesCategory = Array.isArray(exercise.categories) && exercise.categories.length > 0
         ? exercise.categories.includes(selectedCategory)
@@ -628,7 +698,7 @@ function Trainings() {
     })
 
     return Array.from(values).sort((a, b) => a.localeCompare(b, 'sk'))
-  }, [availableExercises, getSectionExerciseFilters])
+  }, [availableExercises, categorySubcategoriesByName, getSectionExerciseFilters])
 
   const getFilteredExercisesForSection = useCallback((sectionId) => {
     const filters = getSectionExerciseFilters(sectionId)
