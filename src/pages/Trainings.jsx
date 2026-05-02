@@ -300,6 +300,30 @@ const normalizeTrainingsList = (source) => {
     .filter((item) => item.id)
 }
 
+const mergeNormalizedTrainings = (primary = [], secondary = []) => {
+  const map = new Map()
+
+  ;(Array.isArray(primary) ? primary : []).forEach((item) => {
+    const id = String(item?.id || '').trim()
+    if (!id) return
+    map.set(id, item)
+  })
+
+  ;(Array.isArray(secondary) ? secondary : []).forEach((item) => {
+    const id = String(item?.id || '').trim()
+    if (!id || map.has(id)) return
+    map.set(id, item)
+  })
+
+  return Array.from(map.values()).sort((left, right) => {
+    const leftTime = new Date(String(left?.date || '')).getTime()
+    const rightTime = new Date(String(right?.date || '')).getTime()
+    const safeLeft = Number.isFinite(leftTime) ? leftTime : 0
+    const safeRight = Number.isFinite(rightTime) ? rightTime : 0
+    return safeRight - safeLeft
+  })
+}
+
 const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
   const source = (item && typeof item === 'object') ? item : {}
 
@@ -592,11 +616,8 @@ function Trainings() {
               : (Array.isArray(data) ? data : [])
 
       const normalized = normalizeTrainingsList(source)
-      if (normalized.length > 0) {
-        setTrainings(normalized)
-      } else {
-        setTrainings(normalizeTrainingsList(fallbackSource))
-      }
+      const fallbackNormalized = normalizeTrainingsList(fallbackSource)
+      setTrainings(mergeNormalizedTrainings(normalized, fallbackNormalized))
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
       setTrainings(normalizeTrainingsList(fallbackSource))
@@ -1225,6 +1246,18 @@ function Trainings() {
       ? `Tréningová jednotka (${totalMinutes} min)`
       : 'Tréningová jednotka'
 
+    const flattenedExercises = sections.flatMap((section) => (
+      Array.isArray(section?.exercises)
+        ? section.exercises.map((exercise, index) => ({
+            title: String(exercise?.name || '').trim() || `Cvičenie ${index + 1}`,
+            description: String(exercise?.focus || '').trim(),
+            duration: Math.max(1, Number(exercise?.minutes) || 0),
+            order_index: index + 1,
+            section: String(section?.id || '').trim() || 'section'
+          }))
+        : []
+    ))
+
     const resolvedLocation = selectedFieldMeta?.name || ''
     const resolvedEndTime = resolveEndTime(sessionMeta.timeFrom, totalMinutes)
 
@@ -1245,7 +1278,7 @@ function Trainings() {
         fieldParts: Number(selectedFieldPartsCount) || 0,
         selectedFieldParts
       }),
-      exercises: []
+      exercises: flattenedExercises
     }
 
     if (!payload.date || !payload.start_time) {
@@ -1265,10 +1298,11 @@ function Trainings() {
     setComposerSuccess('')
 
     try {
+      let savedResult = null
       if (linkedSessionId) {
-        await api.updateTeamTrainingSession(linkedSessionId, resolvedTeamId, payload)
+        savedResult = await api.updateTeamTrainingSession(linkedSessionId, resolvedTeamId, payload)
       } else {
-        await api.createTeamTrainingSession(resolvedTeamId, payload)
+        savedResult = await api.createTeamTrainingSession(resolvedTeamId, payload)
       }
 
       const refreshed = await api.getTeamTrainingSessions(resolvedTeamId)
@@ -1281,8 +1315,22 @@ function Trainings() {
             : Array.isArray(refreshed?.data)
               ? refreshed.data
               : (Array.isArray(refreshed) ? refreshed : [])
+
+        const savedCandidate = {
+          id: String(linkedSessionId || savedResult?.id || savedResult?.sessionId || '').trim(),
+          title,
+          date: payload.date,
+          location: resolvedLocation,
+          exerciseCount: flattenedExercises.length,
+          status: 'scheduled'
+        }
+
+        const fallbackForList = savedCandidate.id
+          ? [savedCandidate, ...refreshedSessions]
+          : refreshedSessions
+
       setCalendarSessions(refreshedSessions)
-        await loadTrainings(refreshedSessions)
+        await loadTrainings(fallbackForList)
       setComposerSuccess(linkedSessionId
         ? 'Tréning bol upravený a zmeny sa premietli do plánovača.'
         : 'Tréning bol uložený a priradený do plánovača aj dochádzky.')
