@@ -666,7 +666,8 @@ function Trainings() {
             id: `${sectionId}-${Date.now()}-${nextIndex}`,
             name: `Nové cvičenie ${nextIndex}`,
             focus: 'Doplňte zameranie cvičenia',
-            minutes: 10
+            minutes: 10,
+            previewImage: ''
           }
         ]
       }
@@ -841,6 +842,7 @@ function Trainings() {
       const exerciseName = String(selectedExercise.name || '').trim() || `Cvičenie ${nextIndex}`
       const exerciseFocus = String(selectedExercise.focus || '').trim() || 'Bez doplňujúceho popisu'
       const exerciseMinutes = Number(selectedExercise.minutes) > 0 ? Number(selectedExercise.minutes) : 10
+      const previewImage = getExercisePreviewImage(selectedExercise)
 
       return {
         ...section,
@@ -850,7 +852,8 @@ function Trainings() {
             id: `${sectionId}-library-${selectedExercise.id}-${Date.now()}`,
             name: exerciseName,
             focus: exerciseFocus,
-            minutes: exerciseMinutes
+            minutes: exerciseMinutes,
+            previewImage
           }
         ]
       }
@@ -1280,6 +1283,11 @@ function Trainings() {
                       <div className="training-composer-exercises">
                         {section.exercises.map((exercise) => (
                           <article key={exercise.id} className="training-composer-exercise-row">
+                            <div className="training-composer-exercise-preview">
+                              {String(exercise.previewImage || '').trim()
+                                ? <img src={exercise.previewImage} alt={`Náhľad ${exercise.name}`} className="training-composer-exercise-preview-image" />
+                                : <span className="training-composer-exercise-preview-fallback" aria-hidden="true">+</span>}
+                            </div>
                             <div className="training-composer-exercise-main">
                               <strong>{exercise.name}</strong>
                               <p>{exercise.focus}</p>
