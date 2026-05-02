@@ -298,6 +298,7 @@ const normalizeTrainingsList = (source) => {
       }
     })
     .filter((item) => item.id)
+    .filter((item) => Number(item.exerciseCount || 0) > 0)
 }
 
 const mergeNormalizedTrainings = (primary = [], secondary = []) => {
