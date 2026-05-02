@@ -384,12 +384,15 @@
 .training-composer-save-btn {
   min-height: 44px;
   height: 44px !important;
-  line-height: 44px !important;
+  line-height: 1 !important;
   padding: 0 1.35rem !important;
   border: none !important;
   background: #3b82f6 !important;
   color: #fff !important;
   box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -4px rgba(59, 130, 246, 0.2);
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .training-exercise-picker-add-btn:hover:not(:disabled),
@@ -612,6 +615,7 @@
 .training-composer-actions {
   display: inline-flex;
   gap: 8px;
+  align-items: center;
 }
 
 .training-composer-close-btn,
