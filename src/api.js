@@ -1510,6 +1510,57 @@ class APIClient {
     throw lastError || new Error('Endpoint not found');
   }
 
+  async getTeamTrainingSessionDetail(sessionId, teamId) {
+    if (USE_MOCK_DATA) {
+      return {
+        id: String(sessionId || ''),
+        name: 'Trening',
+        date: new Date().toISOString().slice(0, 10),
+        startTime: '16:00',
+        endTime: '17:30',
+        location: 'Ihrisko',
+        status: 'planned',
+        team: {
+          id: Number(teamId || 0) || 0,
+          name: 'Kategoria'
+        },
+        exercises: []
+      };
+    }
+
+    const safeSessionId = String(sessionId || '').trim();
+    if (!safeSessionId) {
+      throw new Error('sessionId is required');
+    }
+
+    const safeTeamId = String(teamId || '').trim();
+
+    const attempts = [
+      `/trainings/${safeSessionId}`,
+      `/v1/trainings/${safeSessionId}`,
+      ...(safeTeamId ? [`/teams/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
+      ...(safeTeamId ? [`/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
+      ...(safeTeamId ? [`/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
+      ...(safeTeamId ? [`/v1/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
+      `/training-sessions/${safeSessionId}`,
+      `/v1/training-sessions/${safeSessionId}`,
+    ];
+
+    let lastError = null;
+    for (const endpoint of attempts) {
+      try {
+        return await this.request(endpoint);
+      } catch (error) {
+        lastError = error;
+        if (!this.isEndpointNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Endpoint not found');
+  }
+
   // Matches
   async getMatches(params = {}) {
     if (USE_MOCK_DATA) {

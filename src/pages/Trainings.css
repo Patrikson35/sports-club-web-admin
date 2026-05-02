@@ -776,6 +776,30 @@
   font-size: 0.8rem;
 }
 
+.training-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.training-table-action-btn {
+  min-height: 34px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+}
+
+.training-table-action-btn-danger {
+  border-color: rgba(239, 68, 68, 0.55) !important;
+  color: #fecaca !important;
+}
+
+.training-table-action-btn-danger:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.9) !important;
+  color: #fee2e2 !important;
+}
+
 .training-date-calendar-legend-dot {
   width: 9px;
   height: 9px;

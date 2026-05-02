@@ -290,6 +290,7 @@ const normalizeTrainingsList = (source) => {
 
       return {
         id,
+        teamId: String(item?.teamId || item?.team_id || item?.team?.id || '').trim(),
         name: String(item?.name || item?.title || item?.sessionTitle || 'Tréning').trim(),
         date,
         location: String(item?.location || item?.fieldName || item?.field_name || '').trim(),
@@ -523,6 +524,7 @@ function Trainings() {
   const [sections, setSections] = useState(DEFAULT_COMPOSER_SECTIONS)
   const [draggedExercise, setDraggedExercise] = useState({ sectionId: '', exerciseId: '' })
   const [dragOverExerciseIdBySection, setDragOverExerciseIdBySection] = useState({})
+  const [rowActionLoadingId, setRowActionLoadingId] = useState('')
 
   useEffect(() => {
     loadTrainings()
@@ -1079,6 +1081,129 @@ function Trainings() {
     setLinkedSessionId('')
     setComposerError('')
     setComposerSuccess('')
+  }
+
+  const openTrainingDocument = (detail, { autoPrint = false } = {}) => {
+    const safeName = String(detail?.name || detail?.title || 'Tréning').trim() || 'Tréning'
+    const safeDate = String(detail?.date || '').trim()
+    const safeLocation = String(detail?.location || '').trim()
+    const exercises = Array.isArray(detail?.exercises) ? detail.exercises : []
+
+    const exercisesHtml = exercises.length > 0
+      ? exercises.map((exercise, index) => (
+          `<tr><td>${index + 1}</td><td>${String(exercise?.name || exercise?.title || '').trim()}</td><td>${String(exercise?.duration || exercise?.duration_minutes || '').trim()}</td><td>${String(exercise?.description || exercise?.notes || '').trim()}</td></tr>`
+        )).join('')
+      : '<tr><td colspan="4">Bez cvičení</td></tr>'
+
+    const popup = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=760')
+    if (!popup) return
+
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8" /><title>${safeName}</title><style>body{font-family:Arial,sans-serif;padding:24px}h1{margin:0 0 12px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}th{background:#f3f4f6} .meta{margin:0 0 8px;color:#334155}</style></head><body><h1>${safeName}</h1><p class="meta">Dátum: ${safeDate || '-'} | Miesto: ${safeLocation || '-'}</p><table><thead><tr><th>#</th><th>Cvičenie</th><th>Trvanie</th><th>Poznámka</th></tr></thead><tbody>${exercisesHtml}</tbody></table></body></html>`)
+    popup.document.close()
+
+    if (autoPrint) {
+      popup.focus()
+      popup.print()
+    }
+  }
+
+  const loadTrainingDetail = async (training) => {
+    const trainingId = String(training?.id || '').trim()
+    if (!trainingId) throw new Error('Missing training id')
+    return api.getTeamTrainingSessionDetail(trainingId, training?.teamId)
+  }
+
+  const handleViewTraining = async (training) => {
+    const safeId = String(training?.id || '').trim()
+    if (!safeId) return
+
+    try {
+      setRowActionLoadingId(`view-${safeId}`)
+      const detail = await loadTrainingDetail(training)
+      openTrainingDocument(detail, { autoPrint: false })
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setComposerError(message || 'Tréning sa nepodarilo zobraziť.')
+    } finally {
+      setRowActionLoadingId('')
+    }
+  }
+
+  const handleEditTraining = async (training) => {
+    const safeId = String(training?.id || '').trim()
+    if (!safeId) return
+
+    try {
+      setRowActionLoadingId(`edit-${safeId}`)
+      const detail = await loadTrainingDetail(training)
+
+      const detailExercises = Array.isArray(detail?.exercises) ? detail.exercises : []
+      const mappedExercises = detailExercises.map((exercise, index) => ({
+        id: `edit-${safeId}-${index + 1}`,
+        name: String(exercise?.name || exercise?.title || `Cvičenie ${index + 1}`).trim(),
+        focus: String(exercise?.description || exercise?.notes || '').trim(),
+        minutes: Math.max(1, Number(exercise?.duration || exercise?.duration_minutes || 10) || 10),
+        previewImage: ''
+      }))
+
+      setSections(DEFAULT_COMPOSER_SECTIONS.map((section) => (
+        section.id === 'main'
+          ? { ...section, exercises: mappedExercises }
+          : { ...section, exercises: [] }
+      )))
+
+      setSelectedTeamId(String(detail?.team?.id || training?.teamId || '').trim())
+      setSessionMeta((prev) => ({
+        ...prev,
+        date: String(detail?.date || prev.date || '').slice(0, 10),
+        timeFrom: String(detail?.startTime || detail?.start_time || prev.timeFrom || '16:00').slice(0, 5),
+        location: String(detail?.location || '').trim()
+      }))
+      setLinkedSessionId(safeId)
+      setComposerError('')
+      setComposerSuccess('')
+      setIsComposerOpen(true)
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setComposerError(message || 'Tréning sa nepodarilo načítať na editáciu.')
+    } finally {
+      setRowActionLoadingId('')
+    }
+  }
+
+  const handleDeleteTraining = async (training) => {
+    const safeId = String(training?.id || '').trim()
+    if (!safeId) return
+
+    const confirmed = window.confirm('Naozaj chcete odstrániť tento tréning?')
+    if (!confirmed) return
+
+    try {
+      setRowActionLoadingId(`delete-${safeId}`)
+      await api.deleteTeamTrainingSession(safeId, training?.teamId)
+      await loadTrainings()
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setComposerError(message || 'Tréning sa nepodarilo odstrániť.')
+    } finally {
+      setRowActionLoadingId('')
+    }
+  }
+
+  const handlePrintTraining = async (training) => {
+    const safeId = String(training?.id || '').trim()
+    if (!safeId) return
+
+    try {
+      setRowActionLoadingId(`print-${safeId}`)
+      const detail = await loadTrainingDetail(training)
+      openTrainingDocument(detail, { autoPrint: true })
+    } catch (error) {
+      const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
+      setComposerError(message || 'Tréning sa nepodarilo vytlačiť.')
+    } finally {
+      setRowActionLoadingId('')
+    }
   }
 
   const openDateCalendar = () => {
@@ -1873,9 +1998,20 @@ function Trainings() {
                     </span>
                   </td>
                   <td>
-                    <button className="btn btn-secondary">
-                      Detail
-                    </button>
+                    <div className="training-table-actions">
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleViewTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                        Zobraziť
+                      </button>
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleEditTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                        Editovať
+                      </button>
+                      <button type="button" className="btn btn-secondary training-table-action-btn training-table-action-btn-danger" onClick={() => handleDeleteTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                        Odstrániť
+                      </button>
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handlePrintTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                        Tlačiť
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
