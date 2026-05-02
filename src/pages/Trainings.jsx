@@ -402,19 +402,14 @@ const DEFAULT_COMPOSER_SECTIONS = [
     order: '01',
     title: 'Prípravná časť',
     estimatedMinutes: 20,
-    exercises: [
-      { id: 'warmup-1', name: 'Dynamický strečing a mobilizácia', focus: 'Kĺbová pohyblivosť, zahriatie', minutes: 10 },
-      { id: 'warmup-2', name: 'Koordinačný rebrík - level II', focus: 'Frekvencia, propriocepcia', minutes: 10 }
-    ]
+    exercises: []
   },
   {
     id: 'main',
     order: '02',
     title: 'Hlavná časť',
     estimatedMinutes: 55,
-    exercises: [
-      { id: 'main-1', name: 'Súbojová hra 3v3 s prechodom', focus: 'Prechodová fáza, zakončenie', minutes: 25 }
-    ]
+    exercises: []
   },
   {
     id: 'finish',
