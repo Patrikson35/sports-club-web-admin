@@ -322,6 +322,18 @@
   white-space: nowrap;
 }
 
+.training-exercise-picker-manual-btn {
+  border: 1px solid rgba(20, 184, 166, 0.55) !important;
+  background: rgba(15, 118, 110, 0.28) !important;
+  color: #ccfbf1 !important;
+}
+
+.training-exercise-picker-manual-btn:hover:not(:disabled) {
+  border-color: rgba(45, 212, 191, 0.9) !important;
+  background: rgba(15, 118, 110, 0.42) !important;
+  color: #f0fdfa !important;
+}
+
 .training-exercise-picker-add-btn,
 .training-composer-save-btn {
   min-height: 44px;
