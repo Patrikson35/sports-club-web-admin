@@ -1366,12 +1366,6 @@ function Trainings() {
                       </div>
 
                       <div className="training-exercise-picker-library">
-                        {!getSectionExerciseFilters(section.id).category ? (
-                          <div className="training-exercise-picker-empty">
-                            Pre zobrazenie kariet najprv vyber kategóriu.
-                          </div>
-                        ) : null}
-
                         {getSectionExerciseFilters(section.id).category && getFilteredExercisesForSection(section.id).length === 0 ? (
                           <div className="training-exercise-picker-empty">
                             V tejto kategórii nie sú dostupné cvičenia pre zvolený filter.
