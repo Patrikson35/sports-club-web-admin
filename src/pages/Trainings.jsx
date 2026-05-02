@@ -2000,16 +2000,20 @@ function Trainings() {
                   <td>
                     <div className="training-table-actions">
                       <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleViewTraining(training)} disabled={Boolean(rowActionLoadingId)}>
-                        Zobraziť
+                        <span className="material-icons-round training-table-action-icon" aria-hidden="true">visibility</span>
+                        <span>Zobraziť</span>
                       </button>
                       <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleEditTraining(training)} disabled={Boolean(rowActionLoadingId)}>
-                        Editovať
+                        <span className="material-icons-round training-table-action-icon" aria-hidden="true">edit</span>
+                        <span>Editovať</span>
                       </button>
                       <button type="button" className="btn btn-secondary training-table-action-btn training-table-action-btn-danger" onClick={() => handleDeleteTraining(training)} disabled={Boolean(rowActionLoadingId)}>
-                        Odstrániť
+                        <span className="material-icons-round training-table-action-icon" aria-hidden="true">delete</span>
+                        <span>Odstrániť</span>
                       </button>
                       <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handlePrintTraining(training)} disabled={Boolean(rowActionLoadingId)}>
-                        Tlačiť
+                        <span className="material-icons-round training-table-action-icon" aria-hidden="true">print</span>
+                        <span>Tlačiť</span>
                       </button>
                     </div>
                   </td>
