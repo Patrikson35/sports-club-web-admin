@@ -1051,7 +1051,8 @@ function Trainings() {
             name: exerciseName,
             focus: exerciseFocus,
             minutes: exerciseMinutes,
-            previewImage
+            previewImage,
+            sourceExerciseId: String(selectedExercise.id || '').trim()
           }
         ]
       }
@@ -1374,13 +1375,26 @@ function Trainings() {
 
     const flattenedExercises = sections.flatMap((section) => (
       Array.isArray(section?.exercises)
-        ? section.exercises.map((exercise, index) => ({
-            title: String(exercise?.name || '').trim() || `Cvičenie ${index + 1}`,
-            description: String(exercise?.focus || '').trim(),
-            duration: Math.max(1, Number(exercise?.minutes) || 0),
-            order_index: index + 1,
-            section: String(section?.id || '').trim() || 'section'
-          }))
+        ? section.exercises
+            .map((exercise, index) => {
+              const rawExerciseId = String(exercise?.sourceExerciseId || exercise?.exerciseId || '').trim()
+              if (!rawExerciseId) return null
+
+              const parsedExerciseId = Number(rawExerciseId)
+              const normalizedExerciseId = Number.isFinite(parsedExerciseId)
+                ? parsedExerciseId
+                : rawExerciseId
+
+              return {
+                exerciseId: normalizedExerciseId,
+                title: String(exercise?.name || '').trim() || `Cvičenie ${index + 1}`,
+                description: String(exercise?.focus || '').trim(),
+                duration: Math.max(1, Number(exercise?.minutes) || 0),
+                order_index: index + 1,
+                section: String(section?.id || '').trim() || 'section'
+              }
+            })
+            .filter(Boolean)
         : []
     ))
 
@@ -1999,21 +2013,17 @@ function Trainings() {
                   </td>
                   <td>
                     <div className="training-table-actions">
-                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleViewTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleViewTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Zobraziť" title="Zobraziť">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">visibility</span>
-                        <span>Zobraziť</span>
                       </button>
-                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleEditTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleEditTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Editovať" title="Editovať">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">edit</span>
-                        <span>Editovať</span>
                       </button>
-                      <button type="button" className="btn btn-secondary training-table-action-btn training-table-action-btn-danger" onClick={() => handleDeleteTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                      <button type="button" className="btn btn-secondary training-table-action-btn training-table-action-btn-danger" onClick={() => handleDeleteTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Odstrániť" title="Odstrániť">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">delete</span>
-                        <span>Odstrániť</span>
                       </button>
-                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handlePrintTraining(training)} disabled={Boolean(rowActionLoadingId)}>
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handlePrintTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Tlačiť" title="Tlačiť">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">print</span>
-                        <span>Tlačiť</span>
                       </button>
                     </div>
                   </td>
