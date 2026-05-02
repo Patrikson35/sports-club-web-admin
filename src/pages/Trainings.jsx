@@ -855,6 +855,22 @@ function Trainings() {
         ]
       }
     }))
+
+    // Reset picker in this section so every next add starts from a fresh selection.
+    setExerciseFiltersBySection((prev) => ({
+      ...(prev || {}),
+      [sectionId]: {
+        category: '',
+        subcategory: '',
+        playerCount: '',
+        intensity: ''
+      }
+    }))
+
+    setSelectedExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [sectionId]: ''
+    }))
   }
 
   const closeComposer = () => {
