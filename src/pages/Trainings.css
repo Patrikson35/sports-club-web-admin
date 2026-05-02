@@ -12,12 +12,13 @@
 
 .training-composer-shell {
   border: 1px solid rgba(93, 112, 146, 0.22);
-  border-radius: 12px;
+  border-radius: 0;
   background: rgb(24 26 32 / var(--tw-bg-opacity, 1));
   padding: 16px;
   width: 100%;
+  height: 100%;
   max-width: none;
-  max-height: calc(100vh - 48px);
+  max-height: none;
   overflow: auto;
 }
 
@@ -27,10 +28,10 @@
   left: 260px;
   background: rgba(3, 7, 18, 0.68);
   z-index: 1200;
-  padding: 24px;
+  padding: 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
 .training-composer-head {
@@ -320,6 +321,28 @@
   white-space: nowrap;
 }
 
+.training-exercise-picker-add-btn,
+.training-composer-save-btn {
+  min-height: 44px;
+  border: none !important;
+  background: #3b82f6 !important;
+  color: #fff !important;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -4px rgba(59, 130, 246, 0.2);
+}
+
+.training-exercise-picker-add-btn:hover:not(:disabled),
+.training-composer-save-btn:hover:not(:disabled) {
+  filter: brightness(1.06) !important;
+  transform: translateY(-1px);
+}
+
+.training-exercise-picker-add-btn:disabled,
+.training-composer-save-btn:disabled {
+  background: #5a6478 !important;
+  color: #e2e8f0 !important;
+  box-shadow: none;
+}
+
 .training-exercise-picker-library {
   display: grid;
   gap: 8px;
@@ -530,7 +553,7 @@
 .training-composer-close-btn,
 .training-composer-cancel-btn,
 .training-composer-save-btn {
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 1.35rem;
   border-radius: 12px;
 }
@@ -765,11 +788,12 @@
 @media (max-width: 1024px) {
   .training-composer-modal-backdrop {
     left: 0;
-    padding: 14px;
+    padding: 0;
   }
 
   .training-composer-shell {
     width: 100%;
-    max-height: calc(100vh - 28px);
+    height: 100%;
+    max-height: none;
   }
 }
