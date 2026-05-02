@@ -618,8 +618,13 @@
 .training-composer-cancel-btn,
 .training-composer-save-btn {
   min-height: 44px;
+  height: 44px;
   padding: 0 1.35rem;
   border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .training-date-calendar-overlay {

@@ -256,6 +256,50 @@ const normalizeExerciseMeta = (exercise) => {
   }
 }
 
+const normalizeTrainingsList = (source) => {
+  const parsed = Array.isArray(source) ? source : []
+
+  return parsed
+    .map((item, index) => {
+      const dateValue = item?.date
+        || item?.training_date
+        || item?.scheduled_date
+        || item?.session_date
+        || item?.event_date
+        || item?.startAt
+        || item?.start_at
+
+      const dateText = String(dateValue || '').trim()
+      const date = dateText ? dateText : new Date().toISOString()
+
+      const rawExercises = Array.isArray(item?.exercises)
+        ? item.exercises
+        : Array.isArray(item?.items)
+          ? item.items
+          : []
+
+      const parsedExerciseCount = Number(item?.exerciseCount ?? item?.exercise_count ?? item?.exercises_count)
+      const exerciseCount = Number.isFinite(parsedExerciseCount)
+        ? Math.max(0, parsedExerciseCount)
+        : rawExercises.length
+
+      const statusValue = String(item?.status || '').trim().toLowerCase()
+      const isCompleted = statusValue === 'completed' || item?.isCompleted === true
+
+      const id = String(item?.id || item?.sessionId || item?.session_id || `${date}-${index + 1}`).trim()
+
+      return {
+        id,
+        name: String(item?.name || item?.title || item?.sessionTitle || 'Tréning').trim(),
+        date,
+        location: String(item?.location || item?.fieldName || item?.field_name || '').trim(),
+        exerciseCount,
+        status: isCompleted ? 'completed' : 'scheduled'
+      }
+    })
+    .filter((item) => item.id)
+}
+
 const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
   const source = (item && typeof item === 'object') ? item : {}
 
@@ -534,12 +578,28 @@ function Trainings() {
     }
   }, [])
 
-  const loadTrainings = async () => {
+  const loadTrainings = async (fallbackSource = []) => {
     try {
       const data = await api.getTrainings()
-      setTrainings(Array.isArray(data?.trainings) ? data.trainings : [])
+      const source = Array.isArray(data?.trainings)
+        ? data.trainings
+        : Array.isArray(data?.sessions)
+          ? data.sessions
+          : Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data?.data)
+              ? data.data
+              : (Array.isArray(data) ? data : [])
+
+      const normalized = normalizeTrainingsList(source)
+      if (normalized.length > 0) {
+        setTrainings(normalized)
+      } else {
+        setTrainings(normalizeTrainingsList(fallbackSource))
+      }
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
+      setTrainings(normalizeTrainingsList(fallbackSource))
     } finally {
       setLoading(false)
     }
@@ -1211,7 +1271,6 @@ function Trainings() {
         await api.createTeamTrainingSession(resolvedTeamId, payload)
       }
 
-      await loadTrainings()
       const refreshed = await api.getTeamTrainingSessions(resolvedTeamId)
       const refreshedSessions = Array.isArray(refreshed?.sessions)
         ? refreshed.sessions
@@ -1223,6 +1282,7 @@ function Trainings() {
               ? refreshed.data
               : (Array.isArray(refreshed) ? refreshed : [])
       setCalendarSessions(refreshedSessions)
+        await loadTrainings(refreshedSessions)
       setComposerSuccess(linkedSessionId
         ? 'Tréning bol upravený a zmeny sa premietli do plánovača.'
         : 'Tréning bol uložený a priradený do plánovača aj dochádzky.')
