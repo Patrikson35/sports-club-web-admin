@@ -324,6 +324,9 @@
 .training-exercise-picker-add-btn,
 .training-composer-save-btn {
   min-height: 44px;
+  height: 44px !important;
+  line-height: 44px !important;
+  padding: 0 1.35rem !important;
   border: none !important;
   background: #3b82f6 !important;
   color: #fff !important;
@@ -338,9 +341,11 @@
 
 .training-exercise-picker-add-btn:disabled,
 .training-composer-save-btn:disabled {
-  background: #5a6478 !important;
-  color: #e2e8f0 !important;
-  box-shadow: none;
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  opacity: 0.72;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.16), 0 4px 6px -4px rgba(59, 130, 246, 0.16);
+  cursor: not-allowed;
 }
 
 .training-exercise-picker-library {
