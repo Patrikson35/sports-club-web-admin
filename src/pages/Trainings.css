@@ -336,63 +336,151 @@
 
 .training-exercise-picker-cards {
   display: grid;
-  gap: 8px;
-  max-height: 420px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  max-height: 520px;
   overflow-y: auto;
   padding-right: 2px;
 }
 
 .training-exercise-picker-card {
   width: 100%;
-  border: 1px solid rgba(52, 66, 96, 0.55);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(8, 15, 31, 0.96) 0%, rgba(7, 12, 25, 0.96) 100%);
+  border: 1px solid rgba(42, 61, 97, 0.62);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(8, 14, 30, 0.97) 0%, rgba(6, 10, 22, 0.98) 100%);
   color: #e6edf8;
   text-align: left;
-  padding: 14px 16px;
+  padding: 12px;
   cursor: pointer;
   display: grid;
-  gap: 6px;
+  gap: 8px;
   transition: border-color 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
 }
 
 .training-exercise-picker-card:hover {
-  border-color: rgba(84, 116, 175, 0.85);
-  background: linear-gradient(180deg, rgba(10, 21, 44, 0.98) 0%, rgba(8, 16, 34, 0.98) 100%);
+  border-color: rgba(99, 132, 196, 0.9);
+  background: linear-gradient(180deg, rgba(10, 20, 43, 0.99) 0%, rgba(8, 15, 33, 0.99) 100%);
   transform: translateY(-1px);
+}
+
+.training-exercise-picker-card-media {
+  width: 100%;
+  height: 118px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(52, 66, 96, 0.62);
+  background: rgba(9, 15, 31, 0.88);
+}
+
+.training-exercise-picker-card-media-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.training-exercise-picker-card-media-fallback {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8294b4;
+}
+
+.training-exercise-picker-card-media-fallback svg {
+  width: 34px;
+  height: 34px;
+  display: block;
+}
+
+.training-exercise-picker-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .training-exercise-picker-card-title {
   color: #f2f6ff;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
-  line-height: 1.2;
-  text-transform: uppercase;
+  line-height: 1.24;
   letter-spacing: 0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.45em;
 }
 
-.training-exercise-picker-card-meta {
+.training-exercise-picker-card-favorite {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6f86ab;
+}
+
+.training-exercise-picker-card-favorite svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.training-exercise-picker-card-note {
   color: #8ea0c2;
-  font-size: 0.72rem;
-  line-height: 1.35;
+  font-size: 0.73rem;
+  line-height: 1.32;
   font-style: italic;
 }
 
 .training-exercise-picker-card-description {
   margin: 0;
   color: #9aa7bd;
-  font-size: 0.74rem;
-  line-height: 1.3;
+  font-size: 0.76rem;
+  line-height: 1.38;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: 3.8em;
+}
+
+.training-exercise-picker-card-rating {
+  margin-top: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.training-exercise-picker-card-rating small {
+  color: #bfd1ef;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.training-exercise-picker-card-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.training-exercise-picker-card-star {
+  color: #6f86ab;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.training-exercise-picker-card-star.active {
+  color: #facc15;
 }
 
 .training-exercise-picker-card.active {
-  border-color: rgba(96, 165, 250, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.32), 0 0 0 1px rgba(96, 165, 250, 0.16);
-  background: linear-gradient(180deg, rgba(18, 34, 65, 0.98) 0%, rgba(12, 24, 47, 0.98) 100%);
+  border-color: rgba(112, 162, 245, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(112, 162, 245, 0.3), 0 0 0 1px rgba(112, 162, 245, 0.18);
+  background: linear-gradient(180deg, rgba(16, 31, 60, 0.99) 0%, rgba(11, 22, 45, 0.99) 100%);
 }
 
 .training-composer-empty {
@@ -609,6 +697,10 @@
   .training-exercise-picker-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .training-exercise-picker-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -624,6 +716,10 @@
   }
 
   .training-composer-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .training-exercise-picker-cards {
     grid-template-columns: 1fr;
   }
 

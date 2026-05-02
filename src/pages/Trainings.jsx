@@ -12,6 +12,7 @@ const METRIC_COLORS = {
   CUP: '#ec4899'
 }
 const METRIC_PRIORITY = ['TJ', 'PZ', 'MZ', 'CUP']
+const MEDIA_API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '')
 
 const pad2 = (value) => String(value).padStart(2, '0')
 
@@ -153,6 +154,31 @@ const toLookupKey = (value) => String(value || '')
   .replace(/[\u0300-\u036f]/g, '')
   .replace(/\s+/g, ' ')
 
+const resolveMediaUrl = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) {
+    return raw
+  }
+  if (raw.startsWith('/')) {
+    return `${MEDIA_API_ORIGIN}${raw}`
+  }
+  return `${MEDIA_API_ORIGIN}/${raw}`
+}
+
+const getYoutubeThumbnailUrl = (youtubeVideoId) => {
+  const id = String(youtubeVideoId || '').trim()
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : ''
+}
+
+const getExercisePreviewImage = (item) => {
+  const uploadedImage = resolveMediaUrl(item?.imageUrl || item?.image || item?.thumbnail)
+  if (uploadedImage) return uploadedImage
+
+  const youtubeVideoId = String(item?.youtube?.videoId || item?.youtubeVideoId || '').trim()
+  return getYoutubeThumbnailUrl(youtubeVideoId)
+}
+
 const addCategoryDefinitionsToMap = (categories, targetMap) => {
   const source = Array.isArray(categories) ? categories : []
   const map = targetMap instanceof Map ? targetMap : new Map()
@@ -215,6 +241,17 @@ const normalizeExerciseMeta = (exercise) => {
       : {},
     playerCount: asText(source.playerCount || source.player_count || source.players_count || source.numberOfPlayers || source.players || ''),
     intensity: asText(source.intensity || source.load || source.difficulty || source.level || ''),
+    rating: Number.parseInt(String(source.rating || 0), 10) || 0,
+    imageUrl: resolveMediaUrl(source.imageUrl || source.image || source.thumbnail || ''),
+    youtube: source?.youtube && typeof source.youtube === 'object'
+      ? {
+          url: asText(source.youtube.url || ''),
+          videoId: asText(source.youtube.videoId || source.youtube.id || '')
+        }
+      : {
+          url: asText(source.youtubeUrl || ''),
+          videoId: asText(source.youtubeVideoId || '')
+        },
     isSystem: Boolean(source.isSystem)
   }
 }
@@ -291,6 +328,9 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
     description: source.description,
     duration: source.duration,
     intensity: source.intensity,
+    rating: source.rating,
+    imageUrl: source.imageUrl,
+    youtube: source.youtube,
     players: Array.isArray(source.playersCount) ? source.playersCount : source.playerCount,
     categoryName: primaryCategory,
     category: source.category,
@@ -1342,12 +1382,16 @@ function Trainings() {
                           <div className="training-exercise-picker-cards" role="listbox" aria-label="Zoznam cvičení">
                             {getFilteredExercisesForSection(section.id).map((exercise) => {
                               const isActive = String(selectedExerciseIdBySection?.[section.id] || '') === String(exercise.id)
+                              const previewImage = getExercisePreviewImage(exercise)
+                              const rating = Math.max(0, Math.min(5, Number.parseInt(String(exercise.rating || 0), 10) || 0))
                               const categorySummary = Array.isArray(exercise.categories) && exercise.categories.length > 0
                                 ? exercise.categories.join(', ')
                                 : String(exercise.category || '').trim()
                               const subcategorySummary = Array.isArray(exercise.subcategories) && exercise.subcategories.length > 0
                                 ? exercise.subcategories.join(', ')
                                 : String(exercise.subcategory || '').trim()
+
+                              const libraryLabel = exercise.isSystem ? 'Verejná knižnica' : 'Klubová knižnica'
                               return (
                                 <button
                                   key={`exercise-list-item-${section.id}-${exercise.id}`}
@@ -1357,14 +1401,44 @@ function Trainings() {
                                   role="option"
                                   aria-selected={isActive}
                                 >
-                                  <div className="training-exercise-picker-card-title">{exercise.name}</div>
+                                  <div className="training-exercise-picker-card-media">
+                                    {previewImage ? (
+                                      <img src={previewImage} alt={`Náhľad cvičenia ${exercise.name}`} className="training-exercise-picker-card-media-image" />
+                                    ) : (
+                                      <div className="training-exercise-picker-card-media-fallback" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" focusable="false">
+                                          <path d="M5 5h14v14H5V5Zm2 2v8.5l3.2-3.2a1 1 0 0 1 1.4 0l2.3 2.3 2.1-2.1a1 1 0 0 1 1.4 0L19 14.1V7H7Zm2.4 2.1a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8Z" fill="currentColor" />
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="training-exercise-picker-card-head">
+                                    <div className="training-exercise-picker-card-title">{exercise.name}</div>
+                                    <span className="training-exercise-picker-card-favorite" aria-hidden="true">
+                                      <svg viewBox="0 0 24 24" focusable="false">
+                                        <path d="M12 21.35 10.55 20C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A6.02 6.02 0 0 1 16.5 3C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.5L12 21.35Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                                      </svg>
+                                    </span>
+                                  </div>
+
+                                  <div className="training-exercise-picker-card-note">{libraryLabel}</div>
                                   {(categorySummary || subcategorySummary) ? (
-                                    <div className="training-exercise-picker-card-meta">
+                                    <div className="training-exercise-picker-card-note">
                                       {categorySummary || 'Bez kategórie'}
                                       {subcategorySummary ? ` | ${subcategorySummary}` : ''}
                                     </div>
                                   ) : null}
                                   <p className="training-exercise-picker-card-description">{exercise.focus || 'Bez doplňujúceho popisu'}</p>
+
+                                  <div className="training-exercise-picker-card-rating" aria-label="Úroveň cvičenia">
+                                    <small>Úroveň cvičenia</small>
+                                    <div className="training-exercise-picker-card-stars" role="img" aria-label={`Hodnotenie ${rating} z 5`}>
+                                      {[1, 2, 3, 4, 5].map((starValue) => (
+                                        <span key={`training-card-star-${section.id}-${exercise.id}-${starValue}`} className={`training-exercise-picker-card-star ${starValue <= rating ? 'active' : ''}`} aria-hidden="true">☆</span>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </button>
                               )
                             })}
