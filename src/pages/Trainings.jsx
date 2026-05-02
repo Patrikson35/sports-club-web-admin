@@ -1260,9 +1260,7 @@ function Trainings() {
                       <span className="training-composer-duration">Odhadovaný čas: {sectionTotal || section.estimatedMinutes} min</span>
                     </div>
 
-                    {section.exercises.length === 0 ? (
-                      <div className="training-composer-empty">V tejto sekcii zatiaľ nemáte žiadne cvičenia.</div>
-                    ) : (
+                    {section.exercises.length > 0 ? (
                       <div className="training-composer-exercises">
                         {section.exercises.map((exercise) => (
                           <article key={exercise.id} className="training-composer-exercise-row">
@@ -1287,7 +1285,7 @@ function Trainings() {
                           </article>
                         ))}
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="training-exercise-picker-panel">
                       <div className="training-exercise-picker-toolbar">
