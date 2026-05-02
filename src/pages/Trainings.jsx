@@ -302,6 +302,15 @@ const normalizeTrainingsList = (source) => {
     .filter((item) => Number(item.exerciseCount || 0) > 0)
 }
 
+const resolveSchoolSeasonKey = (dateValue) => {
+  const parsed = new Date(String(dateValue || ''))
+  if (Number.isNaN(parsed.getTime())) return ''
+  const year = parsed.getFullYear()
+  const month = parsed.getMonth() + 1
+  const seasonStartYear = month >= 7 ? year : year - 1
+  return `${seasonStartYear}/${seasonStartYear + 1}`
+}
+
 const mergeNormalizedTrainings = (primary = [], secondary = []) => {
   const map = new Map()
 
@@ -525,6 +534,9 @@ function Trainings() {
   const [draggedExercise, setDraggedExercise] = useState({ sectionId: '', exerciseId: '' })
   const [dragOverExerciseIdBySection, setDragOverExerciseIdBySection] = useState({})
   const [rowActionLoadingId, setRowActionLoadingId] = useState('')
+  const [linkedSessionName, setLinkedSessionName] = useState('')
+  const [viewTrainingDetail, setViewTrainingDetail] = useState(null)
+  const [editConfirmDialog, setEditConfirmDialog] = useState({ open: false, training: null })
 
   useEffect(() => {
     loadTrainings()
@@ -1082,6 +1094,7 @@ function Trainings() {
     setLinkedSessionId('')
     setComposerError('')
     setComposerSuccess('')
+    setLinkedSessionName('')
   }
 
   const openTrainingDocument = (detail, { autoPrint = false } = {}) => {
@@ -1121,13 +1134,21 @@ function Trainings() {
     try {
       setRowActionLoadingId(`view-${safeId}`)
       const detail = await loadTrainingDetail(training)
-      openTrainingDocument(detail, { autoPrint: false })
+      setViewTrainingDetail(detail)
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
       setComposerError(message || 'Tréning sa nepodarilo zobraziť.')
     } finally {
       setRowActionLoadingId('')
     }
+  }
+
+  const openEditConfirm = (training) => {
+    setEditConfirmDialog({ open: true, training })
+  }
+
+  const closeEditConfirm = () => {
+    setEditConfirmDialog({ open: false, training: null })
   }
 
   const handleEditTraining = async (training) => {
@@ -1161,6 +1182,7 @@ function Trainings() {
         location: String(detail?.location || '').trim()
       }))
       setLinkedSessionId(safeId)
+      setLinkedSessionName(String(detail?.name || detail?.title || '').trim())
       setComposerError('')
       setComposerSuccess('')
       setIsComposerOpen(true)
@@ -1169,6 +1191,7 @@ function Trainings() {
       setComposerError(message || 'Tréning sa nepodarilo načítať na editáciu.')
     } finally {
       setRowActionLoadingId('')
+      closeEditConfirm()
     }
   }
 
@@ -1369,9 +1392,29 @@ function Trainings() {
       return sum + sectionMinutes
     }, 0)
 
-    const title = totalMinutes > 0
-      ? `Tréningová jednotka (${totalMinutes} min)`
-      : 'Tréningová jednotka'
+    const trainingDateForSeason = String(sessionMeta.date || '').trim()
+    const currentSeasonKey = resolveSchoolSeasonKey(trainingDateForSeason)
+
+    const nextTJNumber = (() => {
+      const relevant = (Array.isArray(trainings) ? trainings : []).filter((training) => (
+        resolveSchoolSeasonKey(training?.date) === currentSeasonKey
+      ))
+
+      const maxValue = relevant.reduce((acc, training) => {
+        const name = String(training?.name || '').trim()
+        const match = name.match(/^TJ\s*(\d+)$/i)
+        if (!match) return acc
+        const parsed = Number(match[1])
+        return Number.isFinite(parsed) ? Math.max(acc, parsed) : acc
+      }, 0)
+
+      return maxValue + 1
+    })()
+
+    const generatedTitle = `TJ${nextTJNumber}`
+    const title = linkedSessionId
+      ? (String(linkedSessionName || '').trim() || generatedTitle)
+      : generatedTitle
 
     const flattenedExercises = sections.flatMap((section) => (
       Array.isArray(section?.exercises)
@@ -1980,6 +2023,56 @@ function Trainings() {
         </p>
       ) : null}
 
+      {viewTrainingDetail ? (
+        <div className="training-detail-modal-overlay" role="dialog" aria-modal="true" aria-label="Detail tréningu" onClick={() => setViewTrainingDetail(null)}>
+          <div className="training-detail-modal-card" onClick={(event) => event.stopPropagation()}>
+            <h3>{String(viewTrainingDetail?.name || viewTrainingDetail?.title || 'Detail tréningu')}</h3>
+            <p className="unified-muted" style={{ marginTop: 4 }}>
+              Dátum: {String(viewTrainingDetail?.date || '').trim() ? new Date(String(viewTrainingDetail.date)).toLocaleDateString('cs-CZ') : '-'} | Miesto: {String(viewTrainingDetail?.location || '').trim() || '-'}
+            </p>
+
+            <div className="training-detail-modal-list">
+              {(Array.isArray(viewTrainingDetail?.exercises) ? viewTrainingDetail.exercises : []).length === 0 ? (
+                <p className="unified-muted" style={{ margin: 0 }}>Tento tréning nemá žiadne cvičenia.</p>
+              ) : (
+                (Array.isArray(viewTrainingDetail?.exercises) ? viewTrainingDetail.exercises : []).map((exercise, index) => (
+                  <div key={`training-view-exercise-${index + 1}`} className="training-detail-modal-item">
+                    <strong>{index + 1}. {String(exercise?.name || exercise?.title || 'Cvičenie').trim()}</strong>
+                    <p>{String(exercise?.description || exercise?.notes || '').trim() || 'Bez popisu.'}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="training-detail-modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setViewTrainingDetail(null)}>Zavrieť</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editConfirmDialog.open ? (
+        <div className="training-edit-confirm-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie editácie" onClick={closeEditConfirm}>
+          <div className="training-edit-confirm-card" onClick={(event) => event.stopPropagation()}>
+            <h3>Potvrdiť editáciu tréningu</h3>
+            <p className="unified-muted" style={{ marginTop: 6 }}>
+              Chcete otvoriť tréning na úpravu v plánovači tréningu?
+            </p>
+            <div className="training-edit-confirm-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeEditConfirm}>Zrušiť</button>
+              <button
+                type="button"
+                className="btn training-composer-save-btn"
+                onClick={() => handleEditTraining(editConfirmDialog.training)}
+                disabled={Boolean(rowActionLoadingId)}
+              >
+                Potvrdiť
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="card">
         <table>
           <thead>
@@ -2016,7 +2109,7 @@ function Trainings() {
                       <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleViewTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Zobraziť" title="Zobraziť">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">visibility</span>
                       </button>
-                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleEditTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Editovať" title="Editovať">
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => openEditConfirm(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Editovať" title="Editovať">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">edit</span>
                       </button>
                       <button type="button" className="btn btn-secondary training-table-action-btn training-table-action-btn-danger" onClick={() => handleDeleteTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Odstrániť" title="Odstrániť">

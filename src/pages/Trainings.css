@@ -812,6 +812,66 @@
   color: #fee2e2 !important;
 }
 
+.training-detail-modal-overlay,
+.training-edit-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.72);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.training-detail-modal-card,
+.training-edit-confirm-card {
+  width: min(760px, 94vw);
+  max-height: 88vh;
+  overflow: auto;
+  border: 1px solid rgba(93, 112, 146, 0.35);
+  border-radius: 14px;
+  background: rgba(15, 19, 28, 0.98);
+  padding: 16px;
+}
+
+.training-detail-modal-card h3,
+.training-edit-confirm-card h3 {
+  margin: 0;
+  color: #f8fafc;
+}
+
+.training-detail-modal-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.training-detail-modal-item {
+  border: 1px solid rgba(93, 112, 146, 0.25);
+  border-radius: 10px;
+  background: rgba(10, 14, 23, 0.72);
+  padding: 10px;
+}
+
+.training-detail-modal-item strong {
+  color: #e2e8f0;
+}
+
+.training-detail-modal-item p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 0.86rem;
+}
+
+.training-detail-modal-actions,
+.training-edit-confirm-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .training-date-calendar-legend-dot {
   width: 9px;
   height: 9px;
