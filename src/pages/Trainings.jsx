@@ -1366,9 +1366,9 @@ function Trainings() {
                       </div>
 
                       <div className="training-exercise-picker-library">
-                        {!getSectionExerciseFilters(section.id).category && getFilteredExercisesForSection(section.id).length === 0 ? (
+                        {!getSectionExerciseFilters(section.id).category ? (
                           <div className="training-exercise-picker-empty">
-                            Nie sú dostupné žiadne cvičenia v knižnici klubu.
+                            Pre zobrazenie kariet najprv vyber kategóriu.
                           </div>
                         ) : null}
 
@@ -1378,7 +1378,7 @@ function Trainings() {
                           </div>
                         ) : null}
 
-                        {getFilteredExercisesForSection(section.id).length > 0 ? (
+                        {getSectionExerciseFilters(section.id).category && getFilteredExercisesForSection(section.id).length > 0 ? (
                           <div className="training-exercise-picker-cards" role="listbox" aria-label="Zoznam cvičení">
                             {getFilteredExercisesForSection(section.id).map((exercise) => {
                               const isActive = String(selectedExerciseIdBySection?.[section.id] || '') === String(exercise.id)
