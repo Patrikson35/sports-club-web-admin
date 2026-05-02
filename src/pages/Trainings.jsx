@@ -452,6 +452,8 @@ function Trainings() {
     location: ''
   })
   const [sections, setSections] = useState(DEFAULT_COMPOSER_SECTIONS)
+  const [draggedExercise, setDraggedExercise] = useState({ sectionId: '', exerciseId: '' })
+  const [dragOverExerciseIdBySection, setDragOverExerciseIdBySection] = useState({})
 
   useEffect(() => {
     loadTrainings()
@@ -651,6 +653,118 @@ function Trainings() {
         ...section,
         exercises: section.exercises.filter((exercise) => exercise.id !== exerciseId)
       }
+    }))
+  }
+
+  const moveExerciseWithinSection = (sectionId, sourceExerciseId, targetExerciseId) => {
+    const safeSectionId = String(sectionId || '').trim()
+    const safeSourceId = String(sourceExerciseId || '').trim()
+    const safeTargetId = String(targetExerciseId || '').trim()
+    if (!safeSectionId || !safeSourceId || !safeTargetId || safeSourceId === safeTargetId) return
+
+    setSections((prev) => prev.map((section) => {
+      if (section.id !== safeSectionId) return section
+
+      const sourceIndex = section.exercises.findIndex((exercise) => String(exercise.id) === safeSourceId)
+      const targetIndex = section.exercises.findIndex((exercise) => String(exercise.id) === safeTargetId)
+      if (sourceIndex < 0 || targetIndex < 0) return section
+
+      const nextExercises = [...section.exercises]
+      const [movedExercise] = nextExercises.splice(sourceIndex, 1)
+      nextExercises.splice(targetIndex, 0, movedExercise)
+
+      return {
+        ...section,
+        exercises: nextExercises
+      }
+    }))
+  }
+
+  const moveExerciseToSectionEnd = (sectionId, sourceExerciseId) => {
+    const safeSectionId = String(sectionId || '').trim()
+    const safeSourceId = String(sourceExerciseId || '').trim()
+    if (!safeSectionId || !safeSourceId) return
+
+    setSections((prev) => prev.map((section) => {
+      if (section.id !== safeSectionId) return section
+
+      const sourceIndex = section.exercises.findIndex((exercise) => String(exercise.id) === safeSourceId)
+      if (sourceIndex < 0 || sourceIndex === section.exercises.length - 1) return section
+
+      const nextExercises = [...section.exercises]
+      const [movedExercise] = nextExercises.splice(sourceIndex, 1)
+      nextExercises.push(movedExercise)
+
+      return {
+        ...section,
+        exercises: nextExercises
+      }
+    }))
+  }
+
+  const handleExerciseDragStart = (sectionId, exerciseId, event) => {
+    const safeSectionId = String(sectionId || '').trim()
+    const safeExerciseId = String(exerciseId || '').trim()
+    if (!safeSectionId || !safeExerciseId) return
+
+    if (event?.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('text/plain', `${safeSectionId}:${safeExerciseId}`)
+    }
+
+    setDraggedExercise({ sectionId: safeSectionId, exerciseId: safeExerciseId })
+  }
+
+  const handleExerciseDragOver = (sectionId, exerciseId, event) => {
+    const safeSectionId = String(sectionId || '').trim()
+    const safeExerciseId = String(exerciseId || '').trim()
+    if (!safeSectionId || !safeExerciseId) return
+    if (draggedExercise.sectionId !== safeSectionId || draggedExercise.exerciseId === safeExerciseId) return
+
+    event.preventDefault()
+    if (event?.dataTransfer) event.dataTransfer.dropEffect = 'move'
+
+    setDragOverExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [safeSectionId]: safeExerciseId
+    }))
+  }
+
+  const handleExerciseDrop = (sectionId, targetExerciseId, event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const safeSectionId = String(sectionId || '').trim()
+    const safeTargetId = String(targetExerciseId || '').trim()
+    if (!safeSectionId || !safeTargetId) return
+
+    if (draggedExercise.sectionId === safeSectionId && draggedExercise.exerciseId && draggedExercise.exerciseId !== safeTargetId) {
+      moveExerciseWithinSection(safeSectionId, draggedExercise.exerciseId, safeTargetId)
+    }
+
+    setDraggedExercise({ sectionId: '', exerciseId: '' })
+    setDragOverExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [safeSectionId]: ''
+    }))
+  }
+
+  const handleExerciseDropToEnd = (sectionId, event) => {
+    if (draggedExercise.sectionId !== sectionId || !draggedExercise.exerciseId) return
+    event.preventDefault()
+    moveExerciseToSectionEnd(sectionId, draggedExercise.exerciseId)
+    setDraggedExercise({ sectionId: '', exerciseId: '' })
+    setDragOverExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [sectionId]: ''
+    }))
+  }
+
+  const handleExerciseDragEnd = (sectionId) => {
+    setDraggedExercise({ sectionId: '', exerciseId: '' })
+    setDragOverExerciseIdBySection((prev) => ({
+      ...(prev || {}),
+      [sectionId]: ''
     }))
   }
 
@@ -1280,9 +1394,26 @@ function Trainings() {
                     </div>
 
                     {section.exercises.length > 0 ? (
-                      <div className="training-composer-exercises">
+                      <div
+                        className="training-composer-exercises"
+                        onDragOver={(event) => {
+                          if (draggedExercise.sectionId === section.id) {
+                            event.preventDefault()
+                            if (event?.dataTransfer) event.dataTransfer.dropEffect = 'move'
+                          }
+                        }}
+                        onDrop={(event) => handleExerciseDropToEnd(section.id, event)}
+                      >
                         {section.exercises.map((exercise) => (
-                          <article key={exercise.id} className="training-composer-exercise-row">
+                          <article
+                            key={exercise.id}
+                            className={`training-composer-exercise-row${draggedExercise.exerciseId === exercise.id ? ' dragging' : ''}${dragOverExerciseIdBySection?.[section.id] === exercise.id ? ' drop-target' : ''}`}
+                            draggable
+                            onDragStart={(event) => handleExerciseDragStart(section.id, exercise.id, event)}
+                            onDragOver={(event) => handleExerciseDragOver(section.id, exercise.id, event)}
+                            onDrop={(event) => handleExerciseDrop(section.id, exercise.id, event)}
+                            onDragEnd={() => handleExerciseDragEnd(section.id)}
+                          >
                             <div className="training-composer-exercise-preview">
                               {String(exercise.previewImage || '').trim()
                                 ? <img src={exercise.previewImage} alt={`Náhľad ${exercise.name}`} className="training-composer-exercise-preview-image" />
