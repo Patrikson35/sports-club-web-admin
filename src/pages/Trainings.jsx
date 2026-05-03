@@ -279,9 +279,25 @@ const normalizeTrainingsList = (source) => {
           : []
 
       const parsedExerciseCount = Number(item?.exerciseCount ?? item?.exercise_count ?? item?.exercises_count)
-      const exerciseCount = Number.isFinite(parsedExerciseCount)
+      const exerciseCountKnown = Number.isFinite(parsedExerciseCount)
+      const exerciseCount = exerciseCountKnown
         ? Math.max(0, parsedExerciseCount)
         : rawExercises.length
+
+      const recurrenceMetaRaw = String(item?.recurrence_rule || item?.recurrenceRule || '').trim()
+      const recurrenceMetaText = recurrenceMetaRaw.toUpperCase()
+      const sessionType = String(item?.sessionType || item?.session_type || item?.type || '').trim().toLowerCase()
+      const indicatorCode = String(item?.indicatorCode || item?.indicator_code || '').trim().toUpperCase()
+      const normalizedName = String(item?.name || item?.title || item?.sessionTitle || '').trim()
+
+      const hasExerciseEvidence = exerciseCount > 0 || rawExercises.length > 0
+      const looksLikeComposerTraining = (
+        indicatorCode === 'TJ'
+        || /^TJ\s*\d+$/i.test(normalizedName)
+        || recurrenceMetaText.includes('"INDICATORCODE":"TJ"')
+        || recurrenceMetaText.includes('"SOURCE":"TRAININGS-COMPOSER"')
+        || sessionType === 'training'
+      )
 
       const statusValue = String(item?.status || '').trim().toLowerCase()
       const isCompleted = statusValue === 'completed' || item?.isCompleted === true
@@ -291,15 +307,17 @@ const normalizeTrainingsList = (source) => {
       return {
         id,
         teamId: String(item?.teamId || item?.team_id || item?.team?.id || '').trim(),
-        name: String(item?.name || item?.title || item?.sessionTitle || 'Tréning').trim(),
+        name: normalizedName || 'Tréning',
         date,
         location: String(item?.location || item?.fieldName || item?.field_name || '').trim(),
         exerciseCount,
+        exerciseCountKnown,
+        isExerciseTraining: hasExerciseEvidence || looksLikeComposerTraining,
         status: isCompleted ? 'completed' : 'scheduled'
       }
     })
     .filter((item) => item.id)
-    .filter((item) => Number(item.exerciseCount || 0) > 0)
+    .filter((item) => item.isExerciseTraining)
 }
 
 const resolveSchoolSeasonKey = (dateValue) => {
@@ -2079,7 +2097,7 @@ function Trainings() {
                   <td><strong>{training.name}</strong></td>
                   <td>{new Date(training.date).toLocaleDateString('cs-CZ')}</td>
                   <td>{training.location}</td>
-                  <td>{training.exerciseCount} cvičení</td>
+                  <td>{training.exerciseCountKnown ? `${training.exerciseCount} cvičení` : 'cvičenia v detaile'}</td>
                   <td>
                     <span className={`unified-badge ${training.status === 'completed' ? 'success' : 'warning'}`}>
                       {training.status === 'completed' ? 'Dokončeno' : 'Naplánováno'}
