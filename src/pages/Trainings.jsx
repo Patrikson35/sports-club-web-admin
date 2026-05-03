@@ -536,7 +536,6 @@ function Trainings() {
   const [rowActionLoadingId, setRowActionLoadingId] = useState('')
   const [linkedSessionName, setLinkedSessionName] = useState('')
   const [viewTrainingDetail, setViewTrainingDetail] = useState(null)
-  const [editConfirmDialog, setEditConfirmDialog] = useState({ open: false, training: null })
 
   useEffect(() => {
     loadTrainings()
@@ -1143,14 +1142,6 @@ function Trainings() {
     }
   }
 
-  const openEditConfirm = (training) => {
-    setEditConfirmDialog({ open: true, training })
-  }
-
-  const closeEditConfirm = () => {
-    setEditConfirmDialog({ open: false, training: null })
-  }
-
   const handleEditTraining = async (training) => {
     const safeId = String(training?.id || '').trim()
     if (!safeId) return
@@ -1191,7 +1182,6 @@ function Trainings() {
       setComposerError(message || 'Tréning sa nepodarilo načítať na editáciu.')
     } finally {
       setRowActionLoadingId('')
-      closeEditConfirm()
     }
   }
 
@@ -2051,28 +2041,6 @@ function Trainings() {
         </div>
       ) : null}
 
-      {editConfirmDialog.open ? (
-        <div className="training-edit-confirm-overlay" role="dialog" aria-modal="true" aria-label="Potvrdenie editácie" onClick={closeEditConfirm}>
-          <div className="training-edit-confirm-card" onClick={(event) => event.stopPropagation()}>
-            <h3>Potvrdiť editáciu tréningu</h3>
-            <p className="unified-muted" style={{ marginTop: 6 }}>
-              Chcete otvoriť tréning na úpravu v plánovači tréningu?
-            </p>
-            <div className="training-edit-confirm-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeEditConfirm}>Zrušiť</button>
-              <button
-                type="button"
-                className="btn training-composer-save-btn"
-                onClick={() => handleEditTraining(editConfirmDialog.training)}
-                disabled={Boolean(rowActionLoadingId)}
-              >
-                Potvrdiť
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <div className="card">
         <table>
           <thead>
@@ -2109,7 +2077,7 @@ function Trainings() {
                       <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleViewTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Zobraziť" title="Zobraziť">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">visibility</span>
                       </button>
-                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => openEditConfirm(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Editovať" title="Editovať">
+                      <button type="button" className="btn btn-secondary training-table-action-btn" onClick={() => handleEditTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Editovať" title="Editovať">
                         <span className="material-icons-round training-table-action-icon" aria-hidden="true">edit</span>
                       </button>
                       <button type="button" className="btn btn-secondary training-table-action-btn training-table-action-btn-danger" onClick={() => handleDeleteTraining(training)} disabled={Boolean(rowActionLoadingId)} aria-label="Odstrániť" title="Odstrániť">

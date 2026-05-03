@@ -812,8 +812,7 @@
   color: #fee2e2 !important;
 }
 
-.training-detail-modal-overlay,
-.training-edit-confirm-overlay {
+.training-detail-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(3, 7, 18, 0.72);
@@ -824,8 +823,7 @@
   padding: 18px;
 }
 
-.training-detail-modal-card,
-.training-edit-confirm-card {
+.training-detail-modal-card {
   width: min(760px, 94vw);
   max-height: 88vh;
   overflow: auto;
@@ -835,8 +833,7 @@
   padding: 16px;
 }
 
-.training-detail-modal-card h3,
-.training-edit-confirm-card h3 {
+.training-detail-modal-card h3 {
   margin: 0;
   color: #f8fafc;
 }
@@ -864,8 +861,7 @@
   font-size: 0.86rem;
 }
 
-.training-detail-modal-actions,
-.training-edit-confirm-actions {
+.training-detail-modal-actions {
   margin-top: 14px;
   display: flex;
   justify-content: flex-end;
