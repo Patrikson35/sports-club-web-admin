@@ -305,6 +305,12 @@ class APIClient {
       || merged.includes('unknown column `end_time`')
       || merged.includes("unknown column 'scheduled_date'")
       || merged.includes('unknown column `scheduled_date`')
+      || merged.includes("unknown column 'training_session_id'")
+      || merged.includes('unknown column `training_session_id`')
+      || merged.includes("unknown column 'training_id'")
+      || merged.includes('unknown column `training_id`')
+      || merged.includes("unknown column 'session_id'")
+      || merged.includes('unknown column `session_id`')
     );
   }
 
@@ -1352,16 +1358,17 @@ class APIClient {
     ];
 
     const attempts = [
+      // Prefer /trainings first because it is currently the most stable backend contract.
+      ...trainingsPayloadVariants.flatMap((variant) => ([
+        { endpoint: `/trainings`, body: variant },
+        { endpoint: `/v1/trainings`, body: variant },
+      ])),
       { endpoint: `/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/training-sessions`, body: payloadForSessionEndpoints },
       { endpoint: `/v1/training-sessions`, body: payloadForSessionEndpoints },
-      ...trainingsPayloadVariants.flatMap((variant) => ([
-        { endpoint: `/trainings`, body: variant },
-        { endpoint: `/v1/trainings`, body: variant },
-      ])),
     ];
 
     let lastError = null;
