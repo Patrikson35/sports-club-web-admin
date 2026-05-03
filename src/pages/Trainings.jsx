@@ -1096,6 +1096,19 @@ function Trainings() {
     setLinkedSessionName('')
   }
 
+  const openComposerForNewTraining = () => {
+    setIsComposerOpen(true)
+    setLinkedSessionId('')
+    setLinkedSessionName('')
+    setComposerError('')
+    setComposerSuccess('')
+    setSections(DEFAULT_COMPOSER_SECTIONS)
+    setExerciseFiltersBySection({})
+    setSelectedExerciseIdBySection({})
+    setDraggedExercise({ sectionId: '', exerciseId: '' })
+    setDragOverExerciseIdBySection({})
+  }
+
   const openTrainingDocument = (detail, { autoPrint = false } = {}) => {
     const safeName = String(detail?.name || detail?.title || 'Tréning').trim() || 'Tréning'
     const safeDate = String(detail?.date || '').trim()
@@ -1507,7 +1520,7 @@ function Trainings() {
       setComposerSuccess(linkedSessionId
         ? 'Tréning bol upravený a zmeny sa premietli do plánovača.'
         : 'Tréning bol uložený a priradený do plánovača aj dochádzky.')
-      setIsComposerOpen(false)
+      closeComposer()
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
       setComposerError(message || 'Tréning sa nepodarilo uložiť.')
@@ -1588,7 +1601,7 @@ function Trainings() {
       </div>
 
       <div className="unified-toolbar">
-        <button className="btn training-open-btn" type="button" onClick={() => setIsComposerOpen(true)}>+ Naplánovať tréning</button>
+        <button className="btn training-open-btn" type="button" onClick={openComposerForNewTraining}>+ Naplánovať tréning</button>
       </div>
 
       {isComposerOpen ? (
