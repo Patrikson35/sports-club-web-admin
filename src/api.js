@@ -1265,10 +1265,15 @@ class APIClient {
       throw new Error('teamId is required');
     }
 
-    const query = new URLSearchParams(params).toString();
+    const normalizedParams = {
+      limit: 500,
+      ...(params && typeof params === 'object' ? params : {}),
+    };
+
+    const query = new URLSearchParams(normalizedParams).toString();
     const suffix = query ? `?${query}` : '';
-    const scopedQuery = new URLSearchParams({ ...params, teamId: safeTeamId }).toString();
-    const legacyQuery = new URLSearchParams({ ...params, team_id: safeTeamId }).toString();
+    const scopedQuery = new URLSearchParams({ ...normalizedParams, teamId: safeTeamId }).toString();
+    const legacyQuery = new URLSearchParams({ ...normalizedParams, team_id: safeTeamId }).toString();
 
     return this.requestWithEndpointFallback([
       // Prefer /trainings feed (DB source of truth) to avoid stale legacy variants.
