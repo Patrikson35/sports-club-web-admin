@@ -226,6 +226,19 @@ const getExercisePreviewImage = (item) => {
   return getYoutubeThumbnailUrl(youtubeVideoId)
 }
 
+const toNormalizedExerciseName = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ')
+
+const toPositiveIntegerOrNull = (value) => {
+  const parsed = Number(String(value || '').trim())
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return Math.trunc(parsed)
+}
+
 const addCategoryDefinitionsToMap = (categories, targetMap) => {
   const source = Array.isArray(categories) ? categories : []
   const map = targetMap instanceof Map ? targetMap : new Map()
@@ -1532,6 +1545,21 @@ function Trainings() {
       ? (String(linkedSessionName || '').trim() || generatedTitle)
       : generatedTitle
 
+    const numericLibraryIdByName = new Map()
+    ;(Array.isArray(availableExercises) ? availableExercises : []).forEach((item) => {
+      const normalizedName = toNormalizedExerciseName(item?.name || item?.title)
+      if (!normalizedName || numericLibraryIdByName.has(normalizedName)) return
+
+      const numericId = toPositiveIntegerOrNull(item?.sourceExerciseId)
+        ?? toPositiveIntegerOrNull(item?.exerciseId)
+        ?? toPositiveIntegerOrNull(item?.exercise_id)
+        ?? toPositiveIntegerOrNull(item?.id)
+
+      if (numericId) {
+        numericLibraryIdByName.set(normalizedName, numericId)
+      }
+    })
+
     const invalidExerciseNames = []
 
     const flattenedExercises = sections.flatMap((section) => (
@@ -1539,16 +1567,17 @@ function Trainings() {
         ? section.exercises
             .map((exercise, index) => {
               const rawExerciseId = String(exercise?.sourceExerciseId || exercise?.exerciseId || '').trim()
-              if (!rawExerciseId) return null
+              const directNumericId = toPositiveIntegerOrNull(rawExerciseId)
+              const fallbackNumericId = numericLibraryIdByName.get(toNormalizedExerciseName(exercise?.name || '')) || null
+              const resolvedNumericId = directNumericId || fallbackNumericId
 
-              const parsedExerciseId = Number(rawExerciseId)
-              if (!Number.isFinite(parsedExerciseId) || parsedExerciseId <= 0) {
+              if (!resolvedNumericId) {
                 invalidExerciseNames.push(String(exercise?.name || `Cvičenie ${index + 1}`).trim())
                 return null
               }
 
               return {
-                exerciseId: Math.trunc(parsedExerciseId),
+                exerciseId: resolvedNumericId,
                 title: String(exercise?.name || '').trim() || `Cvičenie ${index + 1}`,
                 description: String(exercise?.focus || '').trim(),
                 duration: Math.max(1, Number(exercise?.minutes) || 0),
@@ -1596,7 +1625,7 @@ function Trainings() {
     }
 
     if (invalidExerciseNames.length > 0) {
-      setComposerError('Niektoré vybrané cvičenia nie sú naviazané na databázu cvičení a nie je ich možné uložiť. Použite položky cez „Pridať cvičenie“.')
+      setComposerError('Niektoré vybrané cvičenia sa nepodarilo spárovať s databázou cvičení. Odstráňte ich a pridajte znova cez „Pridať cvičenie“.')
       setComposerSuccess('')
       return
     }
