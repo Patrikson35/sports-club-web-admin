@@ -284,18 +284,9 @@ const normalizeTrainingsList = (source) => {
         ? Math.max(0, parsedExerciseCount)
         : rawExercises.length
 
-      const recurrenceMetaRaw = String(item?.recurrence_rule || item?.recurrenceRule || '').trim()
-      const recurrenceMetaText = recurrenceMetaRaw.toUpperCase()
-      const indicatorCode = String(item?.indicatorCode || item?.indicator_code || '').trim().toUpperCase()
       const normalizedName = String(item?.name || item?.title || item?.sessionTitle || '').trim()
 
       const hasExerciseEvidence = exerciseCount > 0 || rawExercises.length > 0
-      const looksLikeComposerTraining = (
-        indicatorCode === 'TJ'
-        || /^TJ\s*\d+$/i.test(normalizedName)
-        || recurrenceMetaText.includes('"INDICATORCODE":"TJ"')
-        || recurrenceMetaText.includes('"SOURCE":"TRAININGS-COMPOSER"')
-      )
 
       const statusValue = String(item?.status || '').trim().toLowerCase()
       const isCompleted = statusValue === 'completed' || item?.isCompleted === true
@@ -310,7 +301,7 @@ const normalizeTrainingsList = (source) => {
         location: String(item?.location || item?.fieldName || item?.field_name || '').trim(),
         exerciseCount,
         exerciseCountKnown,
-        isExerciseTraining: hasExerciseEvidence || looksLikeComposerTraining,
+        isExerciseTraining: hasExerciseEvidence,
         status: isCompleted ? 'completed' : 'scheduled'
       }
     })
