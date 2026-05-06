@@ -1225,7 +1225,8 @@ function Trainings() {
         name: String(exercise?.name || exercise?.title || `Cvičenie ${index + 1}`).trim(),
         focus: String(exercise?.description || exercise?.notes || '').trim(),
         minutes: Math.max(1, Number(exercise?.duration || exercise?.duration_minutes || 10) || 10),
-        previewImage: ''
+        previewImage: '',
+        sourceExerciseId: String(exercise?.exerciseId || exercise?.exercise_id || '').trim()
       }))
 
       setSections(DEFAULT_COMPOSER_SECTIONS.map((section) => (
@@ -1566,6 +1567,12 @@ function Trainings() {
 
     if (!selectedFieldMeta?.id) {
       setComposerError('Vyberte ihrisko pre tréning.')
+      setComposerSuccess('')
+      return
+    }
+
+    if (flattenedExercises.length === 0) {
+      setComposerError('Tréning neobsahuje žiadne uložiťeľné cvičenie z knižnice. Pridajte aspoň jedno cvičenie cez „Pridať cvičenie“.')
       setComposerSuccess('')
       return
     }
