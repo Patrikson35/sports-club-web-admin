@@ -334,6 +334,11 @@ const normalizeTrainingsList = (source) => {
       const normalizedName = String(item?.name || item?.title || item?.sessionTitle || '').trim()
 
       const hasExerciseEvidence = exerciseCount > 0 || rawExercises.length > 0
+      const hasComposerIdentity = (
+        /^TJ\s*\d+$/i.test(normalizedName)
+        || String(item?.indicatorCode || item?.indicator_code || '').trim().toUpperCase() === 'TJ'
+        || String(item?.recurrence_rule || item?.recurrenceRule || '').toUpperCase().includes('"SOURCE":"TRAININGS-COMPOSER"')
+      )
 
       const statusValue = String(item?.status || '').trim().toLowerCase()
       const isCompleted = statusValue === 'completed' || item?.isCompleted === true
@@ -348,7 +353,7 @@ const normalizeTrainingsList = (source) => {
         location: String(item?.location || item?.fieldName || item?.field_name || '').trim(),
         exerciseCount,
         exerciseCountKnown,
-        isExerciseTraining: hasExerciseEvidence,
+        isExerciseTraining: hasExerciseEvidence || hasComposerIdentity,
         status: isCompleted ? 'completed' : 'scheduled'
       }
     })
