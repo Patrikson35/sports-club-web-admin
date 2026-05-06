@@ -147,6 +147,38 @@ const toMinutesFromHHmm = (value) => {
   return (Math.max(0, Math.min(23, hour)) * 60) + Math.max(0, Math.min(59, minute))
 }
 
+const normalizeMetricCode = (code) => String(code || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase()
+  .replace(/[^A-Z0-9]/g, '')
+
+const toMetricShortLabel = (metric) => {
+  const shortName = String(metric?.shortName || '').trim()
+  if (shortName) return shortName
+
+  const name = String(metric?.name || '').trim()
+  if (!name) return ''
+
+  const words = name.split(/\s+/).filter(Boolean)
+  if (words.length >= 2) {
+    return words.slice(0, 3).map((word) => String(word[0] || '').toUpperCase()).join('')
+  }
+
+  return name.slice(0, 3).toUpperCase()
+}
+
+const parseEvidenceEntryKey = (rawKey) => {
+  const [categoryId = '', playerId = '', dateKey = '', metricId = '', sessionId = 'default'] = String(rawKey || '').split(':')
+  return {
+    categoryId: String(categoryId || ''),
+    playerId: String(playerId || ''),
+    dateKey: String(dateKey || ''),
+    metricId: String(metricId || ''),
+    sessionId: String(sessionId || 'default')
+  }
+}
+
 const toCleanText = (value) => {
   if (Array.isArray(value)) {
     const normalizedList = value
@@ -558,6 +590,8 @@ function Trainings() {
   const [rowActionLoadingId, setRowActionLoadingId] = useState('')
   const [linkedSessionName, setLinkedSessionName] = useState('')
   const [viewTrainingDetail, setViewTrainingDetail] = useState(null)
+  const [evidenceEntriesDraft, setEvidenceEntriesDraft] = useState({})
+  const [attendanceMetricCodeById, setAttendanceMetricCodeById] = useState(new Map())
 
   useEffect(() => {
     loadTrainings()
@@ -1299,8 +1333,43 @@ function Trainings() {
     return map
   }, [calendarSessions])
 
+  const calendarEvidenceMetricCodesByDate = useMemo(() => {
+    const map = new Map()
+    const selectedTeam = String(selectedTeamId || '').trim()
+    const targetYear = calendarMonthDate.getFullYear()
+    const targetMonth = calendarMonthDate.getMonth() + 1
+
+    Object.entries(evidenceEntriesDraft || {}).forEach(([entryKey, value]) => {
+      if (!value || typeof value !== 'object' || value.attended === false) return
+
+      const parsed = parseEvidenceEntryKey(entryKey)
+      if (selectedTeam && String(parsed.categoryId || '') !== selectedTeam) return
+
+      const matched = String(parsed.dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!matched) return
+
+      const year = Number(matched[1])
+      const month = Number(matched[2])
+      if (!Number.isInteger(year) || !Number.isInteger(month)) return
+      if (year !== targetYear || month !== targetMonth) return
+
+      const metricCode = normalizeMetricCode(attendanceMetricCodeById.get(String(parsed.metricId || '')) || '')
+      if (!METRIC_COLORS[metricCode]) return
+
+      if (!map.has(parsed.dateKey)) map.set(parsed.dateKey, new Set())
+      map.get(parsed.dateKey).add(metricCode)
+    })
+
+    return map
+  }, [evidenceEntriesDraft, attendanceMetricCodeById, selectedTeamId, calendarMonthDate])
+
   const calendarSessionsByDate = useMemo(() => {
     const map = new Map()
+
+    calendarEvidenceMetricCodesByDate.forEach((codes, dateKey) => {
+      if (!map.has(dateKey)) map.set(dateKey, new Set())
+      ;(Array.from(codes) || []).forEach((code) => map.get(dateKey).add(code))
+    })
 
     ;(Array.isArray(calendarSessions) ? calendarSessions : []).forEach((session) => {
       const dateKey = resolveDateKeyFromSession(session)
@@ -1312,7 +1381,7 @@ function Trainings() {
     })
 
     return map
-  }, [calendarSessions])
+  }, [calendarSessions, calendarEvidenceMetricCodesByDate])
 
   const calendarCells = useMemo(() => buildCalendarCells(calendarMonthDate), [calendarMonthDate])
 
@@ -1618,6 +1687,45 @@ function Trainings() {
       isMounted = false
     }
   }, [isComposerOpen, selectedTeamId, calendarMonthDate])
+
+  useEffect(() => {
+    if (!isComposerOpen) return
+
+    let isMounted = true
+
+    Promise.allSettled([
+      api.getMyClub(),
+      api.getMetrics({ context: 'attendance' })
+    ]).then((results) => {
+      if (!isMounted) return
+
+      const clubResult = results[0]
+      const metricsResult = results[1]
+
+      if (clubResult?.status === 'fulfilled') {
+        const loadedEntries = clubResult.value?.evidenceEntries
+        setEvidenceEntriesDraft(loadedEntries && typeof loadedEntries === 'object' ? loadedEntries : {})
+      } else {
+        setEvidenceEntriesDraft({})
+      }
+
+      const metricsList = metricsResult?.status === 'fulfilled'
+        ? (Array.isArray(metricsResult.value?.metrics) ? metricsResult.value.metrics : [])
+        : []
+
+      const codeById = new Map(metricsList.map((metric) => {
+        const metricId = String(metric?.id || '').trim()
+        const metricCode = normalizeMetricCode(toMetricShortLabel(metric))
+        return [metricId, metricCode]
+      }).filter(([metricId, metricCode]) => metricId && metricCode))
+
+      setAttendanceMetricCodeById(codeById)
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [isComposerOpen])
 
   if (loading) {
     return <div className="loading">Načítání...</div>
