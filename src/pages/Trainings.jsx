@@ -1566,10 +1566,18 @@ function Trainings() {
       return
     }
 
+    const monthStart = new Date(calendarMonthDate.getFullYear(), calendarMonthDate.getMonth(), 1)
+    const monthEnd = new Date(calendarMonthDate.getFullYear(), calendarMonthDate.getMonth() + 1, 0)
+    const startDate = toDateKey(monthStart)
+    const endDate = toDateKey(monthEnd)
+
     let isMounted = true
     setCalendarLoading(true)
 
-    api.getTeamTrainingSessions(safeTeamId)
+    api.getTeamTrainingSessions(safeTeamId, {
+      start_date: startDate,
+      end_date: endDate,
+    })
       .then((response) => {
         if (!isMounted) return
         const sessions = Array.isArray(response?.sessions)
@@ -1594,7 +1602,7 @@ function Trainings() {
     return () => {
       isMounted = false
     }
-  }, [isComposerOpen, selectedTeamId])
+  }, [isComposerOpen, selectedTeamId, calendarMonthDate])
 
   if (loading) {
     return <div className="loading">Načítání...</div>
