@@ -286,7 +286,6 @@ const normalizeTrainingsList = (source) => {
 
       const recurrenceMetaRaw = String(item?.recurrence_rule || item?.recurrenceRule || '').trim()
       const recurrenceMetaText = recurrenceMetaRaw.toUpperCase()
-      const sessionType = String(item?.sessionType || item?.session_type || item?.type || '').trim().toLowerCase()
       const indicatorCode = String(item?.indicatorCode || item?.indicator_code || '').trim().toUpperCase()
       const normalizedName = String(item?.name || item?.title || item?.sessionTitle || '').trim()
 
@@ -296,7 +295,6 @@ const normalizeTrainingsList = (source) => {
         || /^TJ\s*\d+$/i.test(normalizedName)
         || recurrenceMetaText.includes('"INDICATORCODE":"TJ"')
         || recurrenceMetaText.includes('"SOURCE":"TRAININGS-COMPOSER"')
-        || sessionType === 'training'
       )
 
       const statusValue = String(item?.status || '').trim().toLowerCase()
