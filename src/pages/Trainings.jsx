@@ -270,8 +270,23 @@ const normalizeExerciseMeta = (exercise) => {
     return String(value || '').trim()
   }
 
+  const sourceExerciseIdCandidates = [
+    source.exerciseId,
+    source.exercise_id,
+    source.originalExerciseId,
+    source.baseExerciseId,
+    source.systemExerciseId,
+  ]
+
+  const resolvedSourceExerciseId = sourceExerciseIdCandidates.reduce((acc, candidate) => {
+    if (acc) return acc
+    const parsed = Number(String(candidate || '').trim())
+    return Number.isFinite(parsed) && parsed > 0 ? String(Math.trunc(parsed)) : ''
+  }, '')
+
   return {
     id: asText(source.id),
+    sourceExerciseId: resolvedSourceExerciseId,
     name: asText(source.name || source.title || source.exerciseName || 'Cvičenie'),
     focus: asText(source.focus || source.description || source.goal || source.objective || ''),
     minutes: Number(source.minutes || source.duration || source.defaultDuration || 10) || 10,
@@ -462,6 +477,7 @@ const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
 
   return normalizeExerciseMeta({
     id: source.id,
+    exerciseId: source.exerciseId || source.exercise_id || source.originalExerciseId || source.baseExerciseId,
     name: source.name || source.title,
     description: source.description,
     duration: source.duration,
@@ -1124,7 +1140,7 @@ function Trainings() {
             focus: exerciseFocus,
             minutes: exerciseMinutes,
             previewImage,
-            sourceExerciseId: String(selectedExercise.id || '').trim()
+            sourceExerciseId: String(selectedExercise.sourceExerciseId || selectedExercise.id || '').trim()
           }
         ]
       }
@@ -1516,6 +1532,8 @@ function Trainings() {
       ? (String(linkedSessionName || '').trim() || generatedTitle)
       : generatedTitle
 
+    const invalidExerciseNames = []
+
     const flattenedExercises = sections.flatMap((section) => (
       Array.isArray(section?.exercises)
         ? section.exercises
@@ -1524,12 +1542,13 @@ function Trainings() {
               if (!rawExerciseId) return null
 
               const parsedExerciseId = Number(rawExerciseId)
-              const normalizedExerciseId = Number.isFinite(parsedExerciseId)
-                ? parsedExerciseId
-                : rawExerciseId
+              if (!Number.isFinite(parsedExerciseId) || parsedExerciseId <= 0) {
+                invalidExerciseNames.push(String(exercise?.name || `Cvičenie ${index + 1}`).trim())
+                return null
+              }
 
               return {
-                exerciseId: normalizedExerciseId,
+                exerciseId: Math.trunc(parsedExerciseId),
                 title: String(exercise?.name || '').trim() || `Cvičenie ${index + 1}`,
                 description: String(exercise?.focus || '').trim(),
                 duration: Math.max(1, Number(exercise?.minutes) || 0),
@@ -1572,6 +1591,12 @@ function Trainings() {
 
     if (!selectedFieldMeta?.id) {
       setComposerError('Vyberte ihrisko pre tréning.')
+      setComposerSuccess('')
+      return
+    }
+
+    if (invalidExerciseNames.length > 0) {
+      setComposerError('Niektoré vybrané cvičenia nie sú naviazané na databázu cvičení a nie je ich možné uložiť. Použite položky cez „Pridať cvičenie“.')
       setComposerSuccess('')
       return
     }
