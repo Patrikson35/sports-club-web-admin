@@ -78,7 +78,14 @@ const resolveMetricCodeFromSession = (session) => {
   const metaCode = String(recurrenceMeta?.indicatorCode || '').trim().toUpperCase()
   if (metaCode && METRIC_COLORS[metaCode]) return metaCode
 
-  const sessionType = String(session?.sessionType || session?.session_type || session?.type || '').trim().toLowerCase()
+  const sessionType = String(
+    session?.sessionType
+      || session?.session_type
+      || session?.recurrenceSessionType
+      || session?.recurrence_session_type
+      || session?.type
+      || 'training'
+  ).trim().toLowerCase()
   if (sessionType === 'training') return 'TJ'
   if (sessionType === 'match') return 'PZ'
   if (sessionType === 'friendly_match' || sessionType === 'cancelled') return 'MZ'
@@ -100,13 +107,21 @@ const resolveDateKeyFromSession = (session) => {
     if (!Number.isNaN(parsed.getTime())) return toDateKey(parsed)
   }
 
-  const startDateValue = session?.startAt || session?.start_at
-  if (!startDateValue) return ''
-  const startDateMatch = String(startDateValue).match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (startDateMatch) return `${startDateMatch[1]}-${startDateMatch[2]}-${startDateMatch[3]}`
-  const startDate = new Date(String(startDateValue))
-  if (Number.isNaN(startDate.getTime())) return ''
-  return toDateKey(startDate)
+  const candidateValues = [
+    session?.startAt,
+    session?.start_at,
+    session?.startTime,
+    session?.start_time,
+  ]
+
+  const parsedStart = candidateValues.reduce((acc, value) => {
+    if (acc) return acc
+    const parsed = new Date(String(value || ''))
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }, null)
+
+  if (!parsedStart || Number.isNaN(parsedStart.getTime())) return ''
+  return toDateKey(parsedStart)
 }
 
 const toHourMinuteFromDateCandidate = (value) => {
