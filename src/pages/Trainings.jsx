@@ -422,6 +422,11 @@ const mergeNormalizedTrainings = (primary = [], secondary = []) => {
   })
 }
 
+const isComposerTrainingIdentity = (training) => {
+  const name = String(training?.name || '').trim()
+  return /^TJ\s*\d+$/i.test(name)
+}
+
 const mapMyClubExerciseToLibraryItem = (item, categoryNameById = new Map()) => {
   const source = (item && typeof item === 'object') ? item : {}
 
@@ -721,7 +726,40 @@ function Trainings() {
 
       const normalized = normalizeTrainingsList(source)
       const fallbackNormalized = normalizeTrainingsList(fallbackSource)
-      setTrainings(mergeNormalizedTrainings(normalized, fallbackNormalized))
+      const merged = mergeNormalizedTrainings(normalized, fallbackNormalized)
+
+      const rowsNeedingDetailCount = merged.filter((item) => (
+        Number(item?.exerciseCount || 0) <= 0 && isComposerTrainingIdentity(item)
+      ))
+
+      if (rowsNeedingDetailCount.length === 0) {
+        setTrainings(merged)
+        return
+      }
+
+      const detailResults = await Promise.allSettled(rowsNeedingDetailCount.map(async (item) => {
+        const detail = await api.getTeamTrainingSessionDetail(item.id, item.teamId)
+        const exerciseCount = Array.isArray(detail?.exercises) ? detail.exercises.length : 0
+        return { id: String(item.id || ''), exerciseCount }
+      }))
+
+      const detailCountById = new Map()
+      detailResults.forEach((result) => {
+        if (result.status !== 'fulfilled') return
+        detailCountById.set(String(result.value?.id || ''), Number(result.value?.exerciseCount || 0))
+      })
+
+      const enriched = merged.map((item) => {
+        const detailCount = detailCountById.get(String(item.id || ''))
+        if (!Number.isFinite(detailCount) || detailCount <= 0) return item
+        return {
+          ...item,
+          exerciseCount: detailCount,
+          exerciseCountKnown: true,
+        }
+      })
+
+      setTrainings(enriched)
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
       setTrainings(normalizeTrainingsList(fallbackSource))
@@ -1240,6 +1278,7 @@ function Trainings() {
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
       setComposerError(message || 'Tréning sa nepodarilo zobraziť.')
+      window.alert(message || 'Tréning sa nepodarilo zobraziť.')
     } finally {
       setRowActionLoadingId('')
     }
@@ -1284,6 +1323,7 @@ function Trainings() {
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
       setComposerError(message || 'Tréning sa nepodarilo načítať na editáciu.')
+      window.alert(message || 'Tréning sa nepodarilo načítať na editáciu.')
     } finally {
       setRowActionLoadingId('')
     }
@@ -1319,6 +1359,7 @@ function Trainings() {
     } catch (error) {
       const message = String(error?.payload?.error || error?.payload?.message || error?.message || '').trim()
       setComposerError(message || 'Tréning sa nepodarilo vytlačiť.')
+      window.alert(message || 'Tréning sa nepodarilo vytlačiť.')
     } finally {
       setRowActionLoadingId('')
     }
