@@ -727,7 +727,7 @@ function Trainings() {
     }
   }, [])
 
-  const loadTrainings = async (fallbackSource = []) => {
+  const loadTrainings = async (fallbackSource = [], preservedSource = []) => {
     try {
       const toSessionsArray = (response) => (Array.isArray(response?.trainings)
         ? response.trainings
@@ -773,14 +773,34 @@ function Trainings() {
 
       const normalized = normalizeTrainingsList(source)
       const fallbackNormalized = normalizeTrainingsList(fallbackSource)
-      const merged = mergeNormalizedTrainings(normalized, fallbackNormalized)
+      const preservedNormalized = normalizeTrainingsList(preservedSource)
+      const merged = mergeNormalizedTrainings(mergeNormalizedTrainings(normalized, fallbackNormalized), preservedNormalized)
+      const preservedById = new Map(
+        preservedNormalized
+          .map((item) => [String(item?.id || '').trim(), Number(item?.exerciseCount || 0)])
+          .filter(([id]) => id)
+      )
 
       if (merged.length === 0) {
         setTrainings([])
         return
       }
 
-      const detailResults = await Promise.allSettled(merged.map(async (item) => {
+      const rowsNeedingDetailCount = merged.filter((item) => (
+        Number(item?.exerciseCount || 0) <= 0 && !preservedById.has(String(item?.id || '').trim())
+      ))
+
+      if (rowsNeedingDetailCount.length === 0) {
+        const visible = merged.filter((item) => {
+          const id = String(item?.id || '').trim()
+          const preservedCount = Number(preservedById.get(id) || 0)
+          return Number(item?.exerciseCount || 0) > 0 || preservedCount > 0
+        })
+        setTrainings(visible)
+        return
+      }
+
+      const detailResults = await Promise.allSettled(rowsNeedingDetailCount.map(async (item) => {
         const detail = await api.getTeamTrainingSessionDetail(item.id, item.teamId)
         const exerciseCount = Array.isArray(detail?.exercises) ? detail.exercises.length : 0
         return { id: String(item.id || ''), exerciseCount }
@@ -792,23 +812,34 @@ function Trainings() {
         detailCountById.set(String(result.value?.id || ''), Number(result.value?.exerciseCount || 0))
       })
 
-      const enriched = merged
-        .map((item) => {
-          const detailCount = detailCountById.get(String(item.id || ''))
-          if (!Number.isFinite(detailCount)) return null
+      const enriched = merged.map((item) => {
+        const id = String(item?.id || '').trim()
+        const preservedCount = Number(preservedById.get(id) || 0)
+        if (preservedCount > 0) {
           return {
             ...item,
-            exerciseCount: detailCount,
+            exerciseCount: preservedCount,
             exerciseCountKnown: true,
           }
-        })
-        .filter(Boolean)
+        }
+
+        const detailCount = detailCountById.get(id)
+        if (!Number.isFinite(detailCount)) return item
+        return {
+          ...item,
+          exerciseCount: detailCount,
+          exerciseCountKnown: true,
+        }
+      })
 
       const withExercisesOnly = enriched.filter((item) => Number(item?.exerciseCount || 0) > 0)
       setTrainings(withExercisesOnly)
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
-      setTrainings(normalizeTrainingsList(fallbackSource).filter((item) => Number(item?.exerciseCount || 0) > 0))
+      const preservedNormalized = normalizeTrainingsList(preservedSource)
+      const fallbackNormalized = normalizeTrainingsList(fallbackSource)
+      const mergedFallback = mergeNormalizedTrainings(fallbackNormalized, preservedNormalized)
+      setTrainings(mergedFallback.filter((item) => Number(item?.exerciseCount || 0) > 0))
     } finally {
       setLoading(false)
     }
@@ -1760,7 +1791,10 @@ function Trainings() {
           : refreshedSessions
 
       setCalendarSessions(refreshedSessions)
-        await loadTrainings(fallbackForList)
+      if (savedCandidate.id && Number(savedCandidate.exerciseCount || 0) > 0) {
+        setTrainings((prev) => mergeNormalizedTrainings(normalizeTrainingsList([savedCandidate]), prev).filter((item) => Number(item?.exerciseCount || 0) > 0))
+      }
+        await loadTrainings(fallbackForList, savedCandidate.id ? [savedCandidate] : [])
       setComposerSuccess(linkedSessionId
         ? 'Tréning bol upravený a zmeny sa premietli do plánovača.'
         : 'Tréning bol uložený a priradený do plánovača aj dochádzky.')
