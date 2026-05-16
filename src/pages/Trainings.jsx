@@ -730,16 +730,47 @@ function Trainings() {
 
   const loadTrainings = async (fallbackSource = []) => {
     try {
+      const toSessionsArray = (response) => (Array.isArray(response?.trainings)
+        ? response.trainings
+        : Array.isArray(response?.sessions)
+          ? response.sessions
+          : Array.isArray(response?.items)
+            ? response.items
+            : Array.isArray(response?.data)
+              ? response.data
+              : (Array.isArray(response) ? response : []))
+
       const data = await api.getTrainings({ excludeHidden: 1 })
-      const source = Array.isArray(data?.trainings)
-        ? data.trainings
-        : Array.isArray(data?.sessions)
-          ? data.sessions
-          : Array.isArray(data?.items)
-            ? data.items
-            : Array.isArray(data?.data)
-              ? data.data
-              : (Array.isArray(data) ? data : [])
+      let source = toSessionsArray(data)
+
+      // Some deployments persist creates via team-scoped session endpoints.
+      // When the global /trainings feed is empty, recover list from team feeds.
+      if (source.length === 0) {
+        try {
+          const teamsResponse = await api.getTeams()
+          const teamIds = (Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : [])
+            .map((team) => String(team?.id || '').trim())
+            .filter(Boolean)
+
+          if (teamIds.length > 0) {
+            const perTeamResults = await Promise.allSettled(teamIds.map(async (teamId) => {
+              const sessionsResponse = await api.getTeamTrainingSessions(teamId, { excludeHidden: 1 })
+              const sessions = toSessionsArray(sessionsResponse)
+              return sessions.map((session) => ({
+                ...(session && typeof session === 'object' ? session : {}),
+                teamId: String(session?.teamId || session?.team_id || teamId).trim() || teamId,
+                team_id: String(session?.team_id || session?.teamId || teamId).trim() || teamId,
+              }))
+            }))
+
+            source = perTeamResults
+              .filter((result) => result.status === 'fulfilled')
+              .flatMap((result) => Array.isArray(result.value) ? result.value : [])
+          }
+        } catch {
+          // Keep original source (empty) and continue with fallbackSource merge below.
+        }
+      }
 
       const normalized = normalizeTrainingsList(source)
       const fallbackNormalized = normalizeTrainingsList(fallbackSource)
