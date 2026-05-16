@@ -1550,10 +1550,48 @@ class APIClient {
       `/v1/trainings/${safeSessionId}`,
     ];
 
+    const enrichDetailWithExercises = async (detail) => {
+      const normalizedDetail = detail && typeof detail === 'object' ? detail : {};
+      const existingExercises = Array.isArray(normalizedDetail?.exercises) ? normalizedDetail.exercises : [];
+      if (existingExercises.length > 0) return normalizedDetail;
+
+      const exercisesAttempts = [
+        `/trainings/${safeSessionId}/exercises`,
+        `/v1/trainings/${safeSessionId}/exercises`,
+      ];
+
+      for (const endpoint of exercisesAttempts) {
+        try {
+          const exercisesResponse = await this.request(endpoint);
+          const exercises = Array.isArray(exercisesResponse?.exercises)
+            ? exercisesResponse.exercises
+            : Array.isArray(exercisesResponse?.items)
+              ? exercisesResponse.items
+              : Array.isArray(exercisesResponse)
+                ? exercisesResponse
+                : [];
+
+          if (exercises.length > 0) {
+            return {
+              ...normalizedDetail,
+              exercises,
+            };
+          }
+        } catch (error) {
+          if (!this.isEndpointNotFound(error)) {
+            return normalizedDetail;
+          }
+        }
+      }
+
+      return normalizedDetail;
+    };
+
     let lastError = null;
     for (const endpoint of attempts) {
       try {
-        return await this.request(endpoint);
+        const detail = await this.request(endpoint);
+        return await enrichDetailWithExercises(detail);
       } catch (error) {
         lastError = error;
         if (!this.isEndpointNotFound(error)) {
