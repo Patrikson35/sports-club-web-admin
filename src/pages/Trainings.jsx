@@ -742,7 +742,7 @@ function Trainings() {
       let source = []
 
       try {
-        const data = await api.getTrainings({ excludeHidden: 1 })
+        const data = await api.getTrainings({ excludeHidden: 1, requireExercises: 1, limit: 500 })
         source = toSessionsArray(data)
       } catch {
         source = []

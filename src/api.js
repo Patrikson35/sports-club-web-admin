@@ -1242,7 +1242,10 @@ class APIClient {
       };
     }
     const query = new URLSearchParams(params).toString();
-    return this.request(`/trainings?${query}`);
+    return this.requestWithEndpointFallback([
+      `/trainings?${query}`,
+      `/v1/trainings?${query}`,
+    ]);
   }
 
   async createTraining(data) {
