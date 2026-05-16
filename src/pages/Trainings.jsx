@@ -776,11 +776,11 @@ function Trainings() {
       const merged = mergeNormalizedTrainings(normalized, fallbackNormalized)
 
       const rowsNeedingDetailCount = merged.filter((item) => (
-        Number(item?.exerciseCount || 0) <= 0 && isComposerTrainingIdentity(item)
+        Number(item?.exerciseCount || 0) <= 0
       ))
 
       if (rowsNeedingDetailCount.length === 0) {
-        setTrainings(merged)
+        setTrainings(merged.filter((item) => Number(item?.exerciseCount || 0) > 0))
         return
       }
 
@@ -806,10 +806,11 @@ function Trainings() {
         }
       })
 
-      setTrainings(enriched)
+      const withExercisesOnly = enriched.filter((item) => Number(item?.exerciseCount || 0) > 0)
+      setTrainings(withExercisesOnly)
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
-      setTrainings(normalizeTrainingsList(fallbackSource))
+      setTrainings(normalizeTrainingsList(fallbackSource).filter((item) => Number(item?.exerciseCount || 0) > 0))
     } finally {
       setLoading(false)
     }
