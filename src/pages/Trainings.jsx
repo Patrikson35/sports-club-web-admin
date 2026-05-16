@@ -386,7 +386,6 @@ const normalizeTrainingsList = (source) => {
       }
     })
     .filter((item) => item.id)
-    .filter((item) => item.isExerciseTraining)
 }
 
 const resolveSchoolSeasonKey = (dateValue) => {
