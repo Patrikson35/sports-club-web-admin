@@ -730,7 +730,7 @@ function Trainings() {
 
   const loadTrainings = async (fallbackSource = []) => {
     try {
-      const data = await api.getTrainings()
+      const data = await api.getTrainings({ excludeHidden: 1 })
       const source = Array.isArray(data?.trainings)
         ? data.trainings
         : Array.isArray(data?.sessions)
