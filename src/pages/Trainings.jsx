@@ -744,7 +744,7 @@ function Trainings() {
       const apiClientDebug = typeof api?.getDebugInfo === 'function' ? api.getDebugInfo() : {}
 
       try {
-        const data = await api.getTrainings({ excludeHidden: 1, requireExercises: 1, limit: 500, debug: 1 })
+        const data = await api.getTrainings({ excludeHidden: 1, limit: 500, debug: 1 })
         const backendDebug = data?.debug && typeof data.debug === 'object' ? data.debug : null
         const debugParts = [
           `API: ${String(apiClientDebug?.baseURL || '').trim() || 'n/a'}`,
