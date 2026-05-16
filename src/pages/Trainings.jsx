@@ -801,8 +801,16 @@ function Trainings() {
       }
 
       const detailResults = await Promise.allSettled(rowsNeedingDetailCount.map(async (item) => {
-        const detail = await api.getTeamTrainingSessionDetail(item.id, item.teamId)
-        const exerciseCount = Array.isArray(detail?.exercises) ? detail.exercises.length : 0
+        let exerciseCount = 0
+
+        try {
+          const exercisesResponse = await api.getTeamTrainingSessionExercises(item.id)
+          exerciseCount = Array.isArray(exercisesResponse?.exercises) ? exercisesResponse.exercises.length : 0
+        } catch {
+          const detail = await api.getTeamTrainingSessionDetail(item.id, item.teamId)
+          exerciseCount = Array.isArray(detail?.exercises) ? detail.exercises.length : 0
+        }
+
         return { id: String(item.id || ''), exerciseCount }
       }))
 

@@ -1603,6 +1603,49 @@ class APIClient {
     throw lastError || new Error('Endpoint not found');
   }
 
+  async getTeamTrainingSessionExercises(sessionId) {
+    if (USE_MOCK_DATA) {
+      return { total: 0, exercises: [] };
+    }
+
+    const safeSessionId = String(sessionId || '').trim();
+    if (!safeSessionId) {
+      throw new Error('sessionId is required');
+    }
+
+    const attempts = [
+      `/trainings/${safeSessionId}/exercises`,
+      `/v1/trainings/${safeSessionId}/exercises`,
+    ];
+
+    let lastError = null;
+    for (const endpoint of attempts) {
+      try {
+        const response = await this.request(endpoint);
+        const exercises = Array.isArray(response?.exercises)
+          ? response.exercises
+          : Array.isArray(response?.items)
+            ? response.items
+            : Array.isArray(response)
+              ? response
+              : [];
+
+        return {
+          ...(response && typeof response === 'object' ? response : {}),
+          exercises,
+          total: Number(response?.total ?? exercises.length ?? 0) || 0,
+        };
+      } catch (error) {
+        lastError = error;
+        if (!this.isEndpointNotFound(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error('Endpoint not found');
+  }
+
   // Matches
   async getMatches(params = {}) {
     if (USE_MOCK_DATA) {
