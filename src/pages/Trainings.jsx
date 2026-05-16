@@ -409,8 +409,25 @@ const mergeNormalizedTrainings = (primary = [], secondary = []) => {
 
   ;(Array.isArray(secondary) ? secondary : []).forEach((item) => {
     const id = String(item?.id || '').trim()
-    if (!id || map.has(id)) return
-    map.set(id, item)
+    if (!id) return
+
+    const existing = map.get(id)
+    if (!existing) {
+      map.set(id, item)
+      return
+    }
+
+    const existingCount = Number(existing?.exerciseCount || 0)
+    const incomingCount = Number(item?.exerciseCount || 0)
+    const shouldUpgradeCount = incomingCount > existingCount
+
+    if (!shouldUpgradeCount) return
+
+    map.set(id, {
+      ...existing,
+      exerciseCount: incomingCount,
+      exerciseCountKnown: true,
+    })
   })
 
   return Array.from(map.values()).sort((left, right) => {
