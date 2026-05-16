@@ -1781,6 +1781,11 @@ function Trainings() {
         savedResult = await api.createTeamTrainingSession(resolvedTeamId, payload)
       }
 
+      const persistedTrainingId = String(linkedSessionId || savedResult?.id || savedResult?.sessionId || '').trim()
+      if (!persistedTrainingId) {
+        throw new Error('Backend nevrátil ID uloženého tréningu. Uloženie nebolo potvrdené.')
+      }
+
       const refreshed = await api.getTeamTrainingSessions(resolvedTeamId)
       const refreshedSessions = Array.isArray(refreshed?.sessions)
         ? refreshed.sessions
@@ -1793,7 +1798,7 @@ function Trainings() {
               : (Array.isArray(refreshed) ? refreshed : [])
 
         const savedCandidate = {
-          id: String(linkedSessionId || savedResult?.id || savedResult?.sessionId || '').trim(),
+          id: persistedTrainingId,
           title,
           date: payload.date,
           location: resolvedLocation,

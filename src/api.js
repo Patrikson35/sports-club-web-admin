@@ -1326,7 +1326,6 @@ class APIClient {
     const resolvedStartTime = String(payload?.start_time || payload?.startTime || '').trim();
     const resolvedEndTime = String(payload?.end_time || payload?.endTime || '').trim();
 
-    const payloadForSessionEndpoints = { ...payload };
     const payloadForTrainingsBase = {
       ...payload,
       team_id: safeTeamId,
@@ -1378,12 +1377,6 @@ class APIClient {
         { endpoint: `/trainings`, body: variant },
         { endpoint: `/v1/trainings`, body: variant },
       ])),
-      { endpoint: `/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/v1/teams/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/v1/${safeTeamId}/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/training-sessions`, body: payloadForSessionEndpoints },
-      { endpoint: `/v1/training-sessions`, body: payloadForSessionEndpoints },
     ];
 
     let lastError = null;
@@ -1425,11 +1418,10 @@ class APIClient {
       throw new Error('sessionId is required');
     }
 
-    const safeTeamId = String(teamId || '').trim();
     const payload = {
       ...data,
-      team_id: safeTeamId || data?.team_id,
-      teamId: safeTeamId || data?.teamId,
+      team_id: String(teamId || '').trim() || data?.team_id,
+      teamId: String(teamId || '').trim() || data?.teamId,
     };
 
     delete payload.name;
@@ -1466,12 +1458,6 @@ class APIClient {
         { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PUT', body: variant },
         { endpoint: `/v1/trainings/${safeSessionId}`, method: 'PATCH', body: variant },
       ])),
-      ...(safeTeamId ? [{ endpoint: `/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
-      ...(safeTeamId ? [{ endpoint: `/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
-      ...(safeTeamId ? [{ endpoint: `/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
-      ...(safeTeamId ? [{ endpoint: `/v1/${safeTeamId}/training-sessions/${safeSessionId}`, method: 'PATCH' }] : []),
-      { endpoint: `/training-sessions/${safeSessionId}`, method: 'PATCH' },
-      { endpoint: `/v1/training-sessions/${safeSessionId}`, method: 'PATCH' },
     ];
 
     let lastError = null;
