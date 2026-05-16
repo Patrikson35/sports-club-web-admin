@@ -354,8 +354,9 @@ const normalizeTrainingsList = (source) => {
           : []
 
       const parsedExerciseCount = Number(item?.exerciseCount ?? item?.exercise_count ?? item?.exercises_count)
-      const exerciseCountKnown = Number.isFinite(parsedExerciseCount)
-      const exerciseCount = exerciseCountKnown
+      const parsedCountIsPositive = Number.isFinite(parsedExerciseCount) && parsedExerciseCount > 0
+      const exerciseCountKnown = parsedCountIsPositive || rawExercises.length > 0
+      const exerciseCount = parsedCountIsPositive
         ? Math.max(0, parsedExerciseCount)
         : rawExercises.length
 
@@ -803,12 +804,7 @@ function Trainings() {
       ))
 
       if (rowsNeedingDetailCount.length === 0) {
-        const visible = merged.filter((item) => {
-          const id = String(item?.id || '').trim()
-          const preservedCount = Number(preservedById.get(id) || 0)
-          return Number(item?.exerciseCount || 0) > 0 || preservedCount > 0
-        })
-        setTrainings(visible)
+        setTrainings(merged)
         return
       }
 
@@ -852,14 +848,13 @@ function Trainings() {
         }
       })
 
-      const withExercisesOnly = enriched.filter((item) => Number(item?.exerciseCount || 0) > 0)
-      setTrainings(withExercisesOnly)
+      setTrainings(enriched)
     } catch (error) {
       console.error('Chyba načítání tréninků:', error)
       const preservedNormalized = normalizeTrainingsList(preservedSource)
       const fallbackNormalized = normalizeTrainingsList(fallbackSource)
       const mergedFallback = mergeNormalizedTrainings(fallbackNormalized, preservedNormalized)
-      setTrainings(mergedFallback.filter((item) => Number(item?.exerciseCount || 0) > 0))
+      setTrainings(mergedFallback)
     } finally {
       setLoading(false)
     }
@@ -1812,7 +1807,7 @@ function Trainings() {
 
       setCalendarSessions(refreshedSessions)
       if (savedCandidate.id && Number(savedCandidate.exerciseCount || 0) > 0) {
-        setTrainings((prev) => mergeNormalizedTrainings(normalizeTrainingsList([savedCandidate]), prev).filter((item) => Number(item?.exerciseCount || 0) > 0))
+        setTrainings((prev) => mergeNormalizedTrainings(normalizeTrainingsList([savedCandidate]), prev))
       }
         await loadTrainings(fallbackForList, savedCandidate.id ? [savedCandidate] : [])
       setComposerSuccess(linkedSessionId
