@@ -739,35 +739,35 @@ function Trainings() {
               ? response.data
               : (Array.isArray(response) ? response : []))
 
-      const teamsResponse = await api.getTeams()
-      const teamIds = (Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : [])
-        .map((team) => String(team?.id || '').trim())
-        .filter(Boolean)
-
       let source = []
 
-      if (teamIds.length > 0) {
-        const perTeamResults = await Promise.allSettled(teamIds.map(async (teamId) => {
-          const sessionsResponse = await api.getTeamTrainingSessions(teamId, { excludeHidden: 1 })
-          const sessions = toSessionsArray(sessionsResponse)
-          return sessions.map((session) => ({
-            ...(session && typeof session === 'object' ? session : {}),
-            teamId: String(session?.teamId || session?.team_id || teamId).trim() || teamId,
-            team_id: String(session?.team_id || session?.teamId || teamId).trim() || teamId,
-          }))
-        }))
-
-        source = perTeamResults
-          .filter((result) => result.status === 'fulfilled')
-          .flatMap((result) => Array.isArray(result.value) ? result.value : [])
+      try {
+        const data = await api.getTrainings({ excludeHidden: 1 })
+        source = toSessionsArray(data)
+      } catch {
+        source = []
       }
 
       if (source.length === 0) {
-        try {
-          const data = await api.getTrainings({ excludeHidden: 1 })
-          source = toSessionsArray(data)
-        } catch {
-          source = []
+        const teamsResponse = await api.getTeams()
+        const teamIds = (Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : [])
+          .map((team) => String(team?.id || '').trim())
+          .filter(Boolean)
+
+        if (teamIds.length > 0) {
+          const perTeamResults = await Promise.allSettled(teamIds.map(async (teamId) => {
+            const sessionsResponse = await api.getTeamTrainingSessions(teamId, { excludeHidden: 1 })
+            const sessions = toSessionsArray(sessionsResponse)
+            return sessions.map((session) => ({
+              ...(session && typeof session === 'object' ? session : {}),
+              teamId: String(session?.teamId || session?.team_id || teamId).trim() || teamId,
+              team_id: String(session?.team_id || session?.teamId || teamId).trim() || teamId,
+            }))
+          }))
+
+          source = perTeamResults
+            .filter((result) => result.status === 'fulfilled')
+            .flatMap((result) => Array.isArray(result.value) ? result.value : [])
         }
       }
 
@@ -775,16 +775,12 @@ function Trainings() {
       const fallbackNormalized = normalizeTrainingsList(fallbackSource)
       const merged = mergeNormalizedTrainings(normalized, fallbackNormalized)
 
-      const rowsNeedingDetailCount = merged.filter((item) => (
-        Number(item?.exerciseCount || 0) <= 0
-      ))
-
-      if (rowsNeedingDetailCount.length === 0) {
-        setTrainings(merged.filter((item) => Number(item?.exerciseCount || 0) > 0))
+      if (merged.length === 0) {
+        setTrainings([])
         return
       }
 
-      const detailResults = await Promise.allSettled(rowsNeedingDetailCount.map(async (item) => {
+      const detailResults = await Promise.allSettled(merged.map(async (item) => {
         const detail = await api.getTeamTrainingSessionDetail(item.id, item.teamId)
         const exerciseCount = Array.isArray(detail?.exercises) ? detail.exercises.length : 0
         return { id: String(item.id || ''), exerciseCount }
@@ -796,15 +792,17 @@ function Trainings() {
         detailCountById.set(String(result.value?.id || ''), Number(result.value?.exerciseCount || 0))
       })
 
-      const enriched = merged.map((item) => {
-        const detailCount = detailCountById.get(String(item.id || ''))
-        if (!Number.isFinite(detailCount) || detailCount <= 0) return item
-        return {
-          ...item,
-          exerciseCount: detailCount,
-          exerciseCountKnown: true,
-        }
-      })
+      const enriched = merged
+        .map((item) => {
+          const detailCount = detailCountById.get(String(item.id || ''))
+          if (!Number.isFinite(detailCount)) return null
+          return {
+            ...item,
+            exerciseCount: detailCount,
+            exerciseCountKnown: true,
+          }
+        })
+        .filter(Boolean)
 
       const withExercisesOnly = enriched.filter((item) => Number(item?.exerciseCount || 0) > 0)
       setTrainings(withExercisesOnly)
