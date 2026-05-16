@@ -158,6 +158,13 @@ class APIClient {
     this.token = localStorage.getItem('authToken');
   }
 
+  getDebugInfo() {
+    return {
+      baseURL: this.baseURL,
+      legacyBaseURL: toLegacyApiBase(this.baseURL),
+    };
+  }
+
   setToken(token) {
     this.token = token;
     localStorage.setItem('authToken', token);

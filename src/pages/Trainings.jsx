@@ -647,6 +647,7 @@ function Trainings() {
   const [viewTrainingDetail, setViewTrainingDetail] = useState(null)
   const [evidenceEntriesDraft, setEvidenceEntriesDraft] = useState({})
   const [attendanceMetricCodeById, setAttendanceMetricCodeById] = useState(new Map())
+  const [trainingsDebugInfo, setTrainingsDebugInfo] = useState('')
 
   useEffect(() => {
     loadTrainings()
@@ -740,11 +741,22 @@ function Trainings() {
               : (Array.isArray(response) ? response : []))
 
       let source = []
+      const apiClientDebug = typeof api?.getDebugInfo === 'function' ? api.getDebugInfo() : {}
 
       try {
-        const data = await api.getTrainings({ excludeHidden: 1, requireExercises: 1, limit: 500 })
+        const data = await api.getTrainings({ excludeHidden: 1, requireExercises: 1, limit: 500, debug: 1 })
+        const backendDebug = data?.debug && typeof data.debug === 'object' ? data.debug : null
+        const debugParts = [
+          `API: ${String(apiClientDebug?.baseURL || '').trim() || 'n/a'}`,
+          backendDebug?.service ? `Service: ${backendDebug.service}` : '',
+          backendDebug?.routeFingerprint ? `Route: ${backendDebug.routeFingerprint}` : '',
+          backendDebug?.commit ? `Commit: ${backendDebug.commit}` : '',
+        ].filter(Boolean)
+        setTrainingsDebugInfo(debugParts.join(' | '))
         source = toSessionsArray(data)
       } catch {
+        const fallbackDebug = `API: ${String(apiClientDebug?.baseURL || '').trim() || 'n/a'} | Global feed failed`
+        setTrainingsDebugInfo(fallbackDebug)
         source = []
       }
 
@@ -1931,6 +1943,7 @@ function Trainings() {
       <div className="page-header">
         <h2>Tréninky</h2>
         <p>Plánování a správa tréninků</p>
+        {trainingsDebugInfo ? <p className="unified-muted" style={{ marginTop: 6 }}>{trainingsDebugInfo}</p> : null}
       </div>
 
       <div className="unified-toolbar">
