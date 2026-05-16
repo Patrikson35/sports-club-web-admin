@@ -740,35 +740,35 @@ function Trainings() {
               ? response.data
               : (Array.isArray(response) ? response : []))
 
-      const data = await api.getTrainings({ excludeHidden: 1 })
-      let source = toSessionsArray(data)
+      const teamsResponse = await api.getTeams()
+      const teamIds = (Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : [])
+        .map((team) => String(team?.id || '').trim())
+        .filter(Boolean)
 
-      // Some deployments persist creates via team-scoped session endpoints.
-      // When the global /trainings feed is empty, recover list from team feeds.
+      let source = []
+
+      if (teamIds.length > 0) {
+        const perTeamResults = await Promise.allSettled(teamIds.map(async (teamId) => {
+          const sessionsResponse = await api.getTeamTrainingSessions(teamId, { excludeHidden: 1 })
+          const sessions = toSessionsArray(sessionsResponse)
+          return sessions.map((session) => ({
+            ...(session && typeof session === 'object' ? session : {}),
+            teamId: String(session?.teamId || session?.team_id || teamId).trim() || teamId,
+            team_id: String(session?.team_id || session?.teamId || teamId).trim() || teamId,
+          }))
+        }))
+
+        source = perTeamResults
+          .filter((result) => result.status === 'fulfilled')
+          .flatMap((result) => Array.isArray(result.value) ? result.value : [])
+      }
+
       if (source.length === 0) {
         try {
-          const teamsResponse = await api.getTeams()
-          const teamIds = (Array.isArray(teamsResponse?.teams) ? teamsResponse.teams : [])
-            .map((team) => String(team?.id || '').trim())
-            .filter(Boolean)
-
-          if (teamIds.length > 0) {
-            const perTeamResults = await Promise.allSettled(teamIds.map(async (teamId) => {
-              const sessionsResponse = await api.getTeamTrainingSessions(teamId, { excludeHidden: 1 })
-              const sessions = toSessionsArray(sessionsResponse)
-              return sessions.map((session) => ({
-                ...(session && typeof session === 'object' ? session : {}),
-                teamId: String(session?.teamId || session?.team_id || teamId).trim() || teamId,
-                team_id: String(session?.team_id || session?.teamId || teamId).trim() || teamId,
-              }))
-            }))
-
-            source = perTeamResults
-              .filter((result) => result.status === 'fulfilled')
-              .flatMap((result) => Array.isArray(result.value) ? result.value : [])
-          }
+          const data = await api.getTrainings({ excludeHidden: 1 })
+          source = toSessionsArray(data)
         } catch {
-          // Keep original source (empty) and continue with fallbackSource merge below.
+          source = []
         }
       }
 
