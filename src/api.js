@@ -1545,17 +1545,9 @@ class APIClient {
       throw new Error('sessionId is required');
     }
 
-    const safeTeamId = String(teamId || '').trim();
-
     const attempts = [
       `/trainings/${safeSessionId}`,
       `/v1/trainings/${safeSessionId}`,
-      ...(safeTeamId ? [`/teams/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
-      ...(safeTeamId ? [`/v1/teams/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
-      ...(safeTeamId ? [`/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
-      ...(safeTeamId ? [`/v1/${safeTeamId}/training-sessions/${safeSessionId}`] : []),
-      `/training-sessions/${safeSessionId}`,
-      `/v1/training-sessions/${safeSessionId}`,
     ];
 
     let lastError = null;
